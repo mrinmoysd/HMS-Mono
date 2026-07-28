@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { X, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { formatAge } from '@/lib/utils';
+import { useConfirmDelete } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { useOpdVisitDetail, useDeleteOpdVisit } from '@/lib/hooks/use-clinical';
 import { VisitEditForm } from './visit-edit-form';
 
@@ -22,6 +24,8 @@ export function VisitDetailsModal({
 }) {
   const { data, isLoading } = useOpdVisitDetail(open ? id : null);
   const del = useDeleteOpdVisit();
+  const confirmDelete = useConfirmDelete();
+  const toast = useToast();
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
@@ -40,9 +44,13 @@ export function VisitDetailsModal({
 
   async function onDelete() {
     if (!data) return;
-    if (confirm(`Delete visit ${data.opdNo}?`)) {
+    if (!(await confirmDelete(`visit ${data.opdNo}`))) return;
+    try {
       await del.mutateAsync(data.id);
+      toast.success(`Visit ${data.opdNo} deleted`);
       onClose();
+    } catch (e) {
+      toast.error('Could not delete visit', { description: (e as Error).message });
     }
   }
 

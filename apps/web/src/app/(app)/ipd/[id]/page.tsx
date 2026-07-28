@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Printer, Pencil, Trash2, LogOut, List, X } from 'lucide-react';
 import { Tabs } from '@/components/ui/tabs';
+import { useConfirm, useConfirmDelete } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
 import { StatusPill } from '@/components/ui/status-pill';
 import { formatAge } from '@/lib/utils';
@@ -57,6 +59,9 @@ export default function IpdDetailPage() {
   const { data: profile } = usePatientProfile(data?.header.patientId ?? '');
   const discharge = useDischarge();
   const del = useDeleteIpdAdmission();
+  const confirm = useConfirm();
+  const confirmDelete = useConfirmDelete();
+  const toast = useToast();
   const [tab, setTab] = useState<Tab>('overview');
   const [editing, setEditing] = useState(false);
 
@@ -66,16 +71,30 @@ export default function IpdDetailPage() {
 
   async function onDischarge() {
     if (!admission) return;
-    if (confirm(`Discharge ${admission.patientName} (${admission.ipdNo}) and free bed ${admission.bedLabel}?`)) {
+    const ok = await confirm({
+      title: `Discharge ${admission.patientName}?`,
+      description: `Admission ${admission.ipdNo} is closed and bed ${admission.bedLabel} is freed for reuse.`,
+      confirmLabel: 'Discharge',
+      tone: 'warning',
+    });
+    if (!ok) return;
+    try {
       await discharge.mutateAsync(id);
+      toast.success(`${admission.patientName} discharged`);
+    } catch (e) {
+      toast.error('Could not discharge', { description: (e as Error).message });
     }
   }
 
   async function onDelete() {
     if (!admission) return;
-    if (confirm(`Delete admission ${admission.ipdNo}? This cannot be undone.`)) {
+    if (!(await confirmDelete(`admission ${admission.ipdNo}`))) return;
+    try {
       await del.mutateAsync(id);
+      toast.success(`Admission ${admission.ipdNo} deleted`);
       router.push('/ipd');
+    } catch (e) {
+      toast.error('Could not delete admission', { description: (e as Error).message });
     }
   }
 

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Eye, CreditCard, Printer, Plus, FlaskConical } from 'lucide-react';
 import type { InvoiceDto, DiagnosticTestDto, Modality } from '@smart-hospital/shared';
 import { DataTable, type Column } from '@/components/ui/data-table';
+import { useConfirmDelete } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { Tabs } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ExportMenu } from '@/components/ui/export-menu';
@@ -26,6 +28,8 @@ export function DiagnosticDeptPage({ modality, title }: { modality: Modality; ti
   const canAdd = ability.can(modality, 'add');
   const canDelete = ability.can(modality, 'delete');
 
+  const confirmDelete = useConfirmDelete();
+  const toast = useToast();
   const [tab, setTab] = useState<Tab>('bills');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -197,9 +201,14 @@ export function DiagnosticDeptPage({ modality, title }: { modality: Modality; ti
         onClose={() => setDetailTest(null)}
         onEdit={() => { setEditingTest(detailTest); setDetailTest(null); setTestFormOpen(true); }}
         onDelete={async () => {
-          if (detailTest && canDelete && confirm(`Delete test "${detailTest.name}"?`)) {
+          if (!detailTest || !canDelete) return;
+          if (!(await confirmDelete(`test ${detailTest.name}`))) return;
+          try {
             await deleteTest.mutateAsync(detailTest.id);
+            toast.success(`${detailTest.name} deleted`);
             setDetailTest(null);
+          } catch (e) {
+            toast.error('Could not delete test', { description: (e as Error).message });
           }
         }}
       />

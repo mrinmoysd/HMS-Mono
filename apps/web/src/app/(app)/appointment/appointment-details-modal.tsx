@@ -3,6 +3,8 @@
 import { useEffect } from 'react';
 import { X, Printer, Trash2, Loader2 } from 'lucide-react';
 import { StatusPill } from '@/components/ui/status-pill';
+import { useConfirmDelete } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { formatAge } from '@/lib/utils';
 import { useAppointmentDetail, useDeleteAppointment } from '@/lib/hooks/use-appointment';
 import { printAppointmentSlip } from './appointment-form';
@@ -11,6 +13,8 @@ import { printAppointmentSlip } from './appointment-form';
 export function AppointmentDetailsModal({ id, open, onClose }: { id: string | null; open: boolean; onClose: () => void }) {
   const { data, isLoading } = useAppointmentDetail(open ? id : null);
   const del = useDeleteAppointment();
+  const confirmDelete = useConfirmDelete();
+  const toast = useToast();
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
@@ -22,9 +26,13 @@ export function AppointmentDetailsModal({ id, open, onClose }: { id: string | nu
 
   async function onDelete() {
     if (!data) return;
-    if (confirm(`Delete appointment ${data.apptNo}?`)) {
+    if (!(await confirmDelete(`appointment ${data.apptNo}`))) return;
+    try {
       await del.mutateAsync(data.id);
+      toast.success(`Appointment ${data.apptNo} deleted`);
       onClose();
+    } catch (e) {
+      toast.error('Could not delete appointment', { description: (e as Error).message });
     }
   }
 

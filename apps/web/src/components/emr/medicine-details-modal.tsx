@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { X, Pencil, Trash2, Plus } from 'lucide-react';
 import { medicineBadStockSchema } from '@smart-hospital/shared';
 import { FormDrawer } from '@/components/ui/form-drawer';
+import { useConfirmDelete } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { Field, TextInput, Select } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
 import { useMedicine, useCreateBadStock, useDeleteMedicines } from '@/lib/hooks/use-departments';
@@ -15,6 +17,8 @@ type Tab = 'stock' | 'bad-stock';
 export function MedicineDetailsModal({ id, open, onClose, canEdit, canDelete }: { id: string | null; open: boolean; onClose: () => void; canEdit: boolean; canDelete: boolean }) {
   const { data, isLoading } = useMedicine(open ? id : null);
   const del = useDeleteMedicines();
+  const confirmDelete = useConfirmDelete();
+  const toast = useToast();
   const [tab, setTab] = useState<Tab>('stock');
   const [editing, setEditing] = useState(false);
   const [addingBadStock, setAddingBadStock] = useState(false);
@@ -23,9 +27,13 @@ export function MedicineDetailsModal({ id, open, onClose, canEdit, canDelete }: 
 
   async function onDelete() {
     if (!data) return;
-    if (confirm(`Delete medicine "${data.name}"?`)) {
+    if (!(await confirmDelete(`medicine ${data.name}`))) return;
+    try {
       await del.mutateAsync({ ids: [data.id] });
+      toast.success(`${data.name} deleted`);
       onClose();
+    } catch (e) {
+      toast.error('Could not delete medicine', { description: (e as Error).message });
     }
   }
 

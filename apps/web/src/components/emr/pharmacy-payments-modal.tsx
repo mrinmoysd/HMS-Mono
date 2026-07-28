@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Printer, Trash2, X } from 'lucide-react';
 import { Field, TextInput, Select } from '@/components/ui/field';
+import { useConfirmDelete } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
 import { useInvoice, useAddPayment, useDeletePayment } from '@/lib/hooks/use-clinical';
 import { useAbility } from '@/lib/auth-store';
@@ -16,6 +18,8 @@ export function PharmacyPaymentsModal({ id, open, onClose }: { id: string | null
   const { data, isLoading } = useInvoice(open ? id : null);
   const addPayment = useAddPayment();
   const deletePayment = useDeletePayment();
+  const confirmDelete = useConfirmDelete();
+  const toast = useToast();
 
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = useState('0');
@@ -40,8 +44,12 @@ export function PharmacyPaymentsModal({ id, open, onClose }: { id: string | null
 
   async function onDeletePayment(paymentId: string) {
     if (!id) return;
-    if (confirm('Delete this payment?')) {
+    if (!(await confirmDelete('this payment', 'The bill balance is recalculated without it.'))) return;
+    try {
       await deletePayment.mutateAsync({ id, paymentId });
+      toast.success('Payment deleted');
+    } catch (e) {
+      toast.error('Could not delete payment', { description: (e as Error).message });
     }
   }
 
