@@ -1,5 +1,8 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useMemo, useState } from 'react';
 import { ChevronLeft, Plus, Trash2 } from 'lucide-react';
 import type { RosterPeriodDto } from '@smart-hospital/shared';
@@ -21,6 +24,8 @@ export function RosterView({ onBack }: { onBack: () => void }) {
   const list = useRosterPeriods();
   const create = useCreateRosterPeriod();
   const del = useDeleteRosterPeriod();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -45,7 +50,19 @@ export function RosterView({ onBack }: { onBack: () => void }) {
     setOpen(false);
   }
   async function remove(r: RosterPeriodDto) {
-    if (confirm(`Delete this roster (${r.shiftName})?`)) await del.mutateAsync(r.id);
+    const ok = await confirm({
+      title: `Delete roster for ${r.shiftName}?`,
+      description: 'Staff assignments inside this roster period will be removed too.',
+      confirmLabel: 'Delete roster',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await del.mutateAsync(r.id);
+      toast.success(`Roster deleted`);
+    } catch (e) {
+      toast.error('Could not delete roster', { description: (e as Error).message });
+    }
   }
 
   const cols: Column<RosterPeriodDto>[] = [
@@ -61,10 +78,10 @@ export function RosterView({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-4">
       <button onClick={onBack} className="flex items-center gap-1 text-sm text-fg-muted hover:text-fg"><ChevronLeft className="h-4 w-4" /> Duty Roster</button>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Roster List</h1>
-        {canAdd && <Button onClick={openAdd}><Plus className="h-4 w-4" /> Add Roster</Button>}
-      </div>
+      <PageHeader
+        title="Roster List"
+        actions={canAdd && <Button onClick={openAdd}><Plus className="h-4 w-4" /> Add Roster</Button>}
+      />
 
       <DataTable
         columns={cols}

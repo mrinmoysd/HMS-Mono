@@ -1,5 +1,8 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useState } from 'react';
 import { CalendarDays, KeyRound, Mail, MessageSquare, Pencil, Plus, Trash2, User } from 'lucide-react';
 import type { NoticeDto } from '@smart-hospital/shared';
@@ -31,6 +34,8 @@ export default function MessagingPage() {
   const [editing, setEditing] = useState<NoticeDto | null>(null);
   const list = useNotices();
   const del = useDeleteNotice();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const back = () => { setView('board'); setEditing(null); };
 
@@ -41,22 +46,34 @@ export default function MessagingPage() {
 
   const notices = list.data?.data ?? [];
   async function remove(n: NoticeDto) {
-    if (confirm(`Delete notice "${n.subject}"?`)) await del.mutateAsync(n.id);
+    const ok = await confirm({
+      title: `Delete notice ${n.subject}?`,
+      description: 'The notice is removed from the board for every recipient role.',
+      confirmLabel: 'Delete notice',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await del.mutateAsync(n.id);
+      toast.success(`Notice deleted`);
+    } catch (e) {
+      toast.error('Could not delete notice', { description: (e as Error).message });
+    }
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Notice Board</h1>
-        {canAdd && (
-          <div className="flex flex-wrap gap-2">
+      <PageHeader
+        title="Notice Board"
+        actions={canAdd && (
+          <>
             <Button onClick={() => { setEditing(null); setView('compose'); }}><Plus className="h-4 w-4" /> Post New Message</Button>
             <Button variant="secondary" onClick={() => setView('sms')}><MessageSquare className="h-4 w-4" /> Send SMS</Button>
             <Button variant="secondary" onClick={() => setView('email')}><Mail className="h-4 w-4" /> Send Email</Button>
             <Button variant="secondary" onClick={() => setView('credential')}><KeyRound className="h-4 w-4" /> Send Credential</Button>
-          </div>
+          </>
         )}
-      </div>
+      />
 
       <div className="space-y-3">
         {notices.map((n) => (

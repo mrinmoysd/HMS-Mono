@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { CalendarClock, ClipboardList, Search, Users } from 'lucide-react';
 import type { DutyRosterRowDto } from '@smart-hospital/shared';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { Field, Select } from '@/components/ui/field';
 import { ExportMenu } from '@/components/ui/export-menu';
 import { useStaff } from '@/lib/hooks/use-hr';
@@ -59,17 +60,19 @@ function MainList({ onNavigate }: { onNavigate: (v: View) => void }) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border border-border bg-surface p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-lg font-semibold">Duty Roster</h1>
-          <div className="flex flex-wrap gap-2">
+      <PageHeader
+        title="Duty Roster"
+        actions={
+          <>
             <Button variant="secondary" onClick={() => onNavigate('shift')}><CalendarClock className="h-4 w-4" /> Shift</Button>
             <Button variant="secondary" onClick={() => onNavigate('roster')}><ClipboardList className="h-4 w-4" /> Roster</Button>
             <Button variant="secondary" onClick={() => onNavigate('assign')}><Users className="h-4 w-4" /> Assign Roster</Button>
-          </div>
-        </div>
+          </>
+        }
+      />
 
-        <div className="mt-5 flex flex-wrap items-end gap-4">
+      <div className="rounded-md border border-border bg-surface p-5">
+        <div className="flex flex-wrap items-end gap-4">
           <div className="w-full sm:w-80"><Field label="Time Duration" required><Select value={rosterId} onChange={(e) => setRosterId(e.target.value)} placeholder="Select" options={periodOptions} /></Field></div>
           <div className="w-full sm:w-72"><Field label="Staff"><Select value={staffUserId} onChange={(e) => setStaffUserId(e.target.value)} placeholder="Select" options={(staff.data?.data ?? []).map((s) => ({ value: s.userId, label: staffLabel(s.name, s.staffNo) }))} /></Field></div>
           <Button onClick={search} disabled={!rosterId}><Search className="h-4 w-4" /> Search</Button>

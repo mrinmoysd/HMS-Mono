@@ -1,10 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ChevronLeft, Eye, Plus, Trash2, Upload, X } from 'lucide-react';
+import { ChevronLeft, Eye, Plus, Trash2, Upload } from 'lucide-react';
 import type { LeaveRequestDto } from '@smart-hospital/shared';
 import { leaveRequestSchema } from '@smart-hospital/shared';
 import { Button } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modal';
+import { PageHeader } from '@/components/ui/page-header';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Field, Select, TextArea, TextInput } from '@/components/ui/field';
 import { useStaff, useStaffRoles, useCreateLeave, useDeleteLeave, useLeaves, useLeave, useLeaveTypes, useSetLeaveStatus } from '@/lib/hooks/use-hr';
 import { useAbility } from '@/lib/auth-store';
@@ -23,6 +27,8 @@ export function LeavesView({ mode, onBack, onSwitch }: { mode: 'my' | 'approve';
   const [page, setPage] = useState(1);
   const leaves = useLeaves({ page, size: 100 });
   const del = useDeleteLeave();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [applyOpen, setApplyOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
 
@@ -32,14 +38,16 @@ export function LeavesView({ mode, onBack, onSwitch }: { mode: 'my' | 'approve';
   return (
     <div className="space-y-4">
       <button onClick={onBack} className="flex items-center gap-1 text-sm text-fg-muted hover:text-fg"><ChevronLeft className="h-4 w-4" /> Staff Directory</button>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{approveMode ? 'Approve Leave Request' : 'My Leaves'}</h1>
-        <div className="flex gap-2">
-          {canAdd && <Button onClick={() => setApplyOpen(true)}><Plus className="h-4 w-4" /> {approveMode ? 'Add Leave Request' : 'Apply Leave'}</Button>}
-          {!approveMode && <Button variant="secondary" onClick={() => onSwitch('approve')}>Approve Leave Request</Button>}
-          {approveMode && <Button variant="secondary" onClick={() => onSwitch('my')}>My Leaves</Button>}
-        </div>
-      </div>
+      <PageHeader
+        title={approveMode ? 'Approve Leave Request' : 'My Leaves'}
+        actions={
+          <>
+            {canAdd && <Button onClick={() => setApplyOpen(true)}><Plus className="h-4 w-4" /> {approveMode ? 'Add Leave Request' : 'Apply Leave'}</Button>}
+            {!approveMode && <Button variant="secondary" onClick={() => onSwitch('approve')}>Approve Leave Request</Button>}
+            {approveMode && <Button variant="secondary" onClick={() => onSwitch('my')}>My Leaves</Button>}
+          </>
+        }
+      />
 
       <div className="overflow-x-auto rounded-md border border-border bg-surface">
         <table className="w-full text-sm">
@@ -65,7 +73,30 @@ export function LeavesView({ mode, onBack, onSwitch }: { mode: 'my' | 'approve';
                 <td className="px-3 py-2.5">
                   <div className="flex gap-1">
                     <button onClick={() => setDetailId(l.id)} aria-label="Details" title="Details" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary"><Eye className="h-4 w-4" /></button>
-                    {canDelete && <button onClick={async () => { if (confirm('Delete this leave request?')) await del.mutateAsync(l.id); }} aria-label="Delete" title="Delete" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"><Trash2 className="h-4 w-4" /></button>}
+                    {canDelete && (
+                      <button
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: `Delete leave request for ${l.staffName}?`,
+                            description: 'The request and its approval history will be removed. This cannot be undone.',
+                            confirmLabel: 'Delete request',
+                            tone: 'danger',
+                          });
+                          if (!ok) return;
+                          try {
+                            await del.mutateAsync(l.id);
+                            toast.success('Leave request deleted');
+                          } catch (e) {
+                            toast.error('Could not delete leave request', { description: (e as Error).message });
+                          }
+                        }}
+                        aria-label="Delete"
+                        title="Delete"
+                        className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -119,13 +150,19 @@ function ApplyLeaveModal({ open, onClose }: { open: boolean; onClose: () => void
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div role="dialog" aria-modal="true" aria-label="Add Leave Request" className="relative w-full max-w-3xl rounded-md bg-surface shadow-xl">
-        <div className="flex items-center justify-between rounded-t-md bg-primary px-5 py-3 text-primary-fg">
-          <h2 className="text-base font-semibold">Add Leave Request</h2>
-          <button onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm hover:bg-white/10"><X className="h-5 w-5" /></button>
-        </div>
-        <div className="max-h-[75vh] space-y-5 overflow-y-auto p-5">
+    <Modal
+      open
+      onClose={onClose}
+      title="Add Leave Request"
+      size="lg"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={save} loading={create.isPending}>Save</Button>
+        </>
+      }
+    >
+        <div className="space-y-5">
           {error && <p role="alert" className="rounded-sm bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
           <div>
             <h3 className="mb-3 text-sm font-semibold">Leave Request</h3>
@@ -162,12 +199,7 @@ function ApplyLeaveModal({ open, onClose }: { open: boolean; onClose: () => void
             </div>
           </div>
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={save} loading={create.isPending}>Save</Button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -187,13 +219,19 @@ function LeaveDetailModal({ id, onClose }: { id: string | null; onClose: () => v
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div role="dialog" aria-modal="true" aria-label="Leave Details" className="relative w-full max-w-3xl rounded-md bg-surface shadow-xl">
-        <div className="flex items-center justify-between rounded-t-md bg-primary px-5 py-3 text-primary-fg">
-          <h2 className="text-base font-semibold">Details</h2>
-          <button onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm hover:bg-white/10"><X className="h-5 w-5" /></button>
-        </div>
-        <div className="space-y-5 p-5">
+    <Modal
+      open
+      onClose={onClose}
+      title="Leave Details"
+      size="lg"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={save} loading={setStatus.isPending} disabled={!data}>Save</Button>
+        </>
+      }
+    >
+        <div className="space-y-5">
           {!data ? <p className="py-10 text-center text-sm text-fg-muted">Loading…</p> : (
             <>
               <h3 className="text-sm font-semibold">Approve Leave Request</h3>
@@ -218,12 +256,7 @@ function LeaveDetailModal({ id, onClose }: { id: string | null; onClose: () => v
             </>
           )}
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={save} loading={setStatus.isPending} disabled={!data}>Save</Button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 

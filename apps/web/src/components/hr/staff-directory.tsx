@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { LayoutGrid, List, Phone, Pencil, Eye, Plus, CalendarCheck, Wallet, Plane } from 'lucide-react';
 import type { StaffDto } from '@smart-hospital/shared';
@@ -34,15 +35,17 @@ export function StaffDirectory({ onAdd, onShow, onEdit, onAttendance, onPayroll,
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Staff Directory</h1>
-        <div className="flex flex-wrap gap-2">
-          {canAdd && <Button onClick={onAdd}><Plus className="h-4 w-4" /> Add Staff</Button>}
-          <Button variant="secondary" onClick={onAttendance}><CalendarCheck className="h-4 w-4" /> Staff Attendance</Button>
-          <Button variant="secondary" onClick={onPayroll}><Wallet className="h-4 w-4" /> Payroll</Button>
-          <Button variant="secondary" onClick={onLeaves}><Plane className="h-4 w-4" /> Leaves</Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Staff Directory"
+        actions={
+          <>
+            {canAdd && <Button onClick={onAdd}><Plus className="h-4 w-4" /> Add Staff</Button>}
+            <Button variant="secondary" onClick={onAttendance}><CalendarCheck className="h-4 w-4" /> Staff Attendance</Button>
+            <Button variant="secondary" onClick={onPayroll}><Wallet className="h-4 w-4" /> Payroll</Button>
+            <Button variant="secondary" onClick={onLeaves}><Plane className="h-4 w-4" /> Leaves</Button>
+          </>
+        }
+      />
 
       <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-surface p-4">
         <div className="w-56">

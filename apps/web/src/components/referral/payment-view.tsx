@@ -1,7 +1,11 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useEffect, useMemo, useState } from 'react';
-import { Pencil, Plus, Trash2, Users, X } from 'lucide-react';
+import { Pencil, Plus, Trash2, Users } from 'lucide-react';
+import { Modal } from '@/components/ui/modal';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { REFERRAL_MODULES, type ReferralModuleKey, type ReferralPaymentDto } from '@smart-hospital/shared';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
@@ -24,6 +28,8 @@ export function PaymentView({ onManagePersons }: { onManagePersons: () => void }
   const [page, setPage] = useState(1);
   const list = useReferralPayments({ search, page, size: 100 });
   const del = useDeleteReferralPayment();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ReferralPaymentDto | null>(null);
@@ -31,7 +37,19 @@ export function PaymentView({ onManagePersons }: { onManagePersons: () => void }
   const rows = list.data?.data ?? [];
 
   async function remove(r: ReferralPaymentDto) {
-    if (confirm(`Delete this referral payment (${r.payeeName})?`)) await del.mutateAsync(r.id);
+    const ok = await confirm({
+      title: `Delete referral payment to ${r.payeeName}?`,
+      description: 'The commission record will be removed. This cannot be undone.',
+      confirmLabel: 'Delete payment',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await del.mutateAsync(r.id);
+      toast.success(`Payment to ${r.payeeName} deleted`);
+    } catch (e) {
+      toast.error('Could not delete payment', { description: (e as Error).message });
+    }
   }
 
   const cols: Column<ReferralPaymentDto>[] = [
@@ -45,13 +63,15 @@ export function PaymentView({ onManagePersons }: { onManagePersons: () => void }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Referral Payment List</h1>
-        <div className="flex gap-2">
-          {canAdd && <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4" /> Add Referral Payment</Button>}
-          <Button variant="secondary" onClick={onManagePersons}><Users className="h-4 w-4" /> Referral Person</Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Referral Payment List"
+        actions={
+          <>
+            {canAdd && <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4" /> Add Referral Payment</Button>}
+            <Button variant="secondary" onClick={onManagePersons}><Users className="h-4 w-4" /> Referral Person</Button>
+          </>
+        }
+      />
 
       <DataTable
         columns={cols}
@@ -143,15 +163,24 @@ function PaymentModal({ editing, onClose }: { editing: ReferralPaymentDto | null
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div role="dialog" aria-modal="true" aria-label="Add Referral Payment" className="relative w-full max-w-4xl rounded-md bg-surface shadow-xl">
-        <div className="flex items-center justify-between gap-4 rounded-t-md bg-primary px-5 py-3 text-primary-fg">
-          <h2 className="text-base font-semibold">{editing ? 'Edit Referral Payment' : 'Add Referral Payment'}</h2>
-          <div className="w-64"><PatientSelect value={patientId} selectedLabel={patientLabel} onChange={(id, label) => { setPatientId(id); setPatientLabel(label); }} /></div>
-          <button onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm hover:bg-white/10"><X className="h-5 w-5" /></button>
+    <Modal
+      open
+      onClose={onClose}
+      title={editing ? 'Edit Referral Payment' : 'Add Referral Payment'}
+      size="xl"
+      headerActions={
+        <div className="w-64">
+          <PatientSelect value={patientId} selectedLabel={patientLabel} onChange={(id, label) => { setPatientId(id); setPatientLabel(label); }} />
         </div>
-
-        <div className="grid grid-cols-1 gap-5 p-5 lg:grid-cols-2">
+      }
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button loading={create.isPending || update.isPending} onClick={save}>Save</Button>
+        </>
+      }
+    >
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           {error && <p role="alert" className="rounded-sm bg-danger/10 px-3 py-2 text-sm text-danger lg:col-span-2">{error}</p>}
 
           {/* Patient Details */}
@@ -193,11 +222,6 @@ function PaymentModal({ editing, onClose }: { editing: ReferralPaymentDto | null
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-border px-5 py-3">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button loading={create.isPending || update.isPending} onClick={save}>Save</Button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

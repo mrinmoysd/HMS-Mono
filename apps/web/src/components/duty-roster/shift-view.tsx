@@ -1,5 +1,8 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useMemo, useState } from 'react';
 import { ChevronLeft, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { DutyShiftDto } from '@smart-hospital/shared';
@@ -21,6 +24,8 @@ export function ShiftView({ onBack }: { onBack: () => void }) {
   const create = useCreateDrShift();
   const update = useUpdateDrShift();
   const del = useDeleteDrShift();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -49,7 +54,19 @@ export function ShiftView({ onBack }: { onBack: () => void }) {
     setOpen(false);
   }
   async function remove(s: DutyShiftDto) {
-    if (confirm(`Delete shift "${s.name}"?`)) await del.mutateAsync(s.id);
+    const ok = await confirm({
+      title: `Delete shift ${s.name}?`,
+      description: 'Rosters and assignments that use this shift will lose it.',
+      confirmLabel: 'Delete shift',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await del.mutateAsync(s.id);
+      toast.success(`Shift ${s.name} deleted`);
+    } catch (e) {
+      toast.error('Could not delete shift', { description: (e as Error).message });
+    }
   }
 
   const cols: Column<DutyShiftDto>[] = [
@@ -62,10 +79,10 @@ export function ShiftView({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-4">
       <button onClick={onBack} className="flex items-center gap-1 text-sm text-fg-muted hover:text-fg"><ChevronLeft className="h-4 w-4" /> Duty Roster</button>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Shift</h1>
-        {canAdd && <Button onClick={openAdd}><Plus className="h-4 w-4" /> Add Shift</Button>}
-      </div>
+      <PageHeader
+        title="Shift"
+        actions={canAdd && <Button onClick={openAdd}><Plus className="h-4 w-4" /> Add Shift</Button>}
+      />
 
       <DataTable
         columns={cols}

@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useEffect, useState } from 'react';
 import { ChevronLeft, Save, Search } from 'lucide-react';
 import { ATTENDANCE_STATUSES } from '@smart-hospital/shared';
@@ -46,7 +47,7 @@ export function StaffAttendance({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-4">
       <button onClick={onBack} className="flex items-center gap-1 text-sm text-fg-muted hover:text-fg"><ChevronLeft className="h-4 w-4" /> Staff Directory</button>
-      <h1 className="text-2xl font-semibold">Staff Attendance</h1>
+      <PageHeader title="Staff Attendance" />
 
       <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-surface p-4">
         <div className="w-56"><Field label="Role"><Select value={role} onChange={(e) => setRole(e.target.value)} placeholder="Select" options={(roles.data ?? []).map((r) => ({ value: r.slug, label: r.label }))} /></Field></div>

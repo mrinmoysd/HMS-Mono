@@ -1,9 +1,11 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
-import { ChevronLeft, Eye, Printer, RefreshCw, Search, X } from 'lucide-react';
+import { ChevronLeft, Eye, Printer, RefreshCw, Search } from 'lucide-react';
 import type { PayrollDto } from '@smart-hospital/shared';
-import { Button } from '@/components/ui/button';
+import { Button, IconButton } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modal';
 import { Field, Select } from '@/components/ui/field';
 import { useGeneratePayroll, usePayrollList, useStaffRoles } from '@/lib/hooks/use-hr';
 import { printDocument } from '@/lib/print';
@@ -33,7 +35,7 @@ export function PayrollView({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-4">
       <button onClick={onBack} className="flex items-center gap-1 text-sm text-fg-muted hover:text-fg"><ChevronLeft className="h-4 w-4" /> Staff Directory</button>
-      <h1 className="text-2xl font-semibold">Payroll</h1>
+      <PageHeader title="Payroll" />
 
       <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-surface p-4">
         <div className="w-52"><Field label="Role"><Select value={role} onChange={(e) => setRole(e.target.value)} placeholder="Select" options={(roles.data ?? []).map((r) => ({ value: r.slug, label: r.label }))} /></Field></div>
@@ -107,16 +109,19 @@ function PayslipModal({ payroll: p, monthLabel, onClose }: { payroll: PayrollDto
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div role="dialog" aria-modal="true" aria-label="Payslip" className="relative w-full max-w-2xl rounded-md bg-surface shadow-xl">
-        <div className="flex items-center justify-between rounded-t-md bg-primary px-5 py-3 text-primary-fg">
-          <h2 className="text-base font-semibold">Details</h2>
-          <div className="flex items-center gap-2">
-            <button onClick={print} aria-label="Print" className="flex h-8 w-8 items-center justify-center rounded-sm hover:bg-white/10"><Printer className="h-4 w-4" /></button>
-            <button onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm hover:bg-white/10"><X className="h-5 w-5" /></button>
-          </div>
-        </div>
-        <div className="space-y-4 p-5">
+    <Modal
+      open
+      onClose={onClose}
+      title="Payslip"
+      size="lg"
+      headerActions={
+        <IconButton label="Print payslip" tone="primary" onClick={print}>
+          <Printer className="h-4 w-4" />
+        </IconButton>
+      }
+      footer={<Button variant="secondary" onClick={onClose}>Close</Button>}
+    >
+        <div className="space-y-4">
           <div className="rounded-md border border-border">
             <div className="border-b border-border bg-bg px-4 py-2 text-center font-semibold">Payslip For The Period Of {monthLabel}</div>
             <div className="grid grid-cols-2 gap-y-3 p-4 text-sm">
@@ -147,9 +152,7 @@ function PayslipModal({ payroll: p, monthLabel, onClose }: { payroll: PayrollDto
             </div>
           </div>
         </div>
-        <div className="flex justify-end border-t border-border px-5 py-3"><Button variant="secondary" onClick={onClose}>Close</Button></div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 

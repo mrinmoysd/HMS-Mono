@@ -1,5 +1,8 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useMemo, useState } from 'react';
 import { ChevronLeft, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { RosterAssignmentDto } from '@smart-hospital/shared';
@@ -29,6 +32,8 @@ export function AssignView({ onBack }: { onBack: () => void }) {
   const create = useCreateAssignment();
   const update = useUpdateAssignment();
   const del = useDeleteAssignment();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -77,7 +82,19 @@ export function AssignView({ onBack }: { onBack: () => void }) {
     setOpen(false);
   }
   async function remove(a: RosterAssignmentDto) {
-    if (confirm(`Remove ${a.staffName} from ${a.shiftName}?`)) await del.mutateAsync(a.id);
+    const ok = await confirm({
+      title: `Remove ${a.staffName} from ${a.shiftName}?`,
+      description: 'The assignment is removed. The staff member and shift are kept.',
+      confirmLabel: 'Remove assignment',
+      tone: 'warning',
+    });
+    if (!ok) return;
+    try {
+      await del.mutateAsync(a.id);
+      toast.success(`${a.staffName} removed from ${a.shiftName}`);
+    } catch (e) {
+      toast.error('Could not remove assignment', { description: (e as Error).message });
+    }
   }
 
   const cols: Column<RosterAssignmentDto>[] = [
@@ -93,10 +110,10 @@ export function AssignView({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-4">
       <button onClick={onBack} className="flex items-center gap-1 text-sm text-fg-muted hover:text-fg"><ChevronLeft className="h-4 w-4" /> Duty Roster</button>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Assign Roster</h1>
-        {canAdd && <Button onClick={openAdd}><Plus className="h-4 w-4" /> Assign Roster</Button>}
-      </div>
+      <PageHeader
+        title="Assign Roster"
+        actions={canAdd && <Button onClick={openAdd}><Plus className="h-4 w-4" /> Assign Roster</Button>}
+      />
 
       <DataTable
         columns={cols}

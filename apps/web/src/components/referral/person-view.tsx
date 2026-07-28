@@ -1,7 +1,11 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useMemo, useState } from 'react';
-import { ChevronLeft, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { ChevronLeft, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Modal } from '@/components/ui/modal';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { REFERRAL_MODULES, type ReferralCommissions, type ReferralPersonDto } from '@smart-hospital/shared';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
@@ -28,6 +32,8 @@ export function PersonView({ onBack }: { onBack: () => void }) {
   const create = useCreateReferralPerson();
   const update = useUpdateReferralPerson();
   const del = useDeleteReferralPerson();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -72,7 +78,19 @@ export function PersonView({ onBack }: { onBack: () => void }) {
     setOpen(false);
   }
   async function remove(p: ReferralPersonDto) {
-    if (confirm(`Delete referral person "${p.name}"?`)) await del.mutateAsync(p.id);
+    const ok = await confirm({
+      title: `Delete referral person ${p.name}?`,
+      description: 'Their commission rates will be removed. Existing payment records are kept.',
+      confirmLabel: 'Delete person',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await del.mutateAsync(p.id);
+      toast.success(`${p.name} deleted`);
+    } catch (e) {
+      toast.error('Could not delete person', { description: (e as Error).message });
+    }
   }
 
   const cols: Column<ReferralPersonDto>[] = [
@@ -88,10 +106,10 @@ export function PersonView({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-4">
       <button onClick={onBack} className="flex items-center gap-1 text-sm text-fg-muted hover:text-fg"><ChevronLeft className="h-4 w-4" /> Referral Payment</button>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Referral Person List</h1>
-        {canAdd && <Button onClick={openAdd}><Plus className="h-4 w-4" /> Add Referral Person</Button>}
-      </div>
+      <PageHeader
+        title="Referral Person List"
+        actions={canAdd && <Button onClick={openAdd}><Plus className="h-4 w-4" /> Add Referral Person</Button>}
+      />
 
       <DataTable
         columns={cols}
@@ -110,14 +128,19 @@ export function PersonView({ onBack }: { onBack: () => void }) {
         ) : undefined}
       />
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-          <div role="dialog" aria-modal="true" aria-label="Add Person" className="relative w-full max-w-4xl rounded-md bg-surface shadow-xl">
-            <div className="flex items-center justify-between rounded-t-md bg-primary px-5 py-3 text-primary-fg">
-              <h2 className="text-base font-semibold">{editing ? 'Edit Person' : 'Add Person'}</h2>
-              <button onClick={() => setOpen(false)} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm hover:bg-white/10"><X className="h-5 w-5" /></button>
-            </div>
-            <div className="grid grid-cols-1 gap-5 p-5 lg:grid-cols-2">
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={editing ? 'Edit Person' : 'Add Person'}
+        size="xl"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button loading={create.isPending || update.isPending} onClick={save}>Save</Button>
+          </>
+        }
+      >
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
               {error && <p role="alert" className="rounded-sm bg-danger/10 px-3 py-2 text-sm text-danger lg:col-span-2">{error}</p>}
               {/* Details */}
               <div className="rounded-md border border-border">
@@ -151,13 +174,7 @@ export function PersonView({ onBack }: { onBack: () => void }) {
                 </div>
               </div>
             </div>
-            <div className="flex justify-end gap-2 border-t border-border px-5 py-3">
-              <Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button loading={create.isPending || update.isPending} onClick={save}>Save</Button>
-            </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }

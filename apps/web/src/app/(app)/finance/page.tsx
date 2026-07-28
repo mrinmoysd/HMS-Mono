@@ -1,5 +1,8 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useMemo, useState } from 'react';
 import { Paperclip, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { LedgerEntryDto } from '@smart-hospital/shared';
@@ -36,6 +39,8 @@ export default function FinancePage() {
   const create = useCreateLedger(kind);
   const update = useUpdateLedger(kind);
   const del = useDeleteLedger(kind);
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<LedgerEntryDto | null>(null);
@@ -67,7 +72,19 @@ export default function FinancePage() {
     setOpen(false);
   }
   async function remove(r: LedgerEntryDto) {
-    if (confirm(`Delete "${r.name}"?`)) await del.mutateAsync(r.id);
+    const ok = await confirm({
+      title: `Delete ${r.name}?`,
+      description: 'This ledger entry will be removed. This cannot be undone.',
+      confirmLabel: 'Delete entry',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await del.mutateAsync(r.id);
+      toast.success(`${r.name} deleted`);
+    } catch (e) {
+      toast.error('Could not delete entry', { description: (e as Error).message });
+    }
   }
 
   const cols: Column<LedgerEntryDto>[] = [
@@ -82,10 +99,10 @@ export default function FinancePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{label} List</h1>
-        {canAdd && <Button onClick={openAdd}><Plus className="h-4 w-4" /> Add {label}</Button>}
-      </div>
+      <PageHeader
+        title={`${label} List`}
+        actions={canAdd && <Button onClick={openAdd}><Plus className="h-4 w-4" /> Add {label}</Button>}
+      />
 
       <Tabs tabs={[{ value: 'income', label: 'Income' }, { value: 'expense', label: 'Expenses' }]}
         value={kind} onChange={(k) => { setKind(k as Kind); setPage(1); setSearch(''); }} />
