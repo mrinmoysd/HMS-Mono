@@ -1,10 +1,13 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { Building2, ChevronLeft, Download, Pencil, Plus, Trash2 } from 'lucide-react';
 import { branchSchema, type BranchDto } from '@smart-hospital/shared';
 import { Tabs } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { useConfirmDelete } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput } from '@/components/ui/field';
 import { DurationSelect } from '@/components/ui/duration-select';
@@ -22,10 +25,10 @@ export default function MultiBranchPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold"><Building2 className="h-6 w-6 text-primary" /> Multi Branch</h1>
-        <p className="text-sm text-fg-muted">Consolidated cross-branch overview, reports, and branch onboarding</p>
-      </div>
+      <PageHeader
+        title={<span className="flex items-center gap-2"><Building2 className="h-5 w-5 shrink-0 text-primary" /> Multi Branch</span>}
+        description="Consolidated cross-branch overview, reports, and branch onboarding"
+      />
 
       <Tabs tabs={[{ value: 'overview', label: 'Overview' }, { value: 'report', label: 'Report' }, { value: 'settings', label: 'Settings' }]} value={tab} onChange={(t) => setTab(t as Tab)} />
 
@@ -117,12 +120,12 @@ function ReportTab() {
   const d = report.data;
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <button onClick={() => setSelected(null)} className="mb-1 flex items-center gap-1 text-sm text-fg-muted hover:text-fg"><ChevronLeft className="h-4 w-4" /> All reports</button>
-          <h1 className="text-xl font-semibold">{d?.title ?? selected.label}</h1>
-        </div>
-        <Button variant="secondary" onClick={exportCsv} disabled={!d || d.rows.length === 0}><Download className="h-4 w-4" /> Export CSV</Button>
+      <div className="space-y-3">
+        <button onClick={() => setSelected(null)} className="flex items-center gap-1 text-sm text-fg-muted hover:text-fg"><ChevronLeft className="h-4 w-4" /> All reports</button>
+        <PageHeader
+          title={d?.title ?? selected.label}
+          actions={<Button variant="secondary" onClick={exportCsv} disabled={!d || d.rows.length === 0}><Download className="h-4 w-4" /> Export CSV</Button>}
+        />
       </div>
 
       <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-surface p-4">
@@ -174,6 +177,18 @@ function SettingsTab() {
   const create = useCreateBranch();
   const update = useUpdateBranch();
   const del = useDeleteBranch();
+  const confirmDelete = useConfirmDelete();
+  const toast = useToast();
+
+  async function onDelete(b: BranchDto) {
+    if (!(await confirmDelete(`branch ${b.name}`, "The branch is removed from the consolidated overview. Its own records are not deleted."))) return;
+    try {
+      await del.mutateAsync(b.id);
+      toast.success(`${b.name} deleted`);
+    } catch (e) {
+      toast.error('Could not delete branch', { description: (e as Error).message });
+    }
+  }
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<BranchDto | null>(null);
@@ -222,7 +237,7 @@ function SettingsTab() {
                     )}
                     {canDelete && !b.isHome && (
                       <button
-                        onClick={async () => { if (confirm(`Delete branch "${b.name}"?`)) await del.mutateAsync(b.id); }}
+                        onClick={() => onDelete(b)}
                         aria-label="Delete" title="Delete" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"
                       >
                         <Trash2 className="h-4 w-4" />

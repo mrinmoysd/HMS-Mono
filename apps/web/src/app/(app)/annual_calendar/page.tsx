@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { HOLIDAY_TYPES, holidaySchema, type HolidayDto } from '@smart-hospital/shared';
@@ -51,13 +52,11 @@ export default function AnnualCalendarPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Annual Calendar</h1>
-          <p className="text-sm text-fg-muted">Holidays, activities and vacations</p>
-        </div>
-        {canAdd && <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Add Entry</Button>}
-      </div>
+      <PageHeader
+        title="Annual Calendar"
+        description="Holidays, activities and vacations"
+        actions={canAdd && <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Add Entry</Button>}
+      />
 
       <DataTable columns={cols} rows={holidays.data?.data ?? []} meta={holidays.data?.meta} loading={holidays.isLoading}
         search="" onSearch={() => {}} onPage={setPage} onSize={() => {}}

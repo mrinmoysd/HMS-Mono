@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { FileText, Printer } from 'lucide-react';
 import {
@@ -74,12 +75,10 @@ export default function CertificatePage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
-          <FileText className="h-6 w-6 text-primary" /> Certificate & ID Cards
-        </h1>
-        <p className="text-sm text-fg-muted">Generate certificates and ID cards from templates</p>
-      </div>
+      <PageHeader
+        title={<span className="flex items-center gap-2"><FileText className="h-5 w-5 shrink-0 text-primary" /> Certificate & ID Cards</span>}
+        description="Generate certificates and ID cards from templates"
+      />
 
       <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-surface p-4">
         <div className="w-64">

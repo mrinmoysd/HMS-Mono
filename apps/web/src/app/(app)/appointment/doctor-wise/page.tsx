@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
@@ -42,10 +43,7 @@ export default function DoctorWisePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Doctor Wise Appointment</h1>
-        <Link href="/appointment" className="text-sm text-primary hover:underline">← Appointments</Link>
-      </div>
+      <PageHeader title="Doctor Wise Appointment" backHref="/appointment" backLabel="Back to Appointments" />
 
       <div className="rounded-md border border-border bg-surface p-5">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-end">

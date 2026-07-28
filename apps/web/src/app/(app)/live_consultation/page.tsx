@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { Plus, Video } from 'lucide-react';
 import type { LiveConsultationDto } from '@smart-hospital/shared';
@@ -42,13 +43,11 @@ export default function LiveConsultationPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Live Consultation</h1>
-          <p className="text-sm text-fg-muted">Zoom-based tele-consultations and meetings</p>
-        </div>
-        {canAdd && <Button onClick={() => { setF({ date: today, apiUsed: 'Zoom' }); setOpen(true); }}><Plus className="h-4 w-4" /> Schedule {tab === 'meeting' ? 'Meeting' : 'Consultation'}</Button>}
-      </div>
+      <PageHeader
+        title="Live Consultation"
+        description="Zoom-based tele-consultations and meetings"
+        actions={canAdd && <Button onClick={() => { setF({ date: today, apiUsed: 'Zoom' }); setOpen(true); }}><Plus className="h-4 w-4" /> Schedule {tab === 'meeting' ? 'Meeting' : 'Consultation'}</Button>}
+      />
 
       <Tabs tabs={[{ value: 'consultation', label: 'Consultations' }, { value: 'meeting', label: 'Meetings' }]} value={tab} onChange={(t) => { setTab(t as Tab); setPage(1); }} />
 

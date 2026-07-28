@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { Users, CalendarCheck, BedDouble, Receipt } from 'lucide-react';
 import { useAuthStore, useAbility } from '@/lib/auth-store';
 import { MODULES } from '@smart-hospital/shared';
@@ -18,13 +19,15 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-fg-muted">
-          Welcome back, {user?.name} · signed in as{' '}
-          <span className="font-medium">{user?.roleLabel}</span>
-        </p>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description={
+          <>
+            Welcome back, {user?.name} · signed in as{' '}
+            <span className="font-medium">{user?.roleLabel}</span>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {KPIS.map(({ label, value, icon: Icon, tint }) => (

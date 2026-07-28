@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { PhoneCallDto, PostalComplaintDto, VisitorDto } from '@smart-hospital/shared';
@@ -68,13 +69,11 @@ export default function FrontOfficePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Front Office</h1>
-          <p className="text-sm text-fg-muted">Visitor register, phone log and postal complaints</p>
-        </div>
-        {canAdd && <Button onClick={() => { setF({ date: today }); setOpen(true); }}><Plus className="h-4 w-4" /> Add {label}</Button>}
-      </div>
+      <PageHeader
+        title="Front Office"
+        description="Visitor register, phone log and postal complaints"
+        actions={canAdd && <Button onClick={() => { setF({ date: today }); setOpen(true); }}><Plus className="h-4 w-4" /> Add {label}</Button>}
+      />
 
       <Tabs tabs={[{ value: 'visitors', label: 'Visitors' }, { value: 'calls', label: 'Phone Call Log' }, { value: 'postal', label: 'Postal / Complaint' }]}
         value={tab} onChange={(t) => { setTab(t as Tab); setPage(1); }} />

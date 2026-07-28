@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { Plus, ExternalLink } from 'lucide-react';
 import { CMS_PAGE_TYPES, type CmsBannerDto, type CmsMenuDto, type CmsPageDto } from '@smart-hospital/shared';
@@ -61,13 +62,11 @@ export default function FrontCmsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Front CMS</h1>
-          <p className="text-sm text-fg-muted">Manage the public website — pages, banners and menus</p>
-        </div>
-        {canAdd && <Button onClick={() => { setF({ pageType: 'standard', published: 'true' }); setOpen(true); }}><Plus className="h-4 w-4" /> Add {label}</Button>}
-      </div>
+      <PageHeader
+        title="Front CMS"
+        description="Manage the public website — pages, banners and menus"
+        actions={canAdd && <Button onClick={() => { setF({ pageType: 'standard', published: 'true' }); setOpen(true); }}><Plus className="h-4 w-4" /> Add {label}</Button>}
+      />
 
       <Tabs tabs={[{ value: 'pages', label: 'Pages' }, { value: 'banners', label: 'Banners' }, { value: 'menus', label: 'Menus' }]} value={tab} onChange={(t) => { setTab(t as Tab); setPage(1); }} />
 

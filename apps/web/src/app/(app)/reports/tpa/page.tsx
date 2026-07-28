@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useMemo, useState } from 'react';
 import { ChevronLeft, FileText, Search } from 'lucide-react';
 import type { TpaReportRow } from '@smart-hospital/shared';
@@ -68,8 +69,11 @@ export default function TpaReportPage() {
 
   return (
     <div className="space-y-4">
-      <a href="/reports" className="flex items-center gap-1 text-sm text-fg-muted hover:text-fg"><ChevronLeft className="h-4 w-4" /> All reports</a>
-      <h1 className="flex items-center gap-2 text-2xl font-semibold"><FileText className="h-6 w-6 text-primary" /> TPA Report</h1>
+      <PageHeader
+        title={<span className="flex items-center gap-2"><FileText className="h-5 w-5 shrink-0 text-primary" /> TPA Report</span>}
+        backHref="/reports"
+        backLabel="All reports"
+      />
 
       <div className="grid grid-cols-1 gap-4 rounded-md border border-border bg-surface p-5 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="Time Duration">

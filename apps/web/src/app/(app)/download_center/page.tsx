@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { Plus, ExternalLink } from 'lucide-react';
 import type { ContentShareDto } from '@smart-hospital/shared';
@@ -37,13 +38,11 @@ export default function DownloadCenterPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Download Center</h1>
-          <p className="text-sm text-fg-muted">Share documents with staff groups</p>
-        </div>
-        {canAdd && <Button onClick={() => { setF({}); setOpen(true); }}><Plus className="h-4 w-4" /> Upload / Share</Button>}
-      </div>
+      <PageHeader
+        title="Download Center"
+        description="Share documents with staff groups"
+        actions={canAdd && <Button onClick={() => { setF({}); setOpen(true); }}><Plus className="h-4 w-4" /> Upload / Share</Button>}
+      />
 
       <DataTable columns={cols} rows={content.data?.data ?? []} meta={content.data?.meta} loading={content.isLoading} search="" onSearch={() => {}} onPage={setPage} onSize={() => {}} />
 

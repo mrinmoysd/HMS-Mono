@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { BarChart3, Download, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,12 +26,10 @@ export default function ReportsPage() {
   if (!selected) {
     return (
       <div className="space-y-4">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold"><BarChart3 className="h-6 w-6 text-primary" /> Reports</h1>
-          <p className="text-sm text-fg-muted">
-            {categories.data ? `${categories.data.length} report categories` : 'Loading…'}
-          </p>
-        </div>
+        <PageHeader
+          title={<span className="flex items-center gap-2"><BarChart3 className="h-5 w-5 shrink-0 text-primary" /> Reports</span>}
+          description={categories.data ? `${categories.data.length} report categories` : 'Loading…'}
+        />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-md border border-border bg-surface p-4">
             <p className="mb-2 font-medium">TPA</p>
@@ -58,12 +57,12 @@ export default function ReportsPage() {
   const d = report.data;
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <button onClick={() => setSelected(null)} className="mb-1 flex items-center gap-1 text-sm text-fg-muted hover:text-fg"><ChevronLeft className="h-4 w-4" /> All reports</button>
-          <h1 className="text-2xl font-semibold">{d?.title ?? selected.label}</h1>
-        </div>
-        <Button variant="secondary" onClick={exportCsv} disabled={!d || d.rows.length === 0}><Download className="h-4 w-4" /> Export CSV</Button>
+      <div className="space-y-3">
+        <button onClick={() => setSelected(null)} className="flex items-center gap-1 text-sm text-fg-muted hover:text-fg"><ChevronLeft className="h-4 w-4" /> All reports</button>
+        <PageHeader
+          title={d?.title ?? selected.label}
+          actions={<Button variant="secondary" onClick={exportCsv} disabled={!d || d.rows.length === 0}><Download className="h-4 w-4" /> Export CSV</Button>}
+        />
       </div>
 
       <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-surface p-4">

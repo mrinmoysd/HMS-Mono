@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { QrCode, LogIn, LogOut } from 'lucide-react';
 import type { AttendanceDto } from '@smart-hospital/shared';
@@ -24,10 +25,7 @@ export default function QrAttendancePage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">QR Code Attendance</h1>
-        <p className="text-sm text-fg-muted">Staff self check-in / check-out</p>
-      </div>
+      <PageHeader title="QR Code Attendance" description="Staff self check-in / check-out" />
 
       {/* Kiosk card */}
       <div className="flex flex-col items-center gap-4 rounded-md border border-border bg-surface p-8">
