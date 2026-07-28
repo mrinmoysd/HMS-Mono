@@ -76,6 +76,19 @@
   --occupied: 217 83 139;
   --occupied-soft: 252 235 242;
 
+  /* ── chart series ──
+     Categorical palette for data-viz. Ordered for adjacent-hue separation and
+     kept distinguishable under the common forms of colour blindness, so a
+     series stays readable without relying on its position in the legend. */
+  --chart-1: 40 85 138;
+  --chart-2: 23 138 106;
+  --chart-3: 178 106 0;
+  --chart-4: 141 91 190;
+  --chart-5: 201 71 116;
+  --chart-6: 42 132 168;
+  --chart-7: 160 98 45;
+  --chart-8: 96 122 148;
+
   /* ── legacy aliases — DO NOT REMOVE ──
      ~108 components still reference these names. Resolving them through to the
      new roles is what lets the re-theme land without touching a .tsx. */
@@ -143,6 +156,16 @@
   --info-fg: 8 18 32;
   --occupied: 238 123 173;
   --occupied-soft: 58 28 42;
+
+  /* Chart series, lifted for contrast against the dark canvas. */
+  --chart-1: 109 164 224;
+  --chart-2: 78 200 160;
+  --chart-3: 224 168 60;
+  --chart-4: 186 148 232;
+  --chart-5: 240 130 168;
+  --chart-6: 106 194 226;
+  --chart-7: 214 156 102;
+  --chart-8: 158 178 200;
 
   color-scheme: dark;
 }

@@ -56,6 +56,16 @@ const config: Config = {
         'occupied-soft': 'rgb(var(--occupied-soft) / <alpha-value>)',
 
         focus: 'rgb(var(--focus) / <alpha-value>)',
+
+        /* Categorical chart series — see CHART_SERIES in lib/chart-colors.ts. */
+        'chart-1': 'rgb(var(--chart-1) / <alpha-value>)',
+        'chart-2': 'rgb(var(--chart-2) / <alpha-value>)',
+        'chart-3': 'rgb(var(--chart-3) / <alpha-value>)',
+        'chart-4': 'rgb(var(--chart-4) / <alpha-value>)',
+        'chart-5': 'rgb(var(--chart-5) / <alpha-value>)',
+        'chart-6': 'rgb(var(--chart-6) / <alpha-value>)',
+        'chart-7': 'rgb(var(--chart-7) / <alpha-value>)',
+        'chart-8': 'rgb(var(--chart-8) / <alpha-value>)',
       },
 
       /* Softer than the old 6/8/12 — a core part of the new visual language. */

@@ -1,14 +1,15 @@
 'use client';
 
 import type { MedicalHistoryPoint } from '@smart-hospital/shared';
+import { chartColor } from '@/lib/chart-colors';
 
 const SERIES: { key: keyof MedicalHistoryPoint; label: string; color: string }[] = [
-  { key: 'opd', label: 'OPD', color: '#1E63E9' },
-  { key: 'pharmacy', label: 'Pharmacy', color: '#16A34A' },
-  { key: 'pathology', label: 'Pathology', color: '#DC2626' },
-  { key: 'radiology', label: 'Radiology', color: '#7C3AED' },
-  { key: 'blood', label: 'Blood Bank', color: '#EC4899' },
-  { key: 'ambulance', label: 'Ambulance', color: '#D97706' },
+  { key: 'opd', label: 'OPD', color: chartColor(0) },
+  { key: 'pharmacy', label: 'Pharmacy', color: chartColor(1) },
+  { key: 'pathology', label: 'Pathology', color: chartColor(2) },
+  { key: 'radiology', label: 'Radiology', color: chartColor(3) },
+  { key: 'blood', label: 'Blood Bank', color: chartColor(4) },
+  { key: 'ambulance', label: 'Ambulance', color: chartColor(5) },
 ];
 
 /** Compact per-year multi-line chart (pure SVG, no chart lib). */

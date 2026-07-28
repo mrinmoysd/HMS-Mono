@@ -14,7 +14,7 @@ export function BedGrid({ open, onClose }: { open: boolean; onClose: () => void 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-bg">
+    <div className="fixed inset-0 z-modal flex flex-col bg-bg">
       <div className="flex h-14 items-center justify-between border-b border-border bg-surface px-5">
         <div className="flex items-center gap-4">
           <h2 className="text-base font-semibold">Bed Status</h2>

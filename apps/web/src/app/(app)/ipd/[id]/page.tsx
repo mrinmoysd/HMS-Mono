@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Printer, Pencil, Trash2, LogOut, List, X } from 'lucide-react';
+import { Printer, Pencil, Trash2, LogOut, List } from 'lucide-react';
 import { Tabs } from '@/components/ui/tabs';
+import { Modal } from '@/components/ui/modal';
 import { useConfirm, useConfirmDelete } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
@@ -202,20 +203,9 @@ export default function IpdDetailPage() {
       {tab === 'treatmenthistory' && <IpdTreatmentHistoryPanel patientId={h.patientId} />}
 
       {editing && admission && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-8">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setEditing(false)} aria-hidden />
-          <div role="dialog" aria-modal="true" aria-label="Edit Admission" className="relative z-10 w-full max-w-3xl rounded-md bg-surface shadow-xl">
-            <div className="flex items-center justify-between border-b border-border px-5 py-3">
-              <h2 className="text-base font-semibold">Edit Admission</h2>
-              <button onClick={() => setEditing(false)} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-border/50">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="p-5">
-              <IpdAdmissionEditForm admission={admission} onDone={() => setEditing(false)} onCancel={() => setEditing(false)} />
-            </div>
-          </div>
-        </div>
+        <Modal open onClose={() => setEditing(false)} title="Edit Admission" size="lg">
+          <IpdAdmissionEditForm admission={admission} onDone={() => setEditing(false)} onCancel={() => setEditing(false)} />
+        </Modal>
       )}
     </div>
   );

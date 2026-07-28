@@ -41,8 +41,8 @@ export function FormDrawer({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} aria-hidden />
+    <div className="fixed inset-0 z-modal flex justify-end">
+      <div className="absolute inset-0 bg-fg/40 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"

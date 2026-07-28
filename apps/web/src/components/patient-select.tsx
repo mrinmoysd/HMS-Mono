@@ -37,7 +37,7 @@ export function PatientSelect({ value, onChange, selectedLabel }: Props) {
         className="w-full rounded-sm border border-border bg-surface py-2 pl-8 pr-3 text-sm outline-none focus:border-primary"
       />
       {q && (
-        <div className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-sm border border-border bg-surface shadow-md">
+        <div className="absolute z-dropdown mt-1 max-h-56 w-full overflow-y-auto rounded-sm border border-border bg-surface shadow-md">
           {(data?.data ?? []).map((p) => (
             <button
               type="button"

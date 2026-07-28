@@ -1,8 +1,9 @@
 'use client';
 
-import { Printer, X } from 'lucide-react';
+import { Printer } from 'lucide-react';
 import type { Modality } from '@smart-hospital/shared';
 import { useInvoice } from '@/lib/hooks/use-clinical';
+import { Modal } from '@/components/ui/modal';
 import { usePreviousReports } from '@/lib/hooks/use-departments';
 import { printDiagnosticBill } from '@/lib/print';
 import { formatAge } from '@/lib/utils';
@@ -15,96 +16,94 @@ export function DiagnosticBillDetailsModal({ id, modality, title, open, onClose 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div role="dialog" aria-modal="true" aria-label="Bill Details" className="relative z-10 w-full max-w-5xl rounded-md bg-surface shadow-xl">
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <h2 className="text-base font-semibold">Bill Details</h2>
-          <div className="flex items-center gap-2">
-            {data && (
+    <Modal
+      open
+      onClose={onClose}
+      title="Bill Details"
+      size="xl"
+      headerActions={
+        <>
+          {data && (
               <button onClick={() => printDiagnosticBill(title, data)} aria-label="Print" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary">
                 <Printer className="h-4 w-4" />
               </button>
             )}
-            <button onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-border/50">
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
+        </>
+      }
+    >
+      <div className="space-y-5">
+        {isLoading || !data ? (
+          <p className="py-12 text-center text-sm text-fg-muted">Loading…</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-x-8 gap-y-1 text-sm sm:grid-cols-4">
+              <Row label="Bill No" value={data.billNo} />
+              <Row label="Case ID" value={data.caseNo ?? '—'} />
+              <Row label="Patient Name" value={data.patientName} />
+              <Row label="Total" value={`#${data.subtotal.toFixed(2)}`} />
 
-        <div className="max-h-[75vh] space-y-5 overflow-y-auto p-5">
-          {isLoading || !data ? (
-            <p className="py-12 text-center text-sm text-fg-muted">Loading…</p>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 gap-x-8 gap-y-1 text-sm sm:grid-cols-4">
-                <Row label="Bill No" value={data.billNo} />
-                <Row label="Case ID" value={data.caseNo ?? '—'} />
-                <Row label="Patient Name" value={data.patientName} />
-                <Row label="Total" value={`#${data.subtotal.toFixed(2)}`} />
+              <Row label="Prescription No" value={data.prescriptionNo ?? '—'} />
+              <Row label="Age" value={formatAge(data.patientAge)} />
+              <Row label="Gender" value={data.patientGender ?? '—'} />
+              <Row label="Total Discount" value={`#${data.discount.toFixed(2)} (${data.subtotal ? ((data.discount / data.subtotal) * 100).toFixed(2) : '0.00'}%)`} />
 
-                <Row label="Prescription No" value={data.prescriptionNo ?? '—'} />
-                <Row label="Age" value={formatAge(data.patientAge)} />
-                <Row label="Gender" value={data.patientGender ?? '—'} />
-                <Row label="Total Discount" value={`#${data.discount.toFixed(2)} (${data.subtotal ? ((data.discount / data.subtotal) * 100).toFixed(2) : '0.00'}%)`} />
+              <Row label="Doctor Name" value={data.referenceDoctor || data.consultantName || '—'} />
+              <Row label="Mobile No" value={data.patientPhone ?? '—'} />
+              <Row label="Email" value={data.patientEmail ?? '—'} />
+              <Row label="Total Tax" value={`#${data.tax.toFixed(2)}`} />
 
-                <Row label="Doctor Name" value={data.referenceDoctor || data.consultantName || '—'} />
-                <Row label="Mobile No" value={data.patientPhone ?? '—'} />
-                <Row label="Email" value={data.patientEmail ?? '—'} />
-                <Row label="Total Tax" value={`#${data.tax.toFixed(2)}`} />
+              <Row label="Blood Group" value={data.patientBloodGroup ?? '—'} />
+              <Row label="Address" value={data.patientAddress ?? '—'} />
+              <Row label="TPA" value={data.tpaName ?? '—'} />
+              <Row label="Net Amount" value={`#${data.netAmount.toFixed(2)}`} />
 
-                <Row label="Blood Group" value={data.patientBloodGroup ?? '—'} />
-                <Row label="Address" value={data.patientAddress ?? '—'} />
-                <Row label="TPA" value={data.tpaName ?? '—'} />
-                <Row label="Net Amount" value={`#${data.netAmount.toFixed(2)}`} />
+              <Row label="Generated By" value={data.createdByName ?? '—'} />
+              <Row label="TPA ID" value={data.tpaIdNo ?? '—'} />
+              <Row label="TPA Validity" value={data.tpaValidity ? new Date(data.tpaValidity).toLocaleDateString() : '—'} />
+              <Row label="Total Deposit" value={`#${data.paid.toFixed(2)}`} />
 
-                <Row label="Generated By" value={data.createdByName ?? '—'} />
-                <Row label="TPA ID" value={data.tpaIdNo ?? '—'} />
-                <Row label="TPA Validity" value={data.tpaValidity ? new Date(data.tpaValidity).toLocaleDateString() : '—'} />
-                <Row label="Total Deposit" value={`#${data.paid.toFixed(2)}`} />
+              <div className="sm:col-span-3" />
+              <Row label="Balance Amount" value={`#${data.balance.toFixed(2)}`} />
+            </div>
 
-                <div className="sm:col-span-3" />
-                <Row label="Balance Amount" value={`#${data.balance.toFixed(2)}`} />
-              </div>
-
-              <div>
-                <h3 className="mb-2 text-sm font-semibold">Previous Report Value</h3>
-                <div className="overflow-x-auto rounded-md border border-border">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-muted">
-                        <th className="px-3 py-2 font-semibold">#</th>
-                        <th className="px-3 py-2 font-semibold">Test Name</th>
-                        <th className="px-3 py-2 font-semibold">Sample Collected</th>
-                        <th className="px-3 py-2 font-semibold">Report Date</th>
-                        <th className="px-3 py-2 font-semibold">Approved By / Approve Date</th>
-                        <th className="px-3 py-2 font-semibold">Tax</th>
-                        <th className="px-3 py-2 text-right font-semibold">Net Amount</th>
+            <div>
+              <h3 className="mb-2 text-sm font-semibold">Previous Report Value</h3>
+              <div className="overflow-x-auto rounded-md border border-border">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-muted">
+                      <th className="px-3 py-2 font-semibold">#</th>
+                      <th className="px-3 py-2 font-semibold">Test Name</th>
+                      <th className="px-3 py-2 font-semibold">Sample Collected</th>
+                      <th className="px-3 py-2 font-semibold">Report Date</th>
+                      <th className="px-3 py-2 font-semibold">Approved By / Approve Date</th>
+                      <th className="px-3 py-2 font-semibold">Tax</th>
+                      <th className="px-3 py-2 text-right font-semibold">Net Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(!previousReports || previousReports.length === 0) && (
+                      <tr><td colSpan={7} className="px-3 py-8 text-center text-fg-muted">No previous reports</td></tr>
+                    )}
+                    {previousReports?.map((r, i) => (
+                      <tr key={r.id} className="border-b border-border/60 last:border-0">
+                        <td className="px-3 py-2">{i + 1}</td>
+                        <td className="px-3 py-2 font-medium">{r.testName}</td>
+                        <td className="px-3 py-2">{r.sampleCollected ? new Date(r.sampleCollected).toLocaleDateString() : '—'}</td>
+                        <td className="px-3 py-2">{r.reportDate ? new Date(r.reportDate).toLocaleDateString() : '—'}</td>
+                        <td className="px-3 py-2">{r.approvedByName ? `${r.approvedByName}${r.approvedAt ? ' / ' + new Date(r.approvedAt).toLocaleDateString() : ''}` : '—'}</td>
+                        <td className="px-3 py-2 tabular">{r.tax != null ? r.tax.toFixed(2) : '—'}</td>
+                        <td className="px-3 py-2 text-right tabular">{r.netAmount != null ? r.netAmount.toFixed(2) : '—'}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {(!previousReports || previousReports.length === 0) && (
-                        <tr><td colSpan={7} className="px-3 py-8 text-center text-fg-muted">No previous reports</td></tr>
-                      )}
-                      {previousReports?.map((r, i) => (
-                        <tr key={r.id} className="border-b border-border/60 last:border-0">
-                          <td className="px-3 py-2">{i + 1}</td>
-                          <td className="px-3 py-2 font-medium">{r.testName}</td>
-                          <td className="px-3 py-2">{r.sampleCollected ? new Date(r.sampleCollected).toLocaleDateString() : '—'}</td>
-                          <td className="px-3 py-2">{r.reportDate ? new Date(r.reportDate).toLocaleDateString() : '—'}</td>
-                          <td className="px-3 py-2">{r.approvedByName ? `${r.approvedByName}${r.approvedAt ? ' / ' + new Date(r.approvedAt).toLocaleDateString() : ''}` : '—'}</td>
-                          <td className="px-3 py-2 tabular">{r.tax != null ? r.tax.toFixed(2) : '—'}</td>
-                          <td className="px-3 py-2 text-right tabular">{r.netAmount != null ? r.netAmount.toFixed(2) : '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }
 

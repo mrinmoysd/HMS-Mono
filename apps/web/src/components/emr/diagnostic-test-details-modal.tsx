@@ -1,8 +1,9 @@
 'use client';
 
-import { Pencil, Trash2, X } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import type { DiagnosticTestDto, Modality } from '@smart-hospital/shared';
 import { useAbility } from '@/lib/auth-store';
+import { Modal } from '@/components/ui/modal';
 
 interface Props {
   test: DiagnosticTestDto | null;
@@ -22,12 +23,14 @@ export function DiagnosticTestDetailsModal({ test, modality, open, onClose, onEd
   if (!open || !test) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div role="dialog" aria-modal="true" aria-label="Test Details" className="relative w-full max-w-4xl rounded-md bg-surface shadow-xl">
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <h2 className="text-base font-semibold">Test Details</h2>
-          <div className="flex items-center gap-1">
-            {canEdit && (
+    <Modal
+      open
+      onClose={onClose}
+      title="Test Details"
+      size="xl"
+      headerActions={
+        <>
+          {canEdit && (
               <button onClick={onEdit} aria-label="Edit" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary">
                 <Pencil className="h-4 w-4" />
               </button>
@@ -37,57 +40,53 @@ export function DiagnosticTestDetailsModal({ test, modality, open, onClose, onEd
                 <Trash2 className="h-4 w-4" />
               </button>
             )}
-            <button onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-border/50">
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
+          <Row label="Test Name" value={test.name} />
+          <Row label="Short Name" value={test.shortName ?? '—'} />
+          <Row label="Test Type" value={test.testType ?? '—'} />
+          <Row label="Sub Category" value={test.subCategory ?? '—'} />
+          <Row label="Report Days" value={String(test.reportDays)} />
+          <Row label="Method" value={test.method ?? '—'} />
+          <Row label="Category Name" value={test.categoryName ?? '—'} />
+          <Row label="Charge Name" value={test.chargeName ?? '—'} />
+          <Row label="Charge Category" value={test.chargeCategoryName ?? '—'} />
+          <Row label="Tax Category" value={`${test.taxPercent.toFixed(2)}%`} />
+          <Row label="Standard Charge" value={`#${test.standardCharge.toFixed(2)}`} />
+          <Row label="Amount" value={`#${test.charge.toFixed(2)}`} />
         </div>
 
-        <div className="space-y-4 p-5">
-          <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-            <Row label="Test Name" value={test.name} />
-            <Row label="Short Name" value={test.shortName ?? '—'} />
-            <Row label="Test Type" value={test.testType ?? '—'} />
-            <Row label="Sub Category" value={test.subCategory ?? '—'} />
-            <Row label="Report Days" value={String(test.reportDays)} />
-            <Row label="Method" value={test.method ?? '—'} />
-            <Row label="Category Name" value={test.categoryName ?? '—'} />
-            <Row label="Charge Name" value={test.chargeName ?? '—'} />
-            <Row label="Charge Category" value={test.chargeCategoryName ?? '—'} />
-            <Row label="Tax Category" value={`${test.taxPercent.toFixed(2)}%`} />
-            <Row label="Standard Charge" value={`#${test.standardCharge.toFixed(2)}`} />
-            <Row label="Amount" value={`#${test.charge.toFixed(2)}`} />
-          </div>
-
-          <div>
-            <h3 className="mb-2 text-sm font-semibold">Charge Category Details :</h3>
-            <div className="overflow-x-auto rounded-md border border-border">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-muted">
-                    <th className="px-3 py-2 font-semibold">Test Parameter Name</th>
-                    <th className="px-3 py-2 font-semibold">Reference Range</th>
-                    <th className="px-3 py-2 font-semibold">Unit</th>
+        <div>
+          <h3 className="mb-2 text-sm font-semibold">Charge Category Details :</h3>
+          <div className="overflow-x-auto rounded-md border border-border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-muted">
+                  <th className="px-3 py-2 font-semibold">Test Parameter Name</th>
+                  <th className="px-3 py-2 font-semibold">Reference Range</th>
+                  <th className="px-3 py-2 font-semibold">Unit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {test.parameters.length === 0 && (
+                  <tr><td colSpan={3} className="px-3 py-6 text-center text-fg-muted">No parameters</td></tr>
+                )}
+                {test.parameters.map((p) => (
+                  <tr key={p.id} className="border-b border-border/60 last:border-0">
+                    <td className="px-3 py-2 font-medium">{p.parameterName}</td>
+                    <td className="px-3 py-2">{p.referenceRange ?? '—'}</td>
+                    <td className="px-3 py-2">{p.unit ?? '—'}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {test.parameters.length === 0 && (
-                    <tr><td colSpan={3} className="px-3 py-6 text-center text-fg-muted">No parameters</td></tr>
-                  )}
-                  {test.parameters.map((p) => (
-                    <tr key={p.id} className="border-b border-border/60 last:border-0">
-                      <td className="px-3 py-2 font-medium">{p.parameterName}</td>
-                      <td className="px-3 py-2">{p.referenceRange ?? '—'}</td>
-                      <td className="px-3 py-2">{p.unit ?? '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

@@ -10,7 +10,10 @@ export function CreditDonut({ credit }: { credit: EncounterCreditDto }) {
   const r = 52;
   const c = 2 * Math.PI * r;
   const dash = c * frac;
-  const color = over ? 'var(--color-danger, #dc2626)' : frac > 0.8 ? 'var(--color-warning, #d97706)' : 'var(--color-primary, #1E63E9)';
+  // Tokens are RGB channel triplets (`--danger: 201 56 56`), so they have to be
+  // wrapped in rgb() here — a bare var() reference resolves to nothing.
+  const token = over ? '--danger' : frac > 0.8 ? '--warning' : '--primary';
+  const color = `rgb(var(${token}))`;
 
   return (
     <div className="flex items-center gap-5">

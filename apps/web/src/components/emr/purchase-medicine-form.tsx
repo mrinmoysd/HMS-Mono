@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { medicinePurchaseSchema, type MedicinePurchaseItemInput } from '@smart-hospital/shared';
 import { Field, TextInput, TextArea, Select } from '@/components/ui/field';
+import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { useCatalog } from '@/lib/hooks/use-masters';
 import { usePharmaSuppliers, useMedicines, useCreateMedicinePurchase } from '@/lib/hooks/use-departments';
@@ -96,23 +97,30 @@ export function PurchaseMedicineForm({ open, onClose }: { open: boolean; onClose
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div role="dialog" aria-modal="true" aria-label="Purchase Medicine" className="relative w-full max-w-6xl rounded-md bg-surface shadow-xl">
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <div className="flex items-center gap-4">
-            <h2 className="text-base font-semibold">Purchase Medicine</h2>
-            <Select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} placeholder="Select Supplier" options={(suppliers?.data ?? []).map((s) => ({ value: s.id, label: s.name }))} className="w-56" />
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-xs text-fg-muted">Purchase Date</span>
-            <TextInput type="datetime-local" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className="h-8 w-52" />
-            <button onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-border/50">
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-
-        <div className="max-h-[75vh] space-y-4 overflow-y-auto p-5">
+    <Modal
+      open
+      onClose={onClose}
+      title="Purchase Medicine"
+      size="xl"
+      headerActions={
+        <>
+          <Select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} placeholder="Select Supplier" options={(suppliers?.data ?? []).map((s) => ({ value: s.id, label: s.name }))} className="w-56" />
+          <span className="pl-2 text-xs text-fg-muted">Purchase Date</span>
+          <TextInput type="datetime-local" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className="h-8 w-52" />
+        </>
+      }
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={submit} loading={create.isPending}>
+            Save
+          </Button>
+        </>
+      }
+    >
+        <div className="space-y-4">
           {error && <p role="alert" className="rounded-sm bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
 
           <Field label="Bill No">
@@ -199,17 +207,7 @@ export function PurchaseMedicineForm({ open, onClose }: { open: boolean; onClose
             </div>
           </div>
         </div>
-
-        <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={submit} loading={create.isPending}>
-            Save
-          </Button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 

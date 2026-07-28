@@ -1,8 +1,9 @@
 'use client';
 
 import type { BranchOverviewRow } from '@smart-hospital/shared';
+import { CHART_SERIES } from '@/lib/chart-colors';
 
-const COLORS = ['#14B8A6', '#F59E0B', '#3B82F6', '#EC4899', '#8B5CF6', '#10B981', '#EF4444', '#06B6D4'];
+const COLORS = CHART_SERIES;
 
 /** Multi-branch pie chart (hand-rolled SVG, matching the credit-donut.tsx house style — no charting library). */
 export function BranchPie({ rows, metricKey }: { rows: BranchOverviewRow[]; metricKey: string }) {

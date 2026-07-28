@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Pencil, Trash2, Plus } from 'lucide-react';
+import { Pencil, Trash2, Plus } from 'lucide-react';
 import { medicineBadStockSchema } from '@smart-hospital/shared';
 import { FormDrawer } from '@/components/ui/form-drawer';
+import { Modal } from '@/components/ui/modal';
 import { useConfirmDelete } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/components/ui/toast';
 import { Field, TextInput, Select } from '@/components/ui/field';
@@ -39,13 +40,14 @@ export function MedicineDetailsModal({ id, open, onClose, canEdit, canDelete }: 
 
   return (
     <>
-      <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto p-4 sm:p-8">
-        <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
-        <div role="dialog" aria-modal="true" aria-label="Medicine Details" className="relative z-10 w-full max-w-4xl rounded-md bg-surface shadow-xl">
-          <div className="flex items-center justify-between border-b border-border px-5 py-3">
-            <h2 className="text-base font-semibold">Medicine Details</h2>
-            <div className="flex items-center gap-2">
-              {data && canEdit && (
+      <Modal
+        open
+        onClose={onClose}
+        title="Medicine Details"
+        size="xl"
+        headerActions={
+          <>
+            {data && canEdit && (
                 <button onClick={() => setEditing(true)} aria-label="Edit" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary">
                   <Pencil className="h-4 w-4" />
                 </button>
@@ -55,136 +57,130 @@ export function MedicineDetailsModal({ id, open, onClose, canEdit, canDelete }: 
                   <Trash2 className="h-4 w-4" />
                 </button>
               )}
-              <button onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-border/50">
-                <X className="h-5 w-5" />
-              </button>
+          </>
+        }
+      >
+        {isLoading || !data ? (
+          <p className="py-12 text-center text-sm text-fg-muted">Loading…</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
+              <Row label="Medicine Name" value={data.name} />
+              <Row label="Medicine Category" value={data.categoryName ?? '—'} />
+              <Row label="Medicine Company" value={data.companyName ?? '—'} />
+              <Row label="Medicine Composition" value={data.composition ?? '—'} />
+              <Row label="Medicine Group" value={data.groupName ?? '—'} />
+              <Row label="Unit" value={data.unitName ?? '—'} />
+              <Row label="Min Level" value={data.minLevel ?? '—'} />
+              <Row label="Re-Order Level" value={data.reorderLevel ?? '—'} />
+              <Row label="Tax(%)" value={data.taxPercent ?? '—'} />
+              <Row label="Box/Packing" value={data.boxPacking ?? '—'} />
+              <Row label="VAT A/C" value={data.vatAc ?? '—'} />
+              <Row label="Rack Number" value={data.rackNumber ?? '—'} />
+              <Row label="Note" value={data.note ?? '—'} />
+              <Row
+                label="Available Qty"
+                value={
+                  <span className={data.isOutOfStock ? 'text-danger' : data.needsReorder ? 'text-warning' : ''}>
+                    {data.stock} {data.isOutOfStock ? '(Out of Stock)' : data.needsReorder ? '(Reorder)' : ''}
+                  </span>
+                }
+              />
             </div>
-          </div>
 
-          <div className="p-5">
-            {isLoading || !data ? (
-              <p className="py-12 text-center text-sm text-fg-muted">Loading…</p>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
-                  <Row label="Medicine Name" value={data.name} />
-                  <Row label="Medicine Category" value={data.categoryName ?? '—'} />
-                  <Row label="Medicine Company" value={data.companyName ?? '—'} />
-                  <Row label="Medicine Composition" value={data.composition ?? '—'} />
-                  <Row label="Medicine Group" value={data.groupName ?? '—'} />
-                  <Row label="Unit" value={data.unitName ?? '—'} />
-                  <Row label="Min Level" value={data.minLevel ?? '—'} />
-                  <Row label="Re-Order Level" value={data.reorderLevel ?? '—'} />
-                  <Row label="Tax(%)" value={data.taxPercent ?? '—'} />
-                  <Row label="Box/Packing" value={data.boxPacking ?? '—'} />
-                  <Row label="VAT A/C" value={data.vatAc ?? '—'} />
-                  <Row label="Rack Number" value={data.rackNumber ?? '—'} />
-                  <Row label="Note" value={data.note ?? '—'} />
-                  <Row
-                    label="Available Qty"
-                    value={
-                      <span className={data.isOutOfStock ? 'text-danger' : data.needsReorder ? 'text-warning' : ''}>
-                        {data.stock} {data.isOutOfStock ? '(Out of Stock)' : data.needsReorder ? '(Reorder)' : ''}
-                      </span>
-                    }
-                  />
-                </div>
+            <div className="mt-5 flex gap-1 border-b border-border">
+              {(['stock', 'bad-stock'] as Tab[]).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition ${tab === t ? 'border-primary text-primary' : 'border-transparent text-fg-muted hover:text-fg'}`}
+                >
+                  {t === 'stock' ? 'Stock' : 'Bad Stock'}
+                </button>
+              ))}
+            </div>
 
-                <div className="mt-5 flex gap-1 border-b border-border">
-                  {(['stock', 'bad-stock'] as Tab[]).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setTab(t)}
-                      className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition ${tab === t ? 'border-primary text-primary' : 'border-transparent text-fg-muted hover:text-fg'}`}
-                    >
-                      {t === 'stock' ? 'Stock' : 'Bad Stock'}
-                    </button>
-                  ))}
-                </div>
-
-                {tab === 'stock' && (
-                  <div className="mt-3 overflow-x-auto rounded-md border border-border">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-muted">
-                          <th className="px-3 py-2 font-semibold">Inward Date</th>
-                          <th className="px-3 py-2 font-semibold">Batch No</th>
-                          <th className="px-3 py-2 font-semibold">Purchase No</th>
-                          <th className="px-3 py-2 font-semibold">Expiry Date</th>
-                          <th className="px-3 py-2 font-semibold">Packing Qty</th>
-                          <th className="px-3 py-2 font-semibold">Purchase Rate</th>
-                          <th className="px-3 py-2 font-semibold">Amount</th>
-                          <th className="px-3 py-2 font-semibold">Quantity</th>
-                          <th className="px-3 py-2 font-semibold">MRP</th>
-                          <th className="px-3 py-2 font-semibold">Sale Price</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.stockBatches.length === 0 && (
-                          <tr><td colSpan={10} className="px-3 py-8 text-center text-fg-muted">No stock batches yet</td></tr>
-                        )}
-                        {data.stockBatches.map((b) => (
-                          <tr key={b.id} className="border-b border-border/60 last:border-0">
-                            <td className="px-3 py-2">{new Date(b.inwardDate).toLocaleDateString()}</td>
-                            <td className="px-3 py-2">{b.batchNo}</td>
-                            <td className="px-3 py-2">{b.purchaseNo}</td>
-                            <td className="px-3 py-2">{new Date(b.expiryDate).toLocaleDateString([], { month: 'short', year: 'numeric' })}</td>
-                            <td className="px-3 py-2">{b.packingQty ?? '—'}</td>
-                            <td className="px-3 py-2 tabular">{b.purchaseRate.toFixed(2)}</td>
-                            <td className="px-3 py-2 tabular">{b.amount.toFixed(2)}</td>
-                            <td className="px-3 py-2 tabular">{b.quantity}</td>
-                            <td className="px-3 py-2 tabular">{b.mrp.toFixed(2)}</td>
-                            <td className="px-3 py-2 tabular">{b.salePrice.toFixed(2)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {tab === 'bad-stock' && (
-                  <div className="mt-3 space-y-3">
-                    {canEdit && (
-                      <div className="flex justify-end">
-                        <Button size="sm" onClick={() => setAddingBadStock(true)}>
-                          <Plus className="h-4 w-4" /> Add Bad Stock
-                        </Button>
-                      </div>
+            {tab === 'stock' && (
+              <div className="mt-3 overflow-x-auto rounded-md border border-border">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-muted">
+                      <th className="px-3 py-2 font-semibold">Inward Date</th>
+                      <th className="px-3 py-2 font-semibold">Batch No</th>
+                      <th className="px-3 py-2 font-semibold">Purchase No</th>
+                      <th className="px-3 py-2 font-semibold">Expiry Date</th>
+                      <th className="px-3 py-2 font-semibold">Packing Qty</th>
+                      <th className="px-3 py-2 font-semibold">Purchase Rate</th>
+                      <th className="px-3 py-2 font-semibold">Amount</th>
+                      <th className="px-3 py-2 font-semibold">Quantity</th>
+                      <th className="px-3 py-2 font-semibold">MRP</th>
+                      <th className="px-3 py-2 font-semibold">Sale Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.stockBatches.length === 0 && (
+                      <tr><td colSpan={10} className="px-3 py-8 text-center text-fg-muted">No stock batches yet</td></tr>
                     )}
-                    <div className="overflow-x-auto rounded-md border border-border">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-muted">
-                            <th className="px-3 py-2 font-semibold">Batch No</th>
-                            <th className="px-3 py-2 font-semibold">Expiry Date</th>
-                            <th className="px-3 py-2 font-semibold">Outward Date</th>
-                            <th className="px-3 py-2 font-semibold">Qty</th>
-                            <th className="px-3 py-2 font-semibold">Note</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {data.badStocks.length === 0 && (
-                            <tr><td colSpan={5} className="px-3 py-8 text-center text-fg-muted">No bad stock recorded</td></tr>
-                          )}
-                          {data.badStocks.map((b) => (
-                            <tr key={b.id} className="border-b border-border/60 last:border-0">
-                              <td className="px-3 py-2">{b.batchNo ?? '—'}</td>
-                              <td className="px-3 py-2">{b.expiryDate ? new Date(b.expiryDate).toLocaleDateString() : '—'}</td>
-                              <td className="px-3 py-2">{new Date(b.outwardDate).toLocaleDateString()}</td>
-                              <td className="px-3 py-2 tabular">{b.qty}</td>
-                              <td className="px-3 py-2 text-fg-muted">{b.note ?? '—'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    {data.stockBatches.map((b) => (
+                      <tr key={b.id} className="border-b border-border/60 last:border-0">
+                        <td className="px-3 py-2">{new Date(b.inwardDate).toLocaleDateString()}</td>
+                        <td className="px-3 py-2">{b.batchNo}</td>
+                        <td className="px-3 py-2">{b.purchaseNo}</td>
+                        <td className="px-3 py-2">{new Date(b.expiryDate).toLocaleDateString([], { month: 'short', year: 'numeric' })}</td>
+                        <td className="px-3 py-2">{b.packingQty ?? '—'}</td>
+                        <td className="px-3 py-2 tabular">{b.purchaseRate.toFixed(2)}</td>
+                        <td className="px-3 py-2 tabular">{b.amount.toFixed(2)}</td>
+                        <td className="px-3 py-2 tabular">{b.quantity}</td>
+                        <td className="px-3 py-2 tabular">{b.mrp.toFixed(2)}</td>
+                        <td className="px-3 py-2 tabular">{b.salePrice.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {tab === 'bad-stock' && (
+              <div className="mt-3 space-y-3">
+                {canEdit && (
+                  <div className="flex justify-end">
+                    <Button size="sm" onClick={() => setAddingBadStock(true)}>
+                      <Plus className="h-4 w-4" /> Add Bad Stock
+                    </Button>
                   </div>
                 )}
-              </>
+                <div className="overflow-x-auto rounded-md border border-border">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-muted">
+                        <th className="px-3 py-2 font-semibold">Batch No</th>
+                        <th className="px-3 py-2 font-semibold">Expiry Date</th>
+                        <th className="px-3 py-2 font-semibold">Outward Date</th>
+                        <th className="px-3 py-2 font-semibold">Qty</th>
+                        <th className="px-3 py-2 font-semibold">Note</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.badStocks.length === 0 && (
+                        <tr><td colSpan={5} className="px-3 py-8 text-center text-fg-muted">No bad stock recorded</td></tr>
+                      )}
+                      {data.badStocks.map((b) => (
+                        <tr key={b.id} className="border-b border-border/60 last:border-0">
+                          <td className="px-3 py-2">{b.batchNo ?? '—'}</td>
+                          <td className="px-3 py-2">{b.expiryDate ? new Date(b.expiryDate).toLocaleDateString() : '—'}</td>
+                          <td className="px-3 py-2">{new Date(b.outwardDate).toLocaleDateString()}</td>
+                          <td className="px-3 py-2 tabular">{b.qty}</td>
+                          <td className="px-3 py-2 text-fg-muted">{b.note ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
-          </div>
-        </div>
-      </div>
+          </>
+        )}
+      </Modal>
 
       {data && <MedicineForm open={editing} onClose={() => setEditing(false)} medicine={data} />}
       {data && <AddBadStockDrawer medicineId={data.id} batches={data.stockBatches} open={addingBadStock} onClose={() => setAddingBadStock(false)} />}
