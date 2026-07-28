@@ -1,14 +1,17 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { DiagnosticMastersPanel } from '@/components/setup/diagnostic-masters-panel';
 
 export default function RadiologySetupPage() {
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Radiology</h1>
-        <p className="text-sm text-fg-muted">Categories, parameters and units used by the radiology module</p>
-      </div>
+      <PageHeader
+        title="Radiology"
+        description={<>Categories, parameters and units used by the radiology module</>}
+        backHref="/setup"
+        backLabel="Back to Setup"
+      />
 
       <DiagnosticMastersPanel modality="radiology" />
     </div>

@@ -5,6 +5,8 @@ import { Plus, Pencil, Trash2 } from 'lucide-react';
 import type { TaxCategoryDto } from '@smart-hospital/shared';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
+import { useConfirmDelete } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput } from '@/components/ui/field';
 import {
@@ -36,7 +38,18 @@ export function TaxCategoryPanel() {
   const [name, setName] = useState('');
   const [percent, setPercent] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<TaxCategoryDto | null>(null);
+  const confirmDelete = useConfirmDelete();
+  const toast = useToast();
+
+  async function onDelete(row: TaxCategoryDto) {
+    if (!(await confirmDelete('tax category' + ` ${row.name}`))) return;
+    try {
+      await remove.mutateAsync(row.id);
+      toast.success(`${row.name} deleted`);
+    } catch (e) {
+      toast.error('Could not delete', { description: (e as Error).message });
+    }
+  }
 
   function openAdd() {
     setEditing(null);
@@ -108,7 +121,7 @@ export function TaxCategoryPanel() {
                   )}
                   {canDelete && (
                     <button
-                      onClick={() => setDeleting(row)}
+                      onClick={() => onDelete(row)}
                       aria-label="Delete"
                       title="Delete"
                       className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"
@@ -144,48 +157,6 @@ export function TaxCategoryPanel() {
         </div>
       </FormDrawer>
 
-      {deleting && (
-        <ConfirmDeleteModal
-          name={deleting.name}
-          pending={remove.isPending}
-          onCancel={() => setDeleting(null)}
-          onConfirm={async () => {
-            await remove.mutateAsync(deleting.id);
-            setDeleting(null);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function ConfirmDeleteModal({
-  name,
-  pending,
-  onCancel,
-  onConfirm,
-}: {
-  name: string;
-  pending: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/30" onClick={onCancel} aria-hidden />
-      <div role="alertdialog" aria-modal="true" className="relative w-full max-w-sm rounded-md border border-border bg-surface p-5 shadow-lg">
-        <p className="text-sm">
-          Delete tax category <strong>{name}</strong>? This cannot be undone.
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" size="sm" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button variant="danger" size="sm" loading={pending} onClick={onConfirm}>
-            Delete
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

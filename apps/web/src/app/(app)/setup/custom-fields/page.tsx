@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import {
@@ -10,6 +11,9 @@ import {
 } from '@smart-hospital/shared';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useConfirmDelete } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput, Select } from '@/components/ui/field';
 import {
@@ -27,6 +31,8 @@ export default function CustomFieldsPage() {
   const { data: fields = [], isLoading } = useCustomFields(entity);
   const create = useCreateCustomField();
   const del = useDeleteCustomField(entity);
+  const confirmDelete = useConfirmDelete();
+  const toast = useToast();
 
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState('');
@@ -71,23 +77,39 @@ export default function CustomFieldsPage() {
     setFieldType('text');
   }
 
+  async function onDelete(f: CustomFieldDto) {
+    const ok = await confirmDelete(
+      `custom field ${f.label}`,
+      'Values already captured under this field will no longer be shown on the form.',
+    );
+    if (!ok) return;
+    try {
+      await del.mutateAsync(f.id);
+      toast.success(`${f.label} deleted`);
+    } catch (e) {
+      toast.error('Could not delete field', { description: (e as Error).message });
+    }
+  }
+
   const needsOptions = fieldType === 'select' || fieldType === 'multiselect';
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Custom Fields</h1>
-          <p className="text-sm text-fg-muted">Extend any module&apos;s forms without code</p>
-        </div>
-        <div className="w-56">
-          <Select
-            value={entity}
-            onChange={(e) => setEntity(e.target.value)}
-            options={CUSTOM_FIELD_ENTITIES.map((e) => ({ value: e, label: e }))}
-          />
-        </div>
-      </div>
+      <PageHeader
+        title="Custom Fields"
+        description={<>Extend any module&apos;s forms without code</>}
+        backHref="/setup"
+        backLabel="Back to Setup"
+        actions={
+          <div className="w-56">
+            <Select
+              value={entity}
+              onChange={(e) => setEntity(e.target.value)}
+              options={CUSTOM_FIELD_ENTITIES.map((e) => ({ value: e, label: e }))}
+            />
+          </div>
+        }
+      />
 
       <DataTable
         columns={columns}
@@ -101,7 +123,7 @@ export default function CustomFieldsPage() {
           canManage
             ? (f) => (
                 <button
-                  onClick={() => del.mutate(f.id)}
+                  onClick={() => onDelete(f)}
                   aria-label="Delete"
                   className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"
                 >
@@ -151,10 +173,11 @@ export default function CustomFieldsPage() {
               />
             </Field>
           )}
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
-            Required field
-          </label>
+          <Checkbox
+            label="Required field"
+            checked={required}
+            onChange={(e) => setRequired(e.target.checked)}
+          />
         </div>
       </FormDrawer>
     </div>

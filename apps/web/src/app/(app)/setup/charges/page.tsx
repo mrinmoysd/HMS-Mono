@@ -1,10 +1,14 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Eye } from 'lucide-react';
 import { chargeSchema, type ChargeDto } from '@smart-hospital/shared';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modal';
+import { useConfirmDelete } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput, Select } from '@/components/ui/field';
 import { Tabs } from '@/components/ui/tabs';
@@ -32,10 +36,12 @@ export default function ChargesPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Hospital Charges</h1>
-        <p className="text-sm text-fg-muted">The charge master shared by every department&apos;s billing</p>
-      </div>
+      <PageHeader
+        title="Hospital Charges"
+        description={<>The charge master shared by every department&apos;s billing</>}
+        backHref="/setup"
+        backLabel="Back to Setup"
+      />
 
       <Tabs
         tabs={[
@@ -87,7 +93,18 @@ function ChargesTab() {
   const [standardCharge, setStandardCharge] = useState('');
   const [newCat, setNewCat] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<ChargeDto | null>(null);
+  const confirmDelete = useConfirmDelete();
+  const toast = useToast();
+
+  async function onDelete(row: ChargeDto) {
+    if (!(await confirmDelete(`charge ${row.name}`))) return;
+    try {
+      await removeCharge.mutateAsync(row.id);
+      toast.success(`${row.name} deleted`);
+    } catch (e) {
+      toast.error('Could not delete charge', { description: (e as Error).message });
+    }
+  }
   const [detailsId, setDetailsId] = useState<string | null>(null);
 
   const columns: Column<ChargeDto>[] = [
@@ -196,7 +213,7 @@ function ChargesTab() {
             )}
             {canDelete && (
               <button
-                onClick={() => setDeleting(row)}
+                onClick={() => onDelete(row)}
                 aria-label="Delete"
                 title="Delete"
                 className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"
@@ -299,50 +316,8 @@ function ChargesTab() {
         </div>
       </FormDrawer>
 
-      {deleting && (
-        <ConfirmDeleteModal
-          name={deleting.name}
-          pending={removeCharge.isPending}
-          onCancel={() => setDeleting(null)}
-          onConfirm={async () => {
-            await removeCharge.mutateAsync(deleting.id);
-            setDeleting(null);
-          }}
-        />
-      )}
 
       {detailsId && <ChargeDetailsModal id={detailsId} onClose={() => setDetailsId(null)} />}
-    </div>
-  );
-}
-
-function ConfirmDeleteModal({
-  name,
-  pending,
-  onCancel,
-  onConfirm,
-}: {
-  name: string;
-  pending: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/30" onClick={onCancel} aria-hidden />
-      <div role="alertdialog" aria-modal="true" className="relative w-full max-w-sm rounded-md border border-border bg-surface p-5 shadow-lg">
-        <p className="text-sm">
-          Delete charge <strong>{name}</strong>? This cannot be undone.
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" size="sm" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button variant="danger" size="sm" loading={pending} onClick={onConfirm}>
-            Delete
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -371,21 +346,25 @@ function ChargeDetailsModal({ id, onClose }: { id: string; onClose: () => void }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} aria-hidden />
-      <div role="dialog" aria-modal="true" aria-label="Charge Details" className="relative flex h-full w-full max-w-xl flex-col bg-surface shadow-lg">
-        <div className="flex h-14 items-center justify-between border-b border-border px-5">
-          <h2 className="text-base font-semibold">Charge Details</h2>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-border/50"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-5 space-y-6">
+    <Modal
+      open
+      onClose={onClose}
+      title="Charge Details"
+      size="lg"
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Close
+          </Button>
+          {canEdit && charge && charge.schedule.length > 0 && (
+            <Button type="button" loading={updateSchedule.isPending} onClick={saveSchedule}>
+              Save Schedule
+            </Button>
+          )}
+        </>
+      }
+    >
+        <div className="space-y-6">
           {isLoading || !charge ? (
             <p className="text-sm text-fg-muted">Loading…</p>
           ) : (
@@ -480,18 +459,6 @@ function ChargeDetailsModal({ id, onClose }: { id: string; onClose: () => void }
             </>
           )}
         </div>
-
-        <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Close
-          </Button>
-          {canEdit && charge && charge.schedule.length > 0 && (
-            <Button type="button" loading={updateSchedule.isPending} onClick={saveSchedule}>
-              Save Schedule
-            </Button>
-          )}
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

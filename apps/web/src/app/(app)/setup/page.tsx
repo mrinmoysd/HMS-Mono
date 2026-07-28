@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import Link from 'next/link';
 import {
   SlidersHorizontal,
@@ -95,12 +96,14 @@ const AREAS = [
 export default function SetupPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
-          <SlidersHorizontal className="h-6 w-6 text-primary" /> Setup / Settings
-        </h1>
-        <p className="text-sm text-fg-muted">Master data & system configuration</p>
-      </div>
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
+            <SlidersHorizontal className="h-5 w-5 shrink-0 text-primary" /> Setup / Settings
+          </span>
+        }
+        description="Master data & system configuration"
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {AREAS.map(({ href, title, desc, icon: Icon }) => (

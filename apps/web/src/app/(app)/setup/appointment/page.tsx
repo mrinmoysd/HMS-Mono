@@ -1,10 +1,13 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 import type { ShiftDto, AppointmentPriorityDto } from '@smart-hospital/shared';
 import { Tabs } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { useConfirmDelete } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput, Select } from '@/components/ui/field';
 import { useDoctors } from '@/lib/hooks/use-clinical';
@@ -26,10 +29,12 @@ export default function AppointmentSetupPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Appointment Setup</h1>
-        <p className="text-sm text-fg-muted">Shifts, priorities, doctor shift assignment and consultation slots</p>
-      </div>
+      <PageHeader
+        title="Appointment Setup"
+        description={<>Shifts, priorities, doctor shift assignment and consultation slots</>}
+        backHref="/setup"
+        backLabel="Back to Setup"
+      />
       <Tabs
         tabs={[
           { value: 'slots', label: 'Slots' },
@@ -59,6 +64,19 @@ function ShiftPanel({ canManage }: { canManage: boolean }) {
   const create = useCreateShift();
   const update = useUpdateShift();
   const del = useDeleteShift();
+
+  const confirmDelete = useConfirmDelete();
+  const toast = useToast();
+
+  async function onDelete(s: ShiftDto) {
+    if (!(await confirmDelete(`shift ${s.name}`))) return;
+    try {
+      await del.mutateAsync(s.id);
+      toast.success(`${s.name} deleted`);
+    } catch (e) {
+      toast.error('Could not delete shift', { description: (e as Error).message });
+    }
+  }
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ShiftDto | null>(null);
   const [name, setName] = useState('');
@@ -97,7 +115,7 @@ function ShiftPanel({ canManage }: { canManage: boolean }) {
                 <td className="px-3 py-2.5">
                   <div className="flex items-center justify-end gap-1">
                     {canManage && <button onClick={() => openEdit(s)} className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-border/50"><Pencil className="h-4 w-4" /></button>}
-                    {canManage && <button onClick={() => confirm(`Delete shift ${s.name}?`) && del.mutate(s.id)} className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"><Trash2 className="h-4 w-4" /></button>}
+                    {canManage && <button onClick={() => onDelete(s)} className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"><Trash2 className="h-4 w-4" /></button>}
                   </div>
                 </td>
               </tr>
@@ -125,6 +143,19 @@ function PriorityPanel({ canManage }: { canManage: boolean }) {
   const create = useCreatePriority();
   const update = useUpdatePriority();
   const del = useDeletePriority();
+
+  const confirmDelete = useConfirmDelete();
+  const toast = useToast();
+
+  async function onDelete(p: AppointmentPriorityDto) {
+    if (!(await confirmDelete(`priority ${p.name}`))) return;
+    try {
+      await del.mutateAsync(p.id);
+      toast.success(`${p.name} deleted`);
+    } catch (e) {
+      toast.error('Could not delete priority', { description: (e as Error).message });
+    }
+  }
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<AppointmentPriorityDto | null>(null);
   const [name, setName] = useState('');
@@ -156,7 +187,7 @@ function PriorityPanel({ canManage }: { canManage: boolean }) {
                 <td className="px-3 py-2.5">
                   <div className="flex items-center justify-end gap-1">
                     {canManage && <button onClick={() => openEdit(p)} className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-border/50"><Pencil className="h-4 w-4" /></button>}
-                    {canManage && <button onClick={() => confirm(`Delete priority ${p.name}?`) && del.mutate(p.id)} className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"><Trash2 className="h-4 w-4" /></button>}
+                    {canManage && <button onClick={() => onDelete(p)} className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"><Trash2 className="h-4 w-4" /></button>}
                   </div>
                 </td>
               </tr>

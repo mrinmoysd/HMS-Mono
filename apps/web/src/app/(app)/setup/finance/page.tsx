@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { Tabs } from '@/components/ui/tabs';
 import { SimpleCatalogPanel } from '@/components/setup/simple-catalog-panel';
@@ -11,10 +12,12 @@ export default function FinanceSetupPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Finance</h1>
-        <p className="text-sm text-fg-muted">Income and expense heads used by the finance ledger</p>
-      </div>
+      <PageHeader
+        title="Finance"
+        description={<>Income and expense heads used by the finance ledger</>}
+        backHref="/setup"
+        backLabel="Back to Setup"
+      />
 
       <Tabs
         tabs={[

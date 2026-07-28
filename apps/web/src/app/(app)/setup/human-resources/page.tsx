@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { Tabs } from '@/components/ui/tabs';
 import { SimpleCatalogPanel } from '@/components/setup/simple-catalog-panel';
@@ -12,10 +13,12 @@ export default function HumanResourcesSetupPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Human Resources</h1>
-        <p className="text-sm text-fg-muted">Departments, designations, leave types and specialists used across staff records</p>
-      </div>
+      <PageHeader
+        title="Human Resources"
+        description={<>Departments, designations, leave types and specialists used across staff records</>}
+        backHref="/setup"
+        backLabel="Back to Setup"
+      />
 
       <Tabs
         tabs={[

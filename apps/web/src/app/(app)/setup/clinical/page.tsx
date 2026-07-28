@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { vitalTypeSchema, findingSchema, symptomTypeSchema } from '@smart-hospital/shared';
@@ -28,10 +29,12 @@ export default function ClinicalMastersPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Clinical Masters</h1>
-        <p className="text-sm text-fg-muted">Vital types, findings and symptoms used across the patient EMR</p>
-      </div>
+      <PageHeader
+        title="Clinical Masters"
+        description={<>Vital types, findings and symptoms used across the patient EMR</>}
+        backHref="/setup"
+        backLabel="Back to Setup"
+      />
 
       <Tabs
         tabs={[

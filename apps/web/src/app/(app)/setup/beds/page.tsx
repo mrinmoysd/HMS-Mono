@@ -1,10 +1,13 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import type { BedDto } from '@smart-hospital/shared';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
+import { useConfirmDelete } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput, Select } from '@/components/ui/field';
 import { Tabs } from '@/components/ui/tabs';
@@ -35,10 +38,12 @@ export default function BedsSetupPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Beds</h1>
-        <p className="text-sm text-fg-muted">Floors, bed groups, bed types and the bed master</p>
-      </div>
+      <PageHeader
+        title="Beds"
+        description={<>Floors, bed groups, bed types and the bed master</>}
+        backHref="/setup"
+        backLabel="Back to Setup"
+      />
 
       {/* Quick-add masters */}
       {canManage && (
@@ -100,7 +105,18 @@ function BedsTab() {
   const [bedGroupId, setBedGroupId] = useState('');
   const [bedTypeId, setBedTypeId] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<BedDto | null>(null);
+  const confirmDelete = useConfirmDelete();
+  const toast = useToast();
+
+  async function onDelete(row: BedDto) {
+    if (!(await confirmDelete(`bed ${row.bedNo}`))) return;
+    try {
+      await removeBed.mutateAsync(row.id);
+      toast.success(`Bed ${row.bedNo} deleted`);
+    } catch (e) {
+      toast.error('Could not delete bed', { description: (e as Error).message });
+    }
+  }
 
   const columns: Column<BedDto>[] = [
     { key: 'bedNo', header: 'Bed No', className: 'font-medium' },
@@ -181,7 +197,7 @@ function BedsTab() {
                     </button>
                   )}
                   {canDelete && (
-                    <button onClick={() => setDeleting(row)} aria-label="Delete" title="Delete" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger">
+                    <button onClick={() => onDelete(row)} aria-label="Delete" title="Delete" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   )}
@@ -214,48 +230,6 @@ function BedsTab() {
         </div>
       </FormDrawer>
 
-      {deleting && (
-        <ConfirmDeleteModal
-          bedNo={deleting.bedNo}
-          pending={removeBed.isPending}
-          onCancel={() => setDeleting(null)}
-          onConfirm={async () => {
-            await removeBed.mutateAsync(deleting.id);
-            setDeleting(null);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function ConfirmDeleteModal({
-  bedNo,
-  pending,
-  onCancel,
-  onConfirm,
-}: {
-  bedNo: string;
-  pending: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/30" onClick={onCancel} aria-hidden />
-      <div role="alertdialog" aria-modal="true" className="relative w-full max-w-sm rounded-md border border-border bg-surface p-5 shadow-lg">
-        <p className="text-sm">
-          Delete bed <strong>{bedNo}</strong>? This cannot be undone.
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" size="sm" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button variant="danger" size="sm" loading={pending} onClick={onConfirm}>
-            Delete
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

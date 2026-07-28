@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { Tabs } from '@/components/ui/tabs';
 import { SimpleCatalogPanel } from '@/components/setup/simple-catalog-panel';
@@ -12,10 +13,12 @@ export default function InventorySetupPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Inventory</h1>
-        <p className="text-sm text-fg-muted">Item categories, stores and suppliers used by the inventory module</p>
-      </div>
+      <PageHeader
+        title="Inventory"
+        description={<>Item categories, stores and suppliers used by the inventory module</>}
+        backHref="/setup"
+        backLabel="Back to Setup"
+      />
 
       <Tabs
         tabs={[

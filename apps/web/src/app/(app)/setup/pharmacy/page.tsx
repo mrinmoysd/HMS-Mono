@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { Tabs } from '@/components/ui/tabs';
 import { SimpleCatalogPanel } from '@/components/setup/simple-catalog-panel';
@@ -21,10 +22,12 @@ export default function PharmacySetupPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Pharmacy</h1>
-        <p className="text-sm text-fg-muted">Categories, companies, dosages, suppliers and units used by the pharmacy module</p>
-      </div>
+      <PageHeader
+        title="Pharmacy"
+        description={<>Categories, companies, dosages, suppliers and units used by the pharmacy module</>}
+        backHref="/setup"
+        backLabel="Back to Setup"
+      />
 
       <Tabs
         tabs={[
