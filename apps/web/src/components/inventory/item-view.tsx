@@ -1,5 +1,8 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useMemo, useState } from 'react';
 import { ChevronLeft, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { InventoryItemDto } from '@smart-hospital/shared';
@@ -25,6 +28,8 @@ export function ItemView({ onBack }: { onBack: () => void }) {
   const create = useCreateItem();
   const update = useUpdateItem();
   const del = useDeleteItem();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -53,7 +58,19 @@ export function ItemView({ onBack }: { onBack: () => void }) {
     setOpen(false);
   }
   async function remove(i: InventoryItemDto) {
-    if (confirm(`Delete item "${i.name}"?`)) await del.mutateAsync(i.id);
+    const ok = await confirm({
+      title: `Delete item ${i.name}?`,
+      description: 'Its stock and issue history will be removed. This cannot be undone.',
+      confirmLabel: 'Delete item',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await del.mutateAsync(i.id);
+      toast.success(`${i.name} deleted`);
+    } catch (e) {
+      toast.error('Could not delete item', { description: (e as Error).message });
+    }
   }
 
   const cols: Column<InventoryItemDto>[] = [
@@ -67,10 +84,10 @@ export function ItemView({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-4">
       <button onClick={onBack} className="flex items-center gap-1 text-sm text-fg-muted hover:text-fg"><ChevronLeft className="h-4 w-4" /> Item Stock</button>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Item List</h1>
-        {canAdd && <Button onClick={openAdd}><Plus className="h-4 w-4" /> Add Item</Button>}
-      </div>
+      <PageHeader
+        title="Item List"
+        actions={canAdd && <Button onClick={openAdd}><Plus className="h-4 w-4" /> Add Item</Button>}
+      />
 
       <DataTable
         columns={cols}

@@ -1,7 +1,10 @@
 'use client';
 
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useState } from 'react';
-import { Printer, Trash2, X } from 'lucide-react';
+import { Printer, Trash2 } from 'lucide-react';
+import { Modal } from '@/components/ui/modal';
 import { Field, TextInput, Select } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
 import { useAmbulanceCall } from '@/lib/hooks/use-finance';
@@ -18,6 +21,8 @@ export function AmbulanceCallPaymentsModal({ id, open, onClose }: { id: string |
   const { data, isLoading } = useInvoice(open ? callData?.invoiceId ?? null : null);
   const addPayment = useAddPayment();
   const deletePayment = useDeletePayment();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [amount, setAmount] = useState('0');
   const [mode, setMode] = useState<(typeof MODES)[number]>('cash');
@@ -41,23 +46,24 @@ export function AmbulanceCallPaymentsModal({ id, open, onClose }: { id: string |
 
   async function onDeletePayment(paymentId: string) {
     if (!data) return;
-    if (confirm('Delete this payment?')) {
+    const ok = await confirm({
+      title: `Delete this payment?`,
+      description: 'The bill balance will be recalculated. This cannot be undone.',
+      confirmLabel: 'Delete payment',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
       await deletePayment.mutateAsync({ id: data.id, paymentId });
+      toast.success(`Payment deleted`);
+    } catch (e) {
+      toast.error('Could not delete payment', { description: (e as Error).message });
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-8">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
-      <div role="dialog" aria-modal="true" aria-label="Payments" className="relative z-10 w-full max-w-5xl rounded-md bg-surface shadow-xl">
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <h2 className="text-base font-semibold">Payments</h2>
-          <button onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-border/50">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="max-h-[75vh] space-y-5 overflow-y-auto p-5">
+    <Modal open={open} onClose={onClose} title="Payments" size="xl">
+      <div className="space-y-5">
           {isLoading || !data || !callData ? (
             <p className="py-12 text-center text-sm text-fg-muted">Loading…</p>
           ) : (
@@ -145,9 +151,8 @@ export function AmbulanceCallPaymentsModal({ id, open, onClose }: { id: string |
               </div>
             </>
           )}
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

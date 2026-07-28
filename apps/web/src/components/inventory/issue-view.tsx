@@ -1,7 +1,11 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useMemo, useState } from 'react';
-import { ChevronLeft, Plus, RotateCcw, Trash2, X } from 'lucide-react';
+import { ChevronLeft, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { Modal } from '@/components/ui/modal';
 import type { ItemIssueDto } from '@smart-hospital/shared';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
@@ -23,6 +27,8 @@ export function IssueView({ onBack }: { onBack: () => void }) {
   const list = useIssueList();
   const ret = useReturnItem();
   const del = useDeleteIssue();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -31,7 +37,19 @@ export function IssueView({ onBack }: { onBack: () => void }) {
   const rows = list.data?.data ?? [];
 
   async function remove(r: ItemIssueDto) {
-    if (confirm(`Delete this issue (${r.itemName})?`)) await del.mutateAsync(r.id);
+    const ok = await confirm({
+      title: `Delete issue of ${r.itemName}?`,
+      description: 'The issue record is removed and the quantity returns to available stock.',
+      confirmLabel: 'Delete issue',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await del.mutateAsync(r.id);
+      toast.success(`Issue of ${r.itemName} deleted`);
+    } catch (e) {
+      toast.error('Could not delete issue', { description: (e as Error).message });
+    }
   }
 
   const cols: Column<ItemIssueDto>[] = [
@@ -52,10 +70,10 @@ export function IssueView({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-4">
       <button onClick={onBack} className="flex items-center gap-1 text-sm text-fg-muted hover:text-fg"><ChevronLeft className="h-4 w-4" /> Item Stock</button>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Issue Item List</h1>
-        {canAdd && <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Add Issue Item</Button>}
-      </div>
+      <PageHeader
+        title="Issue Item List"
+        actions={canAdd && <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Add Issue Item</Button>}
+      />
 
       <DataTable
         columns={cols}
@@ -163,13 +181,19 @@ function ConfirmReturn({ row, saving, onConfirm, onClose }: { row: ItemIssueDto;
     </div>
   );
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div role="dialog" aria-modal="true" aria-label="Confirm Return" className="relative w-full max-w-lg rounded-md bg-surface shadow-xl">
-        <div className="flex items-center justify-between rounded-t-md bg-primary px-5 py-3 text-primary-fg">
-          <h2 className="text-base font-semibold">Confirm Return</h2>
-          <button onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm hover:bg-white/10"><X className="h-5 w-5" /></button>
-        </div>
-        <div className="p-5">
+    <Modal
+      open
+      onClose={onClose}
+      title="Confirm Return"
+      size="md"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button loading={saving} onClick={onConfirm}>Return</Button>
+        </>
+      }
+    >
+      <div>
           <p className="mb-3 text-sm text-fg-muted">⚠️ Are You Sure To Return This Item !</p>
           <div className="rounded-md border border-border">
             {line('Item', row.itemName)}
@@ -177,11 +201,6 @@ function ConfirmReturn({ row, saving, onConfirm, onClose }: { row: ItemIssueDto;
             {line('Quantity', row.qty)}
           </div>
         </div>
-        <div className="flex justify-end gap-2 border-t border-border px-5 py-3">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button loading={saving} onClick={onConfirm}>Return</Button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

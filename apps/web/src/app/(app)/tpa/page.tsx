@@ -1,5 +1,8 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { List, Pencil, Plus, Trash2, UploadCloud } from 'lucide-react';
@@ -26,6 +29,8 @@ export default function TpaListPage() {
   const create = useCreateTpa();
   const update = useUpdateTpa();
   const del = useDeleteTpa();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -54,7 +59,19 @@ export default function TpaListPage() {
     setOpen(false);
   }
   async function remove(t: TpaDto) {
-    if (confirm(`Delete TPA "${t.name}"?`)) await del.mutateAsync(t.id);
+    const ok = await confirm({
+      title: `Delete TPA ${t.name}?`,
+      description: 'Its charge schedule will be removed. Patients linked to this TPA are not deleted.',
+      confirmLabel: 'Delete TPA',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await del.mutateAsync(t.id);
+      toast.success(`${t.name} deleted`);
+    } catch (e) {
+      toast.error('Could not delete TPA', { description: (e as Error).message });
+    }
   }
 
   const cols: Column<TpaDto>[] = [
@@ -68,10 +85,11 @@ export default function TpaListPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">TPA Management</h1>
-        {canAdd && <Button onClick={openAdd}><Plus className="h-4 w-4" /> Add TPA</Button>}
-      </div>
+      <PageHeader
+        title="TPA Management"
+        description="Third-party administrators and their negotiated charge schedules"
+        actions={canAdd && <Button onClick={openAdd}><Plus className="h-4 w-4" /> Add TPA</Button>}
+      />
 
       <DataTable
         columns={cols}

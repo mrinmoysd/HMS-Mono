@@ -1,8 +1,11 @@
 'use client';
 
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Hash, MapPin, Pencil, Phone, Search, Trash2, User, X } from 'lucide-react';
+import { ChevronLeft, Hash, MapPin, Pencil, Phone, Search, Trash2, User } from 'lucide-react';
+import { Modal } from '@/components/ui/modal';
 import { TPA_CHARGE_MODULES, type TpaChargeRowDto } from '@smart-hospital/shared';
 import { Button } from '@/components/ui/button';
 import { Field, Select, TextInput } from '@/components/ui/field';
@@ -22,6 +25,8 @@ export default function TpaDetailPage({ params }: { params: { id: string } }) {
   const charges = useTpaCharges(id, query);
   const setCharge = useSetTpaCharge(id);
   const delCharge = useDeleteTpaCharge(id);
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<TpaChargeRowDto | null>(null);
@@ -35,7 +40,19 @@ export default function TpaDetailPage({ params }: { params: { id: string } }) {
   const t = tpa.data;
 
   async function remove(c: TpaChargeRowDto) {
-    if (confirm(`Reset TPA charge for "${c.chargeName}" to standard?`)) await delCharge.mutateAsync(c.chargeId);
+    const ok = await confirm({
+      title: `Reset ${c.chargeName} to standard rate?`,
+      description: 'The TPA-specific rate is removed and the standard hospital charge applies again.',
+      confirmLabel: 'Reset to standard',
+      tone: 'warning',
+    });
+    if (!ok) return;
+    try {
+      await delCharge.mutateAsync(c.chargeId);
+      toast.success(`${c.chargeName} reset to standard`);
+    } catch (e) {
+      toast.error('Could not reset charge', { description: (e as Error).message });
+    }
   }
 
   return (
@@ -119,13 +136,19 @@ function Meta({ icon: Icon, label, value, accent }: { icon: React.ElementType; l
 function EditTpaChargeModal({ row, saving, onSave, onClose }: { row: TpaChargeRowDto; saving: boolean; onSave: (amount: number) => void; onClose: () => void }) {
   const [amount, setAmount] = useState(row.tpaCharge != null ? String(row.tpaCharge) : String(row.standardCharge));
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div role="dialog" aria-modal="true" aria-label="Edit TPA Charge" className="relative w-full max-w-2xl rounded-md bg-surface shadow-xl">
-        <div className="flex items-center justify-between rounded-t-md bg-primary px-5 py-3 text-primary-fg">
-          <h2 className="text-base font-semibold">Edit TPA Charge</h2>
-          <button onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm hover:bg-white/10"><X className="h-5 w-5" /></button>
-        </div>
-        <div className="space-y-4 p-5">
+    <Modal
+      open
+      onClose={onClose}
+      title="Edit TPA Charge"
+      size="lg"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button loading={saving} onClick={() => onSave(Number(amount) || 0)}>Save</Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
           <p className="text-sm font-semibold">Charge Details</p>
           <div className="overflow-x-auto rounded-md border border-border">
             <table className="w-full text-sm">
@@ -147,11 +170,6 @@ function EditTpaChargeModal({ row, saving, onSave, onClose }: { row: TpaChargeRo
             </table>
           </div>
         </div>
-        <div className="flex justify-end gap-2 border-t border-border px-5 py-3">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button loading={saving} onClick={() => onSave(Number(amount) || 0)}>Save</Button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

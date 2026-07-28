@@ -1,5 +1,8 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useMemo, useState } from 'react';
 import { Boxes, ListChecks, Paperclip, Pencil, Plus, Send, Trash2 } from 'lucide-react';
 import type { ItemStockDto } from '@smart-hospital/shared';
@@ -37,6 +40,8 @@ export function StockView({ onShowItems, onShowIssues }: { onShowItems: () => vo
   const add = useAddStock();
   const update = useUpdateStock();
   const del = useDeleteStock();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -73,7 +78,19 @@ export function StockView({ onShowItems, onShowIssues }: { onShowItems: () => vo
     setOpen(false);
   }
   async function remove(s: ItemStockDto) {
-    if (confirm(`Delete stock entry for "${s.itemName}"?`)) await del.mutateAsync(s.id);
+    const ok = await confirm({
+      title: `Delete stock entry for ${s.itemName}?`,
+      description: 'The purchased quantity is removed from available stock. This cannot be undone.',
+      confirmLabel: 'Delete entry',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await del.mutateAsync(s.id);
+      toast.success(`Stock entry for ${s.itemName} deleted`);
+    } catch (e) {
+      toast.error('Could not delete stock entry', { description: (e as Error).message });
+    }
   }
 
   const cols: Column<ItemStockDto>[] = [
@@ -90,14 +107,16 @@ export function StockView({ onShowItems, onShowIssues }: { onShowItems: () => vo
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Item Stock List</h1>
-        <div className="flex flex-wrap gap-2">
+      <PageHeader
+        title="Item Stock List"
+        actions={
+          <>
           {canAdd && <Button onClick={openAdd}><Plus className="h-4 w-4" /> Add Item Stock</Button>}
           <Button variant="secondary" onClick={onShowIssues}><Send className="h-4 w-4" /> Issue Item</Button>
           <Button variant="secondary" onClick={onShowItems}><ListChecks className="h-4 w-4" /> Item</Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <DataTable
         columns={cols}

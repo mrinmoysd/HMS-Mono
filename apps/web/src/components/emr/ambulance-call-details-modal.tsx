@@ -1,6 +1,8 @@
 'use client';
 
-import { Printer, X } from 'lucide-react';
+import { Printer } from 'lucide-react';
+import { IconButton } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modal';
 import { useAmbulanceCall } from '@/lib/hooks/use-finance';
 import { printAmbulanceBill } from '@/lib/print';
 
@@ -11,23 +13,20 @@ export function AmbulanceCallDetailsModal({ id, open, onClose }: { id: string | 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div role="dialog" aria-modal="true" aria-label="Bill Details" className="relative z-10 w-full max-w-4xl rounded-md bg-surface shadow-xl">
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <h2 className="text-base font-semibold">Bill Details</h2>
-          <div className="flex items-center gap-2">
-            {data && (
-              <button onClick={() => printAmbulanceBill(data)} aria-label="Print" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary">
-                <Printer className="h-4 w-4" />
-              </button>
-            )}
-            <button onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-border/50">
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-
-        <div className="max-h-[75vh] space-y-5 overflow-y-auto p-5">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Bill Details"
+      size="xl"
+      headerActions={
+        data ? (
+          <IconButton label="Print bill" tone="primary" onClick={() => printAmbulanceBill(data)}>
+            <Printer className="h-4 w-4" />
+          </IconButton>
+        ) : null
+      }
+    >
+      <div className="space-y-5">
           {isLoading || !data ? (
             <p className="py-12 text-center text-sm text-fg-muted">Loading…</p>
           ) : (
@@ -57,9 +56,8 @@ export function AmbulanceCallDetailsModal({ id, open, onClose }: { id: string | 
               <Row label="Due Amount" value={`#${data.balance.toFixed(2)}`} />
             </div>
           )}
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { UserPlus, X } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
+import { Modal } from '@/components/ui/modal';
 import { ambulanceCallSchema, computeInvoiceTotals, type PatientDto } from '@smart-hospital/shared';
 import { Field, TextInput, TextArea, Select } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
@@ -82,16 +83,21 @@ export function AmbulanceCallForm({ open, onClose }: { open: boolean; onClose: (
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div role="dialog" aria-modal="true" aria-label="Add Ambulance Call" className="relative w-full max-w-4xl rounded-md bg-surface shadow-xl">
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <h2 className="text-base font-semibold">Add Ambulance Call</h2>
-          <button onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-border/50">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="max-h-[75vh] space-y-4 overflow-y-auto p-5">
+    <>
+      <Modal
+        open={open}
+        onClose={onClose}
+        title="Add Ambulance Call"
+        size="xl"
+        footer={
+          <>
+            <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button type="button" variant="secondary" onClick={() => submit(true)} loading={create.isPending}>Save &amp; Print</Button>
+            <Button type="button" onClick={() => submit(false)} loading={create.isPending}>Save</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
           {error && <p role="alert" className="rounded-sm bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -179,15 +185,12 @@ export function AmbulanceCallForm({ open, onClose }: { open: boolean; onClose: (
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="button" variant="secondary" onClick={() => submit(true)} loading={create.isPending}>Save &amp; Print</Button>
-          <Button type="button" onClick={() => submit(false)} loading={create.isPending}>Save</Button>
-        </div>
-      </div>
+      </Modal>
 
+      {/* Sibling, not a child: each Modal portals to <body> and the scroll lock
+          is ref-counted, so the nested "New Patient" form stacks correctly. */}
       <PatientForm open={newPatientOpen} onClose={() => setNewPatientOpen(false)} onCreated={onPatientCreated} />
-    </div>
+    </>
   );
 }
 

@@ -1,5 +1,8 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useState } from 'react';
 import { Eye, Pencil, Plus, Printer, Trash2 } from 'lucide-react';
 import type { BirthRecordDto, DeathRecordDto } from '@smart-hospital/shared';
@@ -23,10 +26,7 @@ export default function BirthDeathPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Birth &amp; Death Record</h1>
-        <p className="text-sm text-fg-muted">Register births and deaths with printable reports</p>
-      </div>
+      <PageHeader title="Birth &amp; Death Record" description="Register births and deaths with printable reports" />
 
       <Tabs tabs={[{ value: 'birth', label: 'Birth Record' }, { value: 'death', label: 'Death Record' }]} value={tab} onChange={(t) => setTab(t as Tab)} />
 
@@ -49,6 +49,8 @@ function BirthPanel() {
 
   const births = useBirths({ search, page, size: 100 });
   const deleteBirth = useDeleteBirth();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   function exportTable(): ExportTable {
     const rows = births.data?.data ?? [];
@@ -109,7 +111,21 @@ function BirthPanel() {
             </button>
             {canDelete && (
               <button
-                onClick={async () => { if (confirm(`Delete birth record "${b.referenceNo}"?`)) await deleteBirth.mutateAsync(b.id); }}
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: `Delete birth record ${b.referenceNo}?`,
+                    description: 'The record and its attachments will be removed. This cannot be undone.',
+                    confirmLabel: 'Delete record',
+                    tone: 'danger',
+                  });
+                  if (!ok) return;
+                  try {
+                    await deleteBirth.mutateAsync(b.id);
+                    toast.success(`Birth record ${b.referenceNo} deleted`);
+                  } catch (e) {
+                    toast.error('The record and its attachments will be removed', { description: (e as Error).message });
+                  }
+                }}
                 aria-label="Delete" title="Delete" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"
               >
                 <Trash2 className="h-4 w-4" />
@@ -139,6 +155,8 @@ function DeathPanel() {
 
   const deaths = useDeaths({ search, page, size: 100 });
   const deleteDeath = useDeleteDeath();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   function exportTable(): ExportTable {
     const rows = deaths.data?.data ?? [];
@@ -198,7 +216,21 @@ function DeathPanel() {
             </button>
             {canDelete && (
               <button
-                onClick={async () => { if (confirm(`Delete death record "${d.referenceNo}"?`)) await deleteDeath.mutateAsync(d.id); }}
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: `Delete death record ${d.referenceNo}?`,
+                    description: 'The record and its attachments will be removed. This cannot be undone.',
+                    confirmLabel: 'Delete record',
+                    tone: 'danger',
+                  });
+                  if (!ok) return;
+                  try {
+                    await deleteDeath.mutateAsync(d.id);
+                    toast.success(`Death record ${d.referenceNo} deleted`);
+                  } catch (e) {
+                    toast.error('The record and its attachments will be removed', { description: (e as Error).message });
+                  }
+                }}
                 aria-label="Delete" title="Delete" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"
               >
                 <Trash2 className="h-4 w-4" />

@@ -1,5 +1,8 @@
 'use client';
 
+import { PageHeader } from '@/components/ui/page-header';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useState } from 'react';
 import { Plus, Eye, Pencil, Trash2, CreditCard, Printer, List } from 'lucide-react';
 import type { AmbulanceCallDto, AmbulanceVehicleDto } from '@smart-hospital/shared';
@@ -26,12 +29,7 @@ export default function AmbulancePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Ambulance</h1>
-          <p className="text-sm text-fg-muted">Fleet management and call log with fare billing</p>
-        </div>
-      </div>
+      <PageHeader title="Ambulance" description="Fleet management and call log with fare billing" />
 
       <Tabs tabs={[{ value: 'fleet', label: 'Ambulance List' }, { value: 'calls', label: 'Ambulance Call List' }]}
         value={tab} onChange={(t) => setTab(t as Tab)} />
@@ -49,6 +47,8 @@ function FleetPanel({ canAdd, canDelete, onGoToCalls }: { canAdd: boolean; canDe
 
   const vehicles = useAmbulanceVehicles({ search, page, size: 25 });
   const deleteVehicle = useDeleteVehicle();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   function exportTable(): ExportTable {
     const rows = vehicles.data?.data ?? [];
@@ -107,7 +107,21 @@ function FleetPanel({ canAdd, canDelete, onGoToCalls }: { canAdd: boolean; canDe
             )}
             {canDelete && (
               <button
-                onClick={async () => { if (confirm(`Delete vehicle "${v.vehicleNo}"?`)) await deleteVehicle.mutateAsync(v.id); }}
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: `Delete vehicle ${v.vehicleNo}?`,
+                    description: 'The vehicle and its links to call history will be removed. This cannot be undone.',
+                    confirmLabel: 'Delete vehicle',
+                    tone: 'danger',
+                  });
+                  if (!ok) return;
+                  try {
+                    await deleteVehicle.mutateAsync(v.id);
+                    toast.success(`Vehicle ${v.vehicleNo} deleted`);
+                  } catch (e) {
+                    toast.error('The vehicle and its links to call history will be removed', { description: (e as Error).message });
+                  }
+                }}
                 aria-label="Delete" title="Delete" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"
               >
                 <Trash2 className="h-4 w-4" />

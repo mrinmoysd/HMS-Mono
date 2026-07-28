@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, UploadCloud, X } from 'lucide-react';
+import { Download, UploadCloud } from 'lucide-react';
+import { Modal } from '@/components/ui/modal';
 import type { TpaDto } from '@smart-hospital/shared';
 import { Button } from '@/components/ui/button';
 import { Field, TextArea } from '@/components/ui/field';
@@ -53,14 +54,19 @@ export function TpaImportModal({ tpa, onClose }: { tpa: TpaDto; onClose: () => v
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div role="dialog" aria-modal="true" aria-label="Import TPA Charges" className="relative w-full max-w-lg rounded-md bg-surface shadow-xl">
-        <div className="flex items-center justify-between rounded-t-md bg-primary px-5 py-3 text-primary-fg">
-          <h2 className="flex items-center gap-2 text-base font-semibold"><UploadCloud className="h-5 w-5" /> Import TPA Charges — {tpa.name}</h2>
-          <button onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm hover:bg-white/10"><X className="h-5 w-5" /></button>
-        </div>
-
-        <div className="space-y-4 p-5">
+    <Modal
+      open
+      onClose={onClose}
+      title={<span className="flex items-center gap-2"><UploadCloud className="h-4 w-4" /> Import TPA Charges — {tpa.name}</span>}
+      size="md"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>{result ? 'Close' : 'Cancel'}</Button>
+          {!result && <Button onClick={submit} loading={importer.isPending}>Import</Button>}
+        </>
+      }
+    >
+      <div className="space-y-4">
           {result ? (
             <div className="space-y-3">
               <p className="rounded-sm bg-success/10 px-3 py-2 text-sm text-success">Imported {result.matched} charge{result.matched === 1 ? '' : 's'}.</p>
@@ -86,13 +92,7 @@ export function TpaImportModal({ tpa, onClose }: { tpa: TpaDto; onClose: () => v
               {error && <p role="alert" className="rounded-sm bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
             </>
           )}
-        </div>
-
-        <div className="flex justify-end gap-2 border-t border-border px-5 py-3">
-          <Button variant="secondary" onClick={onClose}>{result ? 'Close' : 'Cancel'}</Button>
-          {!result && <Button onClick={submit} loading={importer.isPending}>Import</Button>}
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 }

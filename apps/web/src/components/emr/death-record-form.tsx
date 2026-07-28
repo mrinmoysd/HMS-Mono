@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Upload, UserPlus, X } from 'lucide-react';
+import { Upload, UserPlus } from 'lucide-react';
+import { Modal } from '@/components/ui/modal';
 import { BLOOD_GROUPS, deathRecordSchema, type DeathRecordDto, type PatientDto } from '@smart-hospital/shared';
 import { Field, TextInput, TextArea, Select } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
@@ -77,16 +78,20 @@ export function DeathRecordForm({ open, record, onClose }: { open: boolean; reco
   const saving = create.isPending || update.isPending;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div role="dialog" aria-modal="true" aria-label={isEdit ? 'Edit Death Record' : 'Add Death Record'} className="relative w-full max-w-3xl rounded-md bg-surface shadow-xl">
-        <div className="flex items-center justify-between rounded-t-md bg-primary px-5 py-3 text-primary-fg">
-          <h2 className="text-base font-semibold">{isEdit ? 'Edit Death Record' : 'Add Death Record'}</h2>
-          <button onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm hover:bg-white/10">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="max-h-[75vh] space-y-5 overflow-y-auto p-5">
+    <>
+      <Modal
+        open={open}
+        onClose={onClose}
+        title={isEdit ? 'Edit Death Record' : 'Add Death Record'}
+        size="lg"
+        footer={
+          <>
+            <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button type="button" onClick={submit} loading={saving}>Save</Button>
+          </>
+        }
+      >
+        <div className="space-y-5">
           {error && <p role="alert" className="rounded-sm bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
 
           <div>
@@ -134,13 +139,11 @@ export function DeathRecordForm({ open, record, onClose }: { open: boolean; reco
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="button" onClick={submit} loading={saving}>Save</Button>
-        </div>
-      </div>
+      </Modal>
 
+      {/* Sibling, not a child: each Modal portals to <body> and the scroll lock
+          is ref-counted, so the nested "New Patient" form stacks correctly. */}
       <PatientForm open={newPatientOpen} onClose={() => setNewPatientOpen(false)} onCreated={onPatientCreated} />
-    </div>
+    </>
   );
 }

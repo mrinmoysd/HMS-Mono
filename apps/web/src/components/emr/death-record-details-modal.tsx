@@ -1,6 +1,8 @@
 'use client';
 
-import { Pencil, Printer, X } from 'lucide-react';
+import { Pencil, Printer } from 'lucide-react';
+import { IconButton } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modal';
 import { useDeath } from '@/lib/hooks/use-office';
 import { printDeathRecord } from '@/lib/print';
 
@@ -11,28 +13,25 @@ export function DeathRecordDetailsModal({ id, open, onClose, onEdit }: { id: str
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div role="dialog" aria-modal="true" aria-label="Death Record Details" className="relative z-10 w-full max-w-3xl rounded-md bg-surface shadow-xl">
-        <div className="flex items-center justify-between rounded-t-md bg-primary px-5 py-3 text-primary-fg">
-          <h2 className="text-base font-semibold">Death Record Details</h2>
-          <div className="flex items-center gap-2">
-            {data && (
-              <>
-                <button onClick={() => printDeathRecord(data)} aria-label="Print" className="flex h-8 w-8 items-center justify-center rounded-sm hover:bg-white/10">
-                  <Printer className="h-4 w-4" />
-                </button>
-                <button onClick={onEdit} aria-label="Edit" className="flex h-8 w-8 items-center justify-center rounded-sm hover:bg-white/10">
-                  <Pencil className="h-4 w-4" />
-                </button>
-              </>
-            )}
-            <button onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-sm hover:bg-white/10">
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-
-        <div className="max-h-[75vh] space-y-5 overflow-y-auto p-5">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Death Record Details"
+      size="lg"
+      headerActions={
+        data ? (
+          <>
+            <IconButton label="Print record" tone="primary" onClick={() => printDeathRecord(data)}>
+              <Printer className="h-4 w-4" />
+            </IconButton>
+            <IconButton label="Edit record" tone="primary" onClick={onEdit}>
+              <Pencil className="h-4 w-4" />
+            </IconButton>
+          </>
+        ) : null
+      }
+    >
+      <div className="space-y-5">
           {isLoading || !data ? (
             <p className="py-12 text-center text-sm text-fg-muted">Loading…</p>
           ) : (
@@ -58,9 +57,8 @@ export function DeathRecordDetailsModal({ id, open, onClose, onEdit }: { id: str
               )}
             </div>
           )}
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
