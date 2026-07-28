@@ -5,6 +5,7 @@ import { Search, Wallet } from 'lucide-react';
 import type { InvoiceDto } from '@smart-hospital/shared';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { StatusPill } from '@/components/ui/status-pill';
 import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput, Select } from '@/components/ui/field';
@@ -58,10 +59,10 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Billing</h1>
-        <p className="text-sm text-fg-muted">Invoices across every department · look up by Case ID</p>
-      </div>
+      <PageHeader
+        title="Billing"
+        description="Invoices across every department · look up by Case ID"
+      />
 
       {/* Module shortcuts + Case ID lookup */}
       <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface p-3">

@@ -8,6 +8,9 @@ import type { IpdAdmissionDto, IpdTab } from '@smart-hospital/shared';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Tabs } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { StatusPill } from '@/components/ui/status-pill';
 import { ExportMenu } from '@/components/ui/export-menu';
 import type { ExportTable } from '@/lib/export';
@@ -43,6 +46,8 @@ export default function IpdPage() {
 
   const { data, isLoading, error } = useIpdAdmissions(tab, { search, page, size });
   const discharge = useDischarge();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   function exportTable(): ExportTable {
     const rows = data?.data ?? [];
@@ -71,8 +76,18 @@ export default function IpdPage() {
   }
 
   async function onDischarge(a: IpdAdmissionDto) {
-    if (confirm(`Discharge ${a.patientName} (${a.ipdNo}) and free bed ${a.bedLabel}?`)) {
+    const ok = await confirm({
+      title: `Discharge ${a.patientName}?`,
+      description: `Admission ${a.ipdNo} will be closed and bed ${a.bedLabel} freed.`,
+      confirmLabel: 'Discharge',
+      tone: 'warning',
+    });
+    if (!ok) return;
+    try {
       await discharge.mutateAsync(a.id);
+      toast.success(`${a.patientName} discharged · bed ${a.bedLabel} freed`);
+    } catch (e) {
+      toast.error('Could not discharge patient', { description: (e as Error).message });
     }
   }
 
@@ -133,19 +148,17 @@ export default function IpdPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">IPD – In Patient</h1>
-          <p className="text-sm text-fg-muted">Admit inpatients to beds with credit limit and discharge</p>
-        </div>
-        {canAdd && (
+      <PageHeader
+        title="IPD – In Patient"
+        description="Admit inpatients to beds with credit limit and discharge"
+        actions={canAdd && (
           <Button onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" /> Add Patient
           </Button>
         )}
-      </div>
-
-      <Tabs tabs={TABS} value={tab} onChange={(t) => { setTab(t); setPage(1); }} />
+      >
+        <Tabs tabs={TABS} value={tab} onChange={(t) => { setTab(t); setPage(1); }} />
+      </PageHeader>
 
       <DataTable
         columns={tab === 'discharged' ? dischargedColumns : admittedColumns}

@@ -8,6 +8,7 @@ import type { OpdTab, OpdVisitDto } from '@smart-hospital/shared';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Tabs } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { ExportMenu } from '@/components/ui/export-menu';
 import type { ExportTable } from '@/lib/export';
 import { OpdForm } from './opd-form';
@@ -112,17 +113,15 @@ export default function OpdPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">OPD – Out Patient</h1>
-          <p className="text-sm text-fg-muted">Register outpatient visits with charge capture</p>
-        </div>
-        {canAdd && (
+      <PageHeader
+        title="OPD – Out Patient"
+        description="Register outpatient visits with charge capture"
+        actions={canAdd && (
           <Button onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" /> Add Patient
           </Button>
         )}
-      </div>
+      />
 
       <Tabs
         tabs={TABS}

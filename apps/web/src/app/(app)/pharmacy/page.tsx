@@ -6,6 +6,9 @@ import type { InvoiceDto, MedicineDto } from '@smart-hospital/shared';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Tabs } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { ExportMenu } from '@/components/ui/export-menu';
 import type { ExportTable } from '@/lib/export';
 import { DeptBillForm } from '@/components/dept-bill-form';
@@ -47,6 +50,8 @@ export default function PharmacyPage() {
   const medicines = useMedicines({ search, page, size: 25 });
   const genBill = useGeneratePharmacyBill();
   const deleteMeds = useDeleteMedicines();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   function switchTab(t: Tab) {
     setTab(t);
@@ -120,12 +125,11 @@ export default function PharmacyPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Pharmacy</h1>
-          <p className="text-sm text-fg-muted">Sale bills, medicine catalog, and procurement</p>
-        </div>
-        <div className="flex items-center gap-2">
+      <PageHeader
+        title="Pharmacy"
+        description="Sale bills, medicine catalog, and procurement"
+        actions={
+          <>
           {tab === 'bills' && (
             <>
               <Button variant="secondary" onClick={() => switchTab('medicines')}>
@@ -147,18 +151,19 @@ export default function PharmacyPage() {
               </Button>
             </>
           )}
-        </div>
-      </div>
-
-      <Tabs
-        tabs={[
-          { value: 'bills', label: 'Pharmacy Bill' },
-          { value: 'medicines', label: 'Medicines Stock' },
-          { value: 'purchase', label: 'Purchase' },
-        ]}
-        value={tab}
-        onChange={(t) => switchTab(t as Tab)}
-      />
+          </>
+        }
+      >
+        <Tabs
+          tabs={[
+            { value: 'bills', label: 'Pharmacy Bill' },
+            { value: 'medicines', label: 'Medicines Stock' },
+            { value: 'purchase', label: 'Purchase' },
+          ]}
+          value={tab}
+          onChange={(t) => switchTab(t as Tab)}
+        />
+      </PageHeader>
 
       {tab === 'bills' && (
         <DataTable
@@ -209,9 +214,20 @@ export default function PharmacyPage() {
                   variant="danger"
                   size="sm"
                   onClick={async () => {
-                    if (confirm(`Delete ${selected.size} selected medicine(s)?`)) {
+                    const count = selected.size;
+                    const ok = await confirm({
+                      title: `Delete ${count} medicine${count === 1 ? '' : 's'}?`,
+                      description: 'The selected medicines and their stock records will be removed. This cannot be undone.',
+                      confirmLabel: `Delete ${count}`,
+                      tone: 'danger',
+                    });
+                    if (!ok) return;
+                    try {
                       await deleteMeds.mutateAsync({ ids: [...selected] });
                       setSelected(new Set());
+                      toast.success(`${count} medicine${count === 1 ? '' : 's'} deleted`);
+                    } catch (e) {
+                      toast.error('Could not delete medicines', { description: (e as Error).message });
                     }
                   }}
                 >

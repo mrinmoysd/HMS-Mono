@@ -7,6 +7,7 @@ import type { AppointmentDto, AppointmentTab } from '@smart-hospital/shared';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Tabs } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { StatusPill } from '@/components/ui/status-pill';
 import { ExportMenu } from '@/components/ui/export-menu';
 import type { ExportTable } from '@/lib/export';
@@ -81,19 +82,19 @@ export default function AppointmentPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-semibold">Appointments</h1>
-          <p className="text-sm text-fg-muted">Book, queue and track appointments per doctor</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link href="/appointment/doctor-wise" className="flex h-9 items-center gap-1.5 rounded-sm border border-border px-3 text-sm hover:bg-border/40"><Users className="h-4 w-4" /> Doctor Wise</Link>
-          <Link href="/appointment/queue" className="flex h-9 items-center gap-1.5 rounded-sm border border-border px-3 text-sm hover:bg-border/40"><ListOrdered className="h-4 w-4" /> Queue</Link>
-          {canAdd && <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Add Appointment</Button>}
-        </div>
-      </div>
-
-      <Tabs tabs={TABS} value={tab} onChange={(t) => { setTab(t); setPage(1); }} />
+      <PageHeader
+        title="Appointments"
+        description="Book, queue and track appointments per doctor"
+        actions={
+          <>
+            <Link href="/appointment/doctor-wise" className="flex h-control items-center gap-1.5 rounded-sm border border-line px-3 text-sm transition hover:bg-surface-sunken"><Users className="h-4 w-4" /> Doctor Wise</Link>
+            <Link href="/appointment/queue" className="flex h-control items-center gap-1.5 rounded-sm border border-line px-3 text-sm transition hover:bg-surface-sunken"><ListOrdered className="h-4 w-4" /> Queue</Link>
+            {canAdd && <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Add Appointment</Button>}
+          </>
+        }
+      >
+        <Tabs tabs={TABS} value={tab} onChange={(t) => { setTab(t); setPage(1); }} />
+      </PageHeader>
 
       <DataTable
         columns={columns}
