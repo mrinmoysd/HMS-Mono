@@ -1,0 +1,86 @@
+/**
+ * Canonical list of application modules (sidebar-level features).
+ * Single source of truth shared by API guards and the web sidebar/UI.
+ * Derived from FRD §2.31 and docs/PERMISSION_MATRIX.md.
+ */
+export const MODULES = [
+  'dashboard',
+  'patient',
+  'billing',
+  'appointment',
+  'opd',
+  'ipd',
+  'pharmacy',
+  'pathology',
+  'radiology',
+  'blood_bank',
+  'ambulance',
+  'front_office',
+  'birth_death',
+  'multi_branch',
+  'human_resource',
+  'qr_attendance',
+  'duty_roster',
+  'annual_calendar',
+  'referral',
+  'tpa',
+  'finance',
+  'messaging',
+  'inventory',
+  'download_center',
+  'certificate',
+  'front_cms',
+  'live_consultation',
+  'reports',
+  'setup',
+] as const;
+
+export type ModuleKey = (typeof MODULES)[number];
+
+/** Human-readable labels + sidebar grouping (see docs/FRONTEND_DESIGN.md §3.1). */
+export const MODULE_META: Record<ModuleKey, { label: string; group: string }> = {
+  dashboard: { label: 'Dashboard', group: 'Overview' },
+  patient: { label: 'Patient', group: 'Patients & Care' },
+  appointment: { label: 'Appointment', group: 'Patients & Care' },
+  opd: { label: 'OPD – Out Patient', group: 'Patients & Care' },
+  ipd: { label: 'IPD – In Patient', group: 'Patients & Care' },
+  pathology: { label: 'Pathology', group: 'Diagnostics' },
+  radiology: { label: 'Radiology', group: 'Diagnostics' },
+  blood_bank: { label: 'Blood Bank', group: 'Diagnostics' },
+  pharmacy: { label: 'Pharmacy', group: 'Pharmacy & Inventory' },
+  inventory: { label: 'Inventory', group: 'Pharmacy & Inventory' },
+  billing: { label: 'Billing', group: 'Billing & Finance' },
+  finance: { label: 'Finance', group: 'Billing & Finance' },
+  tpa: { label: 'TPA Management', group: 'Billing & Finance' },
+  referral: { label: 'Referral', group: 'Billing & Finance' },
+  ambulance: { label: 'Ambulance', group: 'Operations' },
+  front_office: { label: 'Front Office', group: 'Operations' },
+  birth_death: { label: 'Birth & Death Record', group: 'Operations' },
+  human_resource: { label: 'Human Resource', group: 'Workforce' },
+  qr_attendance: { label: 'QR Code Attendance', group: 'Workforce' },
+  duty_roster: { label: 'Duty Roster', group: 'Workforce' },
+  annual_calendar: { label: 'Annual Calendar', group: 'Workforce' },
+  messaging: { label: 'Messaging', group: 'Communication' },
+  download_center: { label: 'Download Center', group: 'Communication' },
+  live_consultation: { label: 'Live Consultation', group: 'Communication' },
+  multi_branch: { label: 'Multi Branch', group: 'Multi-Branch' },
+  front_cms: { label: 'Front CMS', group: 'Content' },
+  certificate: { label: 'Certificate', group: 'Content' },
+  reports: { label: 'Reports', group: 'Insights' },
+  setup: { label: 'Setup / Settings', group: 'System' },
+};
+
+export const SIDEBAR_GROUPS = [
+  'Overview',
+  'Patients & Care',
+  'Diagnostics',
+  'Pharmacy & Inventory',
+  'Billing & Finance',
+  'Operations',
+  'Workforce',
+  'Communication',
+  'Multi-Branch',
+  'Content',
+  'Insights',
+  'System',
+] as const;

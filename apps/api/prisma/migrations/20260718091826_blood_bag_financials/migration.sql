@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "blood_bag" ADD COLUMN     "discountPct" DECIMAL(5,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "netAmount" DECIMAL(14,2),
+ADD COLUMN     "paidAmount" DECIMAL(14,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "paymentMode" TEXT,
+ADD COLUMN     "taxPct" DECIMAL(5,2) NOT NULL DEFAULT 0;

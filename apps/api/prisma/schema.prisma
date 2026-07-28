@@ -1,0 +1,2387 @@
+// Smart Hospital — Prisma schema
+// Phase 0: Identity, RBAC, Branch, Audit, System. Later phases extend this file
+// per docs/DATA_MODEL.md (each bounded context added in its phase).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Branch (multi-branch tenant dimension)
+// ─────────────────────────────────────────────────────────────
+model Branch {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  code      String   @unique
+  url       String?
+  isHome    Boolean  @default(false)
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  users     User[]
+  auditLogs AuditLog[]
+
+  @@map("branch")
+}
+
+// ─────────────────────────────────────────────────────────────
+// RBAC: Role, Permission, RolePermission
+// ─────────────────────────────────────────────────────────────
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  slug        String   @unique // e.g. super_admin, doctor
+  label       String
+  isSystem    Boolean  @default(true)
+  isProtected Boolean  @default(false) // Super Admin — Admin cannot edit its matrix
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users           User[]
+  rolePermissions RolePermission[]
+
+  @@map("role")
+}
+
+model Permission {
+  id      String @id @default(uuid()) @db.Uuid
+  module  String // ModuleKey from @smart-hospital/shared
+  action  String // view | add | edit | delete
+  label   String
+
+  rolePermissions RolePermission[]
+
+  @@unique([module, action])
+  @@map("permission")
+}
+
+model RolePermission {
+  id           String  @id @default(uuid()) @db.Uuid
+  roleId       String  @db.Uuid
+  permissionId String  @db.Uuid
+  allowed      Boolean @default(true)
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@map("role_permission")
+}
+
+// ─────────────────────────────────────────────────────────────
+// User (staff + patient accounts)
+// ─────────────────────────────────────────────────────────────
+enum UserType {
+  staff
+  patient
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  branchId     String   @db.Uuid
+  roleId       String   @db.Uuid
+  username     String   @unique
+  email        String?  @unique
+  phone        String?
+  name         String
+  passwordHash String
+  type         UserType @default(staff)
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  branch              Branch        @relation(fields: [branchId], references: [id])
+  role                Role          @relation(fields: [roleId], references: [id])
+  auditLogs           AuditLog[]
+  doctorAppointments     Appointment[]  @relation("DoctorAppointments")
+  consultantOpdVisits    OpdVisit[]     @relation("ConsultantOpdVisits")
+  consultantIpdAdmissions IpdAdmission[] @relation("ConsultantIpdAdmissions")
+  staffProfile           Staff?         @relation("StaffProfile")
+  patientProfile         Patient?       @relation("PatientLogin")
+
+  @@index([branchId, deletedAt])
+  @@map("user")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Audit trail (FRD §2.28 — User Log / Audit Trail Report)
+// ─────────────────────────────────────────────────────────────
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String?  @db.Uuid
+  userId    String?  @db.Uuid
+  action    String   // e.g. create, update, delete, login
+  entity    String   // table / aggregate name
+  entityId  String?
+  before    Json?
+  after     Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  branch Branch? @relation(fields: [branchId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id])
+
+  @@index([branchId, createdAt])
+  @@index([entity, entityId])
+  @@map("audit_log")
+}
+
+// ─────────────────────────────────────────────────────────────
+// System settings & languages (Setup → General / Languages)
+// ─────────────────────────────────────────────────────────────
+model SystemSetting {
+  id        String   @id @default(uuid()) @db.Uuid
+  scope     String   @default("global") // global | branch:<id>
+  key       String
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@unique([scope, key])
+  @@map("system_setting")
+}
+
+model Language {
+  id       String  @id @default(uuid()) @db.Uuid
+  code     String  @unique // en, hi, es, id, pt, ar, fr, tr, ru
+  name     String
+  isActive Boolean @default(true)
+  isRtl    Boolean @default(false)
+
+  @@map("language")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase 1 — Patient, Case, TPA
+// ─────────────────────────────────────────────────────────────
+enum Gender {
+  male
+  female
+  other
+}
+
+model Tpa {
+  id            String   @id @default(uuid()) @db.Uuid
+  branchId      String   @db.Uuid
+  name          String
+  code          String?
+  phone         String?
+  address       String?
+  contactPerson String?
+  contactPhone  String?
+  createdById   String?  @db.Uuid
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  patients Patient[]
+  medicineBatchRates MedicineBatchTpaRate[]
+  chargeSchedules ChargeSchedule[]
+
+  @@index([branchId, deletedAt])
+  @@map("tpa")
+}
+
+model Patient {
+  id               String    @id @default(uuid()) @db.Uuid
+  branchId         String    @db.Uuid
+  patientNo        String
+  name             String
+  guardianName     String?
+  gender           Gender?
+  dob              DateTime?
+  age              String
+  bloodGroup       String?
+  maritalStatus    String?
+  photoUrl         String?
+  phone            String?
+  phoneNormalized  String?   // digits-only match key for shared-number lookup
+  email            String?
+  address          String?
+  allergies        String?
+  prevMedicalIssue String?
+  remarks          String?
+  tpaId            String?   @db.Uuid
+  tpaIdNo          String?
+  tpaValidity      DateTime?
+  nationalId       String?
+  alternateNo      String?
+  userId           String?   @unique @db.Uuid // portal login account (if registered)
+  isDisabled       Boolean   @default(false)
+  isDeceased       Boolean   @default(false)
+  customFields     Json      @default("{}")
+  createdById      String?   @db.Uuid
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  tpa            Tpa?            @relation(fields: [tpaId], references: [id])
+  user           User?           @relation("PatientLogin", fields: [userId], references: [id])
+  cases          PatientCase[]
+  invoices       Invoice[]
+  appointments   Appointment[]
+  opdVisits      OpdVisit[]
+  ipdAdmissions  IpdAdmission[]
+  vitalReadings  VitalReading[]
+  findingRecords FindingRecord[]
+  symptomRecords SymptomRecord[]
+  timelineEntries TimelineEntry[]
+  labInvestigations LabInvestigation[]
+  prescriptions  Prescription[]
+  medicationDoses MedicationDose[]
+  operationRecords OperationRecord[]
+  liveConsultations LiveConsultation[]
+  nurseNotes NurseNote[]
+  consultantRegisters ConsultantRegister[]
+
+  @@unique([branchId, patientNo])
+  @@index([branchId, deletedAt, createdAt])
+  @@index([branchId, name])
+  @@index([branchId, phoneNormalized])
+  @@map("patient")
+}
+
+model PatientCase {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  patientId String   @db.Uuid
+  caseNo    String   // "Case ID" — links appointment/OPD/IPD/bills (later phases)
+  type      String   @default("general") // appointment | opd | ipd | general
+  status    String   @default("open")
+  openedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  patient       Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  invoices      Invoice[]
+  appointments  Appointment[]
+  opdVisits     OpdVisit[]
+  ipdAdmissions IpdAdmission[]
+
+  @@unique([branchId, caseNo])
+  @@index([patientId])
+  @@map("patient_case")
+}
+
+/// Per-branch, per-prefix monotonic counter for human-readable IDs (patient no,
+/// case no, bill no…). Prefixes are configurable in Setup → Prefix Setting.
+model SequenceCounter {
+  id       String @id @default(uuid()) @db.Uuid
+  branchId String @db.Uuid
+  key      String // e.g. "patient", "case"
+  prefix   String @default("")
+  next     Int    @default(1)
+
+  @@unique([branchId, key])
+  @@map("sequence_counter")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase 1 — Charge engine masters (Setup → Hospital Charges).
+// Shared by every department's billing in later phases.
+// ─────────────────────────────────────────────────────────────
+model ChargeCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  charges Charge[]
+
+  @@index([branchId, deletedAt])
+  @@map("charge_category")
+}
+
+model ChargeType {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  modules   String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  charges Charge[]
+
+  @@index([branchId, deletedAt])
+  @@map("charge_type")
+}
+
+model TaxCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  percent   Decimal  @default(0) @db.Decimal(5, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  charges Charge[]
+
+  @@index([branchId, deletedAt])
+  @@map("tax_category")
+}
+
+model UnitType {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  charges Charge[]
+
+  @@index([branchId, deletedAt])
+  @@map("unit_type")
+}
+
+model Charge {
+  id             String   @id @default(uuid()) @db.Uuid
+  branchId       String   @db.Uuid
+  name           String
+  categoryId     String?  @db.Uuid
+  typeId         String?  @db.Uuid
+  unitId         String?  @db.Uuid
+  taxCategoryId  String?  @db.Uuid
+  standardCharge Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  category    ChargeCategory?   @relation(fields: [categoryId], references: [id])
+  type        ChargeType?       @relation(fields: [typeId], references: [id])
+  unit        UnitType?         @relation(fields: [unitId], references: [id])
+  taxCategory TaxCategory?      @relation(fields: [taxCategoryId], references: [id])
+  schedules   ChargeSchedule[]
+  tests       DiagnosticTest[]
+  bloodBags   BloodBag[]
+  ambulanceCalls AmbulanceCall[]
+
+  @@index([branchId, deletedAt, createdAt])
+  @@map("charge")
+}
+
+/// Per-TPA price override for a Charge (Setup → Hospital Charges → Charges
+/// Details → "Scheduled Charges For TPA"). Absence of a row = falls back to
+/// Charge.standardCharge.
+model ChargeSchedule {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  chargeId  String   @db.Uuid
+  tpaId     String   @db.Uuid
+  amount    Decimal  @db.Decimal(14, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  charge Charge @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+  tpa    Tpa    @relation(fields: [tpaId], references: [id], onDelete: Cascade)
+
+  @@unique([chargeId, tpaId])
+  @@index([branchId])
+  @@map("charge_schedule")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase 1 — Custom Fields engine (Setup → Custom Fields).
+// A definition attaches typed extra fields to one of 22 entities; values are
+// stored inline on each entity's `customFields` JSONB column.
+// ─────────────────────────────────────────────────────────────
+model CustomField {
+  id                 String   @id @default(uuid()) @db.Uuid
+  branchId           String   @db.Uuid
+  entity             String   // patient | appointment | opd | ipd | staff | ...
+  label              String
+  key                String   // stable machine key used in the JSONB map
+  fieldType          String   // text | textarea | number | date | datetime | select | multiselect | checkbox | color | hyperlink
+  options            Json     @default("[]") // for select/multiselect
+  gridWidth          Int      @default(6) // 1..12
+  required           Boolean  @default(false)
+  visibleTable       Boolean  @default(false)
+  visiblePrint       Boolean  @default(false)
+  visibleReport      Boolean  @default(false)
+  visiblePatientPanel Boolean @default(false)
+  sortOrder          Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
+
+  @@unique([branchId, entity, key])
+  @@index([branchId, entity, deletedAt])
+  @@map("custom_field")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase 1 — Print templates (Setup → Print Header/Footer).
+// Drives certificates, ID cards, bills, discharge cards, etc.
+// ─────────────────────────────────────────────────────────────
+model PrintTemplate {
+  id         String   @id @default(uuid()) @db.Uuid
+  branchId   String   @db.Uuid
+  kind       String   // certificate | patient_id_card | staff_id_card | ...
+  name       String
+  headerHtml String?
+  footerHtml String?
+  bodyHtml   String   @default("")
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+
+  @@index([branchId, kind, deletedAt])
+  @@map("print_template")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase 2 — Appointments, OPD, and the shared Invoice engine.
+// ─────────────────────────────────────────────────────────────
+
+/// The shared billing document. Every clinical department (OPD, IPD, pharmacy,
+/// pathology, radiology, blood bank, ambulance) generates one of these via the
+/// InvoiceService. `module` records which department produced it.
+model Invoice {
+  id          String   @id @default(uuid()) @db.Uuid
+  branchId    String   @db.Uuid
+  caseId      String?  @db.Uuid
+  patientId   String   @db.Uuid
+  billNo      String
+  module      String   // opd | ipd | pharmacy | pathology | radiology | blood | ambulance | appointment
+  billDate    DateTime @default(now())
+  subtotal    Decimal  @default(0) @db.Decimal(14, 2)
+  discount    Decimal  @default(0) @db.Decimal(14, 2)
+  tax         Decimal  @default(0) @db.Decimal(14, 2)
+  netAmount   Decimal  @default(0) @db.Decimal(14, 2)
+  paid        Decimal  @default(0) @db.Decimal(14, 2)
+  refund      Decimal  @default(0) @db.Decimal(14, 2)
+  balance     Decimal  @default(0) @db.Decimal(14, 2)
+  status      String   @default("unpaid") // unpaid | partial | paid
+  tpaId       String?  @db.Uuid
+  consultantId String? @db.Uuid
+  referenceDoctor String?
+  prescriptionNo  String?
+  note        String?
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  patient   Patient       @relation(fields: [patientId], references: [id])
+  case      PatientCase?  @relation(fields: [caseId], references: [id])
+  items     InvoiceItem[]
+  payments  Payment[]
+  opdVisits OpdVisit[]    @relation("OpdInvoice")
+
+  @@unique([branchId, billNo])
+  @@index([branchId, module, deletedAt, createdAt])
+  @@index([caseId])
+  @@map("invoice")
+}
+
+model InvoiceItem {
+  id             String  @id @default(uuid()) @db.Uuid
+  invoiceId      String  @db.Uuid
+  chargeId       String? @db.Uuid
+  name           String
+  standardCharge Decimal @default(0) @db.Decimal(14, 2)
+  appliedCharge  Decimal @default(0) @db.Decimal(14, 2)
+  qty            Int     @default(1)
+  discountPct    Decimal @default(0) @db.Decimal(5, 2)
+  taxPct         Decimal @default(0) @db.Decimal(5, 2)
+  amount         Decimal @default(0) @db.Decimal(14, 2)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_item")
+}
+
+model Payment {
+  id          String   @id @default(uuid()) @db.Uuid
+  invoiceId   String   @db.Uuid
+  amount      Decimal  @db.Decimal(14, 2)
+  mode        String   @default("cash") // cash | card | upi | tpa | cheque
+  reference   String?
+  paidAt      DateTime @default(now())
+  createdById String?  @db.Uuid
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("payment")
+}
+
+model Appointment {
+  id               String   @id @default(uuid()) @db.Uuid
+  branchId         String   @db.Uuid
+  apptNo           String
+  patientId        String   @db.Uuid
+  caseId           String?  @db.Uuid
+  doctorId         String   @db.Uuid
+  apptDate         DateTime
+  shift            String?
+  slot             String?
+  fees             Decimal  @default(0) @db.Decimal(14, 2)
+  discountPct      Decimal  @default(0) @db.Decimal(5, 2)
+  paid             Decimal  @default(0) @db.Decimal(14, 2)
+  priority         String   @default("normal") // normal | urgent | vip
+  source           String?
+  paymentMode      String   @default("cash")
+  liveConsult      Boolean  @default(false)
+  status           String   @default("pending") // pending | approved | cancelled | completed
+  message          String?
+  alternateAddress String?
+  queueOrder       Int?
+  createdById      String?  @db.Uuid
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
+
+  patient Patient     @relation(fields: [patientId], references: [id])
+  case    PatientCase? @relation(fields: [caseId], references: [id])
+  doctor  User        @relation("DoctorAppointments", fields: [doctorId], references: [id])
+
+  @@unique([branchId, apptNo])
+  @@index([branchId, apptDate, deletedAt])
+  @@index([doctorId, apptDate])
+  @@map("appointment")
+}
+
+model OpdVisit {
+  id             String   @id @default(uuid()) @db.Uuid
+  branchId       String   @db.Uuid
+  opdNo          String
+  patientId      String   @db.Uuid
+  caseId         String?  @db.Uuid
+  consultantId   String   @db.Uuid
+  appointmentDate DateTime
+  symptomType    String?
+  symptoms       String?
+  symptomDescription String?
+  icd10Group     String?
+  icd10Diagnosis String?
+  knownAllergies String?
+  previousMedicalIssue String?
+  note           String?
+  isAntenatal    Boolean  @default(false)
+  casualty       Boolean  @default(false)
+  oldPatient     Boolean  @default(false)
+  applyTpa       Boolean  @default(false)
+  liveConsult    Boolean  @default(false)
+  reference      String?
+  invoiceId      String?  @db.Uuid
+  customFields   Json     @default("{}")
+  createdById    String?  @db.Uuid
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  patient    Patient      @relation(fields: [patientId], references: [id])
+  case       PatientCase? @relation(fields: [caseId], references: [id])
+  consultant User         @relation("ConsultantOpdVisits", fields: [consultantId], references: [id])
+  invoice    Invoice?     @relation("OpdInvoice", fields: [invoiceId], references: [id])
+
+  @@unique([branchId, opdNo])
+  @@index([branchId, appointmentDate, deletedAt])
+  @@map("opd_visit")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase 3 — Beds & IPD (Setup → Bed; FRD §2.4).
+// ─────────────────────────────────────────────────────────────
+model Floor {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  bedGroups        BedGroup[]
+  rosterAssignments RosterAssignment[]
+
+  @@index([branchId, deletedAt])
+  @@map("floor")
+}
+
+model BedType {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  beds Bed[]
+
+  @@index([branchId, deletedAt])
+  @@map("bed_type")
+}
+
+model BedGroup {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  floorId   String?  @db.Uuid
+  name      String
+  color     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  floor Floor? @relation(fields: [floorId], references: [id])
+  beds  Bed[]
+
+  @@index([branchId, deletedAt])
+  @@map("bed_group")
+}
+
+model Bed {
+  id         String   @id @default(uuid()) @db.Uuid
+  branchId   String   @db.Uuid
+  bedGroupId String   @db.Uuid
+  bedTypeId  String?  @db.Uuid
+  bedNo      String
+  status     String   @default("available") // available | allotted
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+
+  bedGroup   BedGroup       @relation(fields: [bedGroupId], references: [id])
+  bedType    BedType?       @relation(fields: [bedTypeId], references: [id])
+  admissions IpdAdmission[]
+
+  @@index([branchId, deletedAt])
+  @@index([branchId, status])
+  @@map("bed")
+}
+
+model IpdAdmission {
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
+  ipdNo         String
+  patientId     String    @db.Uuid
+  caseId        String?   @db.Uuid
+  consultantId  String    @db.Uuid
+  admissionDate DateTime
+  bedId         String    @db.Uuid
+  creditLimit   Decimal   @default(20000) @db.Decimal(14, 2)
+  isAntenatal   Boolean   @default(false)
+  casualty      Boolean   @default(false)
+  oldPatient    Boolean   @default(false)
+  applyTpa      Boolean   @default(false)
+  reference     String?
+  symptomType   String?
+  symptoms      String?
+  symptomDescription String?
+  icd10Group    String?
+  icd10Diagnosis String?
+  knownAllergies String?
+  previousMedicalIssue String?
+  note          String?
+  liveConsult   Boolean   @default(false)
+  dischargeDate DateTime?
+  status        String    @default("admitted") // admitted | discharged
+  customFields  Json      @default("{}")
+  createdById   String?   @db.Uuid
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  patient    Patient      @relation(fields: [patientId], references: [id])
+  case       PatientCase? @relation(fields: [caseId], references: [id])
+  consultant User         @relation("ConsultantIpdAdmissions", fields: [consultantId], references: [id])
+  bed        Bed          @relation(fields: [bedId], references: [id])
+
+  @@unique([branchId, ipdNo])
+  @@index([branchId, status, deletedAt])
+  @@map("ipd_admission")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase 4 — Diagnostics & Pharmacy. Bills are Invoices tagged by
+// module (pharmacy | pathology | radiology | blood), generated via
+// the shared InvoiceService.
+// ─────────────────────────────────────────────────────────────
+model MedicineCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  medicines Medicine[]
+  dosages   MedicineDosage[]
+
+  @@index([branchId, deletedAt])
+  @@map("medicine_category")
+}
+
+model PharmaCompany {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  medicines Medicine[]
+
+  @@index([branchId, deletedAt])
+  @@map("pharma_company")
+}
+
+model MedicineGroup {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  medicines Medicine[]
+
+  @@index([branchId, deletedAt])
+  @@map("medicine_group")
+}
+
+model PharmaUnit {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  medicines Medicine[]
+  dosages   MedicineDosage[]
+
+  @@index([branchId, deletedAt])
+  @@map("pharma_unit")
+}
+
+model DosageInterval {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@index([branchId, deletedAt])
+  @@map("dosage_interval")
+}
+
+model DosageDuration {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@index([branchId, deletedAt])
+  @@map("dosage_duration")
+}
+
+model PharmaSupplier {
+  id                 String   @id @default(uuid()) @db.Uuid
+  branchId           String   @db.Uuid
+  name               String
+  contact            String?
+  contactPerson      String?
+  contactPhone       String?
+  drugLicenseNumber  String?
+  address            String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
+
+  purchases MedicinePurchase[]
+
+  @@index([branchId, deletedAt])
+  @@map("pharma_supplier")
+}
+
+/// Category + Dosage value + Unit — a quick-pick preset (e.g. "Fever" · "500mg" ·
+/// "tablet") surfaced later in the C4 Prescription builder.
+model MedicineDosage {
+  id         String   @id @default(uuid()) @db.Uuid
+  branchId   String   @db.Uuid
+  categoryId String?  @db.Uuid
+  dosage     String
+  unitId     String?  @db.Uuid
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+
+  category MedicineCategory? @relation(fields: [categoryId], references: [id])
+  unit     PharmaUnit?       @relation(fields: [unitId], references: [id])
+
+  @@index([branchId, deletedAt])
+  @@map("medicine_dosage")
+}
+
+model Medicine {
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
+  name          String
+  categoryId    String?   @db.Uuid
+  company       String?
+  unit          String?
+  companyId     String?   @db.Uuid
+  groupId       String?   @db.Uuid
+  unitId        String?   @db.Uuid
+  salePrice     Decimal   @default(0) @db.Decimal(14, 2)
+  purchasePrice Decimal   @default(0) @db.Decimal(14, 2)
+  stock         Int       @default(0)
+  expiry        DateTime?
+  composition   String?
+  minLevel      Int?
+  reorderLevel  Int?
+  taxPercent    Decimal?  @db.Decimal(6, 2)
+  boxPacking    String?
+  vatAc         String?
+  rackNumber    String?
+  note          String?
+  photoUrl      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  category      MedicineCategory? @relation(fields: [categoryId], references: [id])
+  companyRef    PharmaCompany?    @relation(fields: [companyId], references: [id])
+  group         MedicineGroup?    @relation(fields: [groupId], references: [id])
+  unitRef       PharmaUnit?       @relation(fields: [unitId], references: [id])
+  purchaseItems MedicinePurchaseItem[]
+  badStocks     MedicineBadStock[]
+
+  @@index([branchId, deletedAt, createdAt])
+  @@index([branchId, expiry])
+  @@map("medicine")
+}
+
+model MedicinePurchase {
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
+  purchaseNo    String
+  billNo        String?
+  purchaseDate  DateTime  @default(now())
+  supplierId    String?   @db.Uuid
+  note          String?
+  attachmentUrl String?
+  subtotal      Decimal   @default(0) @db.Decimal(14, 2)
+  discountPct   Decimal   @default(0) @db.Decimal(6, 2)
+  discount      Decimal   @default(0) @db.Decimal(14, 2)
+  tax           Decimal   @default(0) @db.Decimal(14, 2)
+  netAmount     Decimal   @default(0) @db.Decimal(14, 2)
+  paymentMode   String?
+  paymentAmount Decimal   @default(0) @db.Decimal(14, 2)
+  paymentNote   String?
+  createdById   String?   @db.Uuid
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  supplier PharmaSupplier?        @relation(fields: [supplierId], references: [id])
+  items    MedicinePurchaseItem[]
+
+  @@unique([branchId, purchaseNo])
+  @@index([branchId, deletedAt, purchaseDate])
+  @@map("medicine_purchase")
+}
+
+model MedicinePurchaseItem {
+  id             String   @id @default(uuid()) @db.Uuid
+  branchId       String   @db.Uuid
+  purchaseId     String   @db.Uuid
+  medicineId     String   @db.Uuid
+  batchNo        String
+  expiryMonth    DateTime
+  mrp            Decimal  @default(0) @db.Decimal(14, 2)
+  batchAmount    Decimal  @default(0) @db.Decimal(14, 2)
+  salePrice      Decimal  @default(0) @db.Decimal(14, 2)
+  packingQty     Int?
+  quantity       Int      @default(0)
+  purchasePrice  Decimal  @default(0) @db.Decimal(14, 2)
+  taxPercent     Decimal  @default(0) @db.Decimal(6, 2)
+  amount         Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  purchase   MedicinePurchase       @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  medicine   Medicine               @relation(fields: [medicineId], references: [id])
+  badStocks  MedicineBadStock[]
+  tpaRates   MedicineBatchTpaRate[]
+
+  @@index([branchId, medicineId])
+  @@index([purchaseId])
+  @@map("medicine_purchase_item")
+}
+
+model MedicineBadStock {
+  id            String   @id @default(uuid()) @db.Uuid
+  branchId      String   @db.Uuid
+  medicineId    String   @db.Uuid
+  purchaseItemId String? @db.Uuid
+  batchNo       String?
+  expiryDate    DateTime?
+  outwardDate   DateTime @default(now())
+  qty           Int
+  note          String?
+  createdById   String?  @db.Uuid
+  createdAt     DateTime @default(now())
+
+  medicine     Medicine              @relation(fields: [medicineId], references: [id])
+  purchaseItem MedicinePurchaseItem? @relation(fields: [purchaseItemId], references: [id])
+
+  @@index([branchId, medicineId])
+  @@map("medicine_bad_stock")
+}
+
+model MedicineBatchTpaRate {
+  id             String   @id @default(uuid()) @db.Uuid
+  branchId       String   @db.Uuid
+  purchaseItemId String   @db.Uuid
+  tpaId          String   @db.Uuid
+  rate           Decimal  @db.Decimal(14, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  purchaseItem MedicinePurchaseItem @relation(fields: [purchaseItemId], references: [id], onDelete: Cascade)
+  tpa          Tpa                  @relation(fields: [tpaId], references: [id], onDelete: Cascade)
+
+  @@unique([purchaseItemId, tpaId])
+  @@index([branchId])
+  @@map("medicine_batch_tpa_rate")
+}
+
+/// Shared by pathology & radiology, distinguished by `modality`.
+model DiagnosticCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  modality  String   // pathology | radiology
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  tests DiagnosticTest[]
+
+  @@index([branchId, modality, deletedAt])
+  @@map("diagnostic_category")
+}
+
+model DiagnosticUnit {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  modality  String   // pathology | radiology
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  tests DiagnosticTest[]
+
+  @@index([branchId, modality, deletedAt])
+  @@map("diagnostic_unit")
+}
+
+model DiagnosticTest {
+  id             String   @id @default(uuid()) @db.Uuid
+  branchId       String   @db.Uuid
+  modality       String   // pathology | radiology
+  categoryId     String?  @db.Uuid
+  name           String
+  shortName      String?
+  testType       String?
+  subCategory    String?
+  method         String?
+  reportDays     Int?     @default(1)
+  chargeId       String?  @db.Uuid
+  unitId         String?  @db.Uuid
+  referenceRange String?
+  refMin         Decimal? @db.Decimal(10, 2)
+  refMax         Decimal? @db.Decimal(10, 2)
+  description    String?
+  charge         Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  category   DiagnosticCategory?      @relation(fields: [categoryId], references: [id])
+  unit       DiagnosticUnit?          @relation(fields: [unitId], references: [id])
+  chargeRef  Charge?                  @relation(fields: [chargeId], references: [id])
+  parameters DiagnosticTestParameter[]
+
+  @@index([branchId, modality, deletedAt, createdAt])
+  @@map("diagnostic_test")
+}
+
+/// Repeatable parameter row for a pathology/radiology test (Setup "Add Pathology Test" —
+/// Test Parameter Name / Reference Range / Unit, multiple per test).
+model DiagnosticTestParameter {
+  id             String   @id @default(uuid()) @db.Uuid
+  testId         String   @db.Uuid
+  parameterName  String
+  referenceRange String?
+  unit           String?
+  order          Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  test DiagnosticTest @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@index([testId])
+  @@map("diagnostic_test_parameter")
+}
+
+model BloodProduct {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  bloodGroup String? // B+, A+, ... (null for pure components)
+  component String?  // Cryo, Red Cells, Plasma, Platelets, ...
+  rate      Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  stock  BloodStock?
+  issues BloodIssue[]
+
+  @@index([branchId, deletedAt])
+  @@map("blood_product")
+}
+
+model BloodStock {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  productId String   @unique @db.Uuid
+  units     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  product BloodProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([branchId])
+  @@map("blood_stock")
+}
+
+model BloodDonor {
+  id           String    @id @default(uuid()) @db.Uuid
+  branchId     String    @db.Uuid
+  name         String
+  bloodGroup   String
+  phone        String?
+  age          String?
+  gender       String?
+  fatherName   String?
+  address      String?
+  dob          DateTime?
+  lastDonation DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  issues BloodIssue[]
+  bags   BloodBag[]
+
+  @@index([branchId, deletedAt])
+  @@map("blood_donor")
+}
+
+/// A real inventory unit: either a whole-blood bag collected from a donor
+/// (component = null) or a component split off from one via `sourceBagId`
+/// (component = "Platelets" | "Plasma" | "Cryo" | "Red Cells" | "White Cells & Granulocytes").
+/// Charge/payment fields are only populated for whole-blood bags — splitting
+/// into components carries no separate charge in the demo product.
+model BloodBag {
+  id             String    @id @default(uuid()) @db.Uuid
+  branchId       String    @db.Uuid
+  donorId        String?   @db.Uuid
+  sourceBagId    String?   @db.Uuid
+  bagNo          String
+  bloodGroup     String
+  component      String?
+  volume         String?
+  unitType       String?
+  lot            String?
+  institution    String?
+  donateDate     DateTime?
+  chargeId       String?   @db.Uuid
+  standardCharge Decimal?  @db.Decimal(14, 2)
+  discountPct    Decimal   @default(0) @db.Decimal(5, 2)
+  taxPct         Decimal   @default(0) @db.Decimal(5, 2)
+  netAmount      Decimal?  @db.Decimal(14, 2)
+  paidAmount     Decimal   @default(0) @db.Decimal(14, 2)
+  paymentMode    String?
+  note           String?
+  status         String    @default("available") // available | issued
+  createdById    String?   @db.Uuid
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  donor      BloodDonor? @relation(fields: [donorId], references: [id])
+  sourceBag  BloodBag?   @relation("BagComponents", fields: [sourceBagId], references: [id])
+  components BloodBag[]  @relation("BagComponents")
+  charge     Charge?     @relation(fields: [chargeId], references: [id])
+  issues     BloodIssue[]
+
+  @@index([branchId, bloodGroup, component, status, deletedAt])
+  @@map("blood_bag")
+}
+
+model BloodIssue {
+  id            String   @id @default(uuid()) @db.Uuid
+  branchId      String   @db.Uuid
+  productId     String?  @db.Uuid
+  bagId         String?  @db.Uuid
+  donorId       String?  @db.Uuid
+  patientId     String?  @db.Uuid
+  invoiceId     String?  @db.Uuid
+  type          String   @default("blood") // blood | component
+  units         Int      @default(1)
+  technician    String?
+  note          String?
+  bloodQty      String?
+  issuedAt      DateTime @default(now())
+  createdById   String?  @db.Uuid
+  createdAt     DateTime @default(now())
+
+  product BloodProduct? @relation(fields: [productId], references: [id])
+  bag     BloodBag?     @relation(fields: [bagId], references: [id])
+  donor   BloodDonor?   @relation(fields: [donorId], references: [id])
+
+  @@index([branchId, type, createdAt])
+  @@map("blood_issue")
+}
+
+model OperationCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  operations Operation[]
+
+  @@index([branchId, deletedAt])
+  @@map("operation_category")
+}
+
+model Operation {
+  id         String   @id @default(uuid()) @db.Uuid
+  branchId   String   @db.Uuid
+  categoryId String?  @db.Uuid
+  name       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+
+  category OperationCategory? @relation(fields: [categoryId], references: [id])
+
+  @@index([branchId, deletedAt])
+  @@map("operation")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase 5 — Finance, Referral, Ambulance.
+// ─────────────────────────────────────────────────────────────
+model IncomeHead {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  incomes Income[]
+
+  @@index([branchId, deletedAt])
+  @@map("income_head")
+}
+
+model ExpenseHead {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  expenses Expense[]
+
+  @@index([branchId, deletedAt])
+  @@map("expense_head")
+}
+
+model Income {
+  id          String   @id @default(uuid()) @db.Uuid
+  branchId    String   @db.Uuid
+  invoiceNo   String?
+  name        String
+  date        DateTime @default(now())
+  description String?
+  headId      String?  @db.Uuid
+  amount      Decimal  @default(0) @db.Decimal(14, 2)
+  documentUrl String?
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  head IncomeHead? @relation(fields: [headId], references: [id])
+
+  @@index([branchId, deletedAt, date])
+  @@map("income")
+}
+
+model Expense {
+  id          String   @id @default(uuid()) @db.Uuid
+  branchId    String   @db.Uuid
+  invoiceNo   String?
+  name        String
+  date        DateTime @default(now())
+  description String?
+  headId      String?  @db.Uuid
+  amount      Decimal  @default(0) @db.Decimal(14, 2)
+  documentUrl String?
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  head ExpenseHead? @relation(fields: [headId], references: [id])
+
+  @@index([branchId, deletedAt, date])
+  @@map("expense")
+}
+
+model ReferralCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@index([branchId, deletedAt])
+  @@map("referral_category")
+}
+
+model ReferralPerson {
+  id            String   @id @default(uuid()) @db.Uuid
+  branchId      String   @db.Uuid
+  name          String
+  category      String?
+  phone         String?
+  contactPerson String?
+  contactPhone  String?
+  address       String?
+  commissionPct Decimal  @default(0) @db.Decimal(5, 2) // standard commission %
+  commissions   Json     @default("{}") // per-module: { opd, ipd, pharmacy, pathology, radiology, bloodBank, ambulance }
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  payments ReferralPayment[]
+
+  @@index([branchId, deletedAt])
+  @@map("referral_person")
+}
+
+model ReferralPayment {
+  id               String   @id @default(uuid()) @db.Uuid
+  branchId         String   @db.Uuid
+  referralPersonId String   @db.Uuid
+  invoiceId        String?  @db.Uuid
+  patientId        String?  @db.Uuid
+  patientType      String?
+  patientName      String?
+  billNo           String?
+  billAmount       Decimal  @default(0) @db.Decimal(14, 2)
+  commissionPct    Decimal  @default(0) @db.Decimal(5, 2)
+  commissionAmount Decimal  @default(0) @db.Decimal(14, 2)
+  createdById      String?  @db.Uuid
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
+  deletedAt        DateTime?
+
+  referralPerson ReferralPerson @relation(fields: [referralPersonId], references: [id])
+
+  @@index([branchId, deletedAt, createdAt])
+  @@map("referral_payment")
+}
+
+model AmbulanceVehicle {
+  id            String   @id @default(uuid()) @db.Uuid
+  branchId      String   @db.Uuid
+  vehicleNo     String
+  model         String?
+  year          Int?
+  driverName    String?
+  driverLicense String?
+  driverContact String?
+  vehicleType   String?  // owned | contractual
+  note          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  calls AmbulanceCall[]
+
+  @@index([branchId, deletedAt])
+  @@map("ambulance_vehicle")
+}
+
+model AmbulanceCall {
+  id             String   @id @default(uuid()) @db.Uuid
+  branchId       String   @db.Uuid
+  vehicleId      String   @db.Uuid
+  patientId      String?  @db.Uuid
+  caseId         String?  @db.Uuid
+  chargeId       String?  @db.Uuid
+  invoiceId      String?  @db.Uuid
+  patientName    String
+  patientAddress String?
+  standardCharge Decimal? @db.Decimal(14, 2)
+  discountPct    Decimal  @default(0) @db.Decimal(5, 2)
+  taxPct         Decimal  @default(0) @db.Decimal(5, 2)
+  note           String?
+  date           DateTime @default(now())
+  createdById    String?  @db.Uuid
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  vehicle AmbulanceVehicle @relation(fields: [vehicleId], references: [id])
+  charge  Charge?          @relation(fields: [chargeId], references: [id])
+
+  @@index([branchId, deletedAt, date])
+  @@map("ambulance_call")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase 6 — HR & Workforce. HR transaction tables reference the
+// staff member's user account by `staffUserId` (plain UUID) so any
+// staff user works with or without an extended profile row.
+// ─────────────────────────────────────────────────────────────
+model Department {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  staff             Staff[]
+  rosterAssignments RosterAssignment[]
+
+  @@index([branchId, deletedAt])
+  @@map("department")
+}
+
+model Designation {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  staff Staff[]
+
+  @@index([branchId, deletedAt])
+  @@map("designation")
+}
+
+model Specialization {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  staff Staff[]
+
+  @@index([branchId, deletedAt])
+  @@map("specialization")
+}
+
+/// 1:1 extended HR profile for a staff User (FRD staff profile fields).
+model Staff {
+  id               String    @id @default(uuid()) @db.Uuid
+  branchId         String    @db.Uuid
+  userId           String    @unique @db.Uuid
+  staffNo          String
+  departmentId     String?   @db.Uuid
+  designationId    String?   @db.Uuid
+  specialistId     String?   @db.Uuid
+  epfNo            String?
+  basicSalary      Decimal   @default(0) @db.Decimal(14, 2)
+  contractType     String?
+  workShift        String?
+  workLocation     String?
+  dateOfJoining    DateTime?
+  fatherName       String?
+  motherName       String?
+  dob              DateTime?
+  gender           Gender?
+  bloodGroup       String?
+  maritalStatus    String?
+  qualification    String?
+  panNumber        String?
+  nationalId       String?
+  emergencyContact String?
+  currentAddress   String?
+  permanentAddress String?
+  bankDetails      Json      @default("{}")
+  socialLinks      Json      @default("{}")
+  photoUrl         String?
+  customFields     Json      @default("{}")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  user           User            @relation("StaffProfile", fields: [userId], references: [id], onDelete: Cascade)
+  department     Department?     @relation(fields: [departmentId], references: [id])
+  designation    Designation?    @relation(fields: [designationId], references: [id])
+  specialization Specialization? @relation(fields: [specialistId], references: [id])
+
+  @@index([branchId, deletedAt])
+  @@map("staff")
+}
+
+model Shift {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  startTime String?
+  endTime   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  rosters      DutyRoster[]
+  rosterPeriods Roster[]
+
+  @@index([branchId, deletedAt])
+  @@map("shift")
+}
+
+model Attendance {
+  id          String    @id @default(uuid()) @db.Uuid
+  branchId    String    @db.Uuid
+  staffUserId String    @db.Uuid
+  date        DateTime  @db.Date
+  inTime      DateTime?
+  outTime     DateTime?
+  method      String    @default("manual") // manual | qr | barcode
+  status      String    @default("present") // present | late | absent | half_day | holiday | half_day_second_shift | leave
+  note        String?
+  createdAt   DateTime  @default(now())
+
+  @@unique([branchId, staffUserId, date])
+  @@index([branchId, date])
+  @@map("attendance")
+}
+
+model DutyRoster {
+  id          String   @id @default(uuid()) @db.Uuid
+  branchId    String   @db.Uuid
+  staffUserId String   @db.Uuid
+  shiftId     String?  @db.Uuid
+  date        DateTime @db.Date
+  hours       Decimal  @default(0) @db.Decimal(5, 2)
+  createdAt   DateTime @default(now())
+
+  shift Shift? @relation(fields: [shiftId], references: [id])
+
+  @@index([branchId, date])
+  @@map("duty_roster")
+}
+
+/// A shift scheduled over a date range (the "Roster List" period).
+model Roster {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  shiftId   String   @db.Uuid
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  shift       Shift              @relation(fields: [shiftId], references: [id])
+  assignments RosterAssignment[]
+
+  @@index([branchId, deletedAt])
+  @@map("roster")
+}
+
+/// A staff member assigned to a Roster period, with floor + department.
+model RosterAssignment {
+  id            String   @id @default(uuid()) @db.Uuid
+  branchId      String   @db.Uuid
+  rosterId      String   @db.Uuid
+  staffUserId   String   @db.Uuid
+  floorId       String?  @db.Uuid
+  departmentId  String?  @db.Uuid
+  generatedById String?  @db.Uuid
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  roster     Roster      @relation(fields: [rosterId], references: [id])
+  floor      Floor?      @relation(fields: [floorId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+
+  @@index([branchId, deletedAt])
+  @@index([rosterId])
+  @@map("roster_assignment")
+}
+
+model Payroll {
+  id             String   @id @default(uuid()) @db.Uuid
+  branchId       String   @db.Uuid
+  staffUserId    String   @db.Uuid
+  month          String   // YYYY-MM
+  basicSalary    Decimal  @default(0) @db.Decimal(14, 2)
+  gross          Decimal  @default(0) @db.Decimal(14, 2)
+  deductions     Decimal  @default(0) @db.Decimal(14, 2)
+  net            Decimal  @default(0) @db.Decimal(14, 2)
+  paymentMode    String   @default("Transfer to Bank Account")
+  earnings       Json     @default("[]") // [{ label, amount }]
+  deductionItems Json     @default("[]") // [{ label, amount }]
+  status         String   @default("generated") // generated | paid
+  paidAt         DateTime?
+  createdById    String?  @db.Uuid
+  createdAt      DateTime @default(now())
+
+  @@unique([branchId, staffUserId, month])
+  @@index([branchId])
+  @@map("payroll")
+}
+
+model LeaveType {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  quota     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  requests LeaveRequest[]
+
+  @@index([branchId, deletedAt])
+  @@map("leave_type")
+}
+
+model LeaveRequest {
+  id            String   @id @default(uuid()) @db.Uuid
+  branchId      String   @db.Uuid
+  staffUserId   String   @db.Uuid
+  leaveTypeId   String?  @db.Uuid
+  appliedDate   DateTime @default(now()) @db.Date
+  fromDate      DateTime @db.Date
+  toDate        DateTime @db.Date
+  reason        String?
+  note          String?
+  attachmentUrl String?
+  status        String   @default("pending") // pending | approved | disapprove
+  statusById    String?  @db.Uuid
+  statusAt      DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  leaveType LeaveType? @relation(fields: [leaveTypeId], references: [id])
+
+  @@index([branchId, status])
+  @@map("leave_request")
+}
+
+model Holiday {
+  id          String   @id @default(uuid()) @db.Uuid
+  branchId    String   @db.Uuid
+  type        String   @default("holiday") // holiday | activity | vacation
+  title       String
+  fromDate    DateTime @db.Date
+  toDate      DateTime? @db.Date
+  description String?
+  frontSite   Boolean  @default(false)
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  @@index([branchId, deletedAt, fromDate])
+  @@map("holiday")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase 7 — Front Office, Records, Comms, Inventory, Live Consult.
+// ─────────────────────────────────────────────────────────────
+model Visitor {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  purposeId String?  @db.Uuid
+  name      String
+  visitTo   String?  // ipd | opd | staff
+  phone     String?
+  date      DateTime @default(now())
+  inTime    DateTime?
+  outTime   DateTime?
+  note      String?
+  createdById String? @db.Uuid
+  createdAt DateTime @default(now())
+  deletedAt DateTime?
+
+  @@index([branchId, deletedAt, date])
+  @@map("visitor")
+}
+
+model PhoneCall {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  phone     String?
+  type      String   @default("incoming") // incoming | outgoing
+  date      DateTime @default(now())
+  note      String?
+  createdById String? @db.Uuid
+  createdAt DateTime @default(now())
+  deletedAt DateTime?
+
+  @@index([branchId, deletedAt, date])
+  @@map("phone_call")
+}
+
+model PostalComplaint {
+  id             String   @id @default(uuid()) @db.Uuid
+  branchId       String   @db.Uuid
+  complaintTypeId String? @db.Uuid
+  source         String?
+  name           String?
+  phone          String?
+  description    String?
+  date           DateTime @default(now())
+  actionTaken    String?
+  createdById    String?  @db.Uuid
+  createdAt      DateTime @default(now())
+  deletedAt      DateTime?
+
+  @@index([branchId, deletedAt, date])
+  @@map("postal_complaint")
+}
+
+model BirthRecord {
+  id             String    @id @default(uuid()) @db.Uuid
+  branchId       String    @db.Uuid
+  referenceNo    String
+  caseId         String?   @db.Uuid
+  patientId      String?   @db.Uuid // mother
+  childName      String
+  gender         Gender?
+  birthDate      DateTime  @db.Date
+  motherName     String?
+  fatherName     String?
+  weight         String?
+  phone          String?
+  address        String?
+  report         String?
+  bloodGroup     String?
+  childPhotoUrl  String?
+  motherPhotoUrl String?
+  fatherPhotoUrl String?
+  documentUrl    String?
+  createdById    String?   @db.Uuid
+  createdAt      DateTime  @default(now())
+  deletedAt      DateTime?
+
+  @@unique([branchId, referenceNo])
+  @@index([branchId, deletedAt, birthDate])
+  @@map("birth_record")
+}
+
+model DeathRecord {
+  id             String    @id @default(uuid()) @db.Uuid
+  branchId       String    @db.Uuid
+  referenceNo    String
+  caseId         String?   @db.Uuid
+  patientId      String?   @db.Uuid
+  patientName    String
+  guardianName   String?
+  gender         Gender?
+  deathDate      DateTime  @db.Date
+  cause          String?
+  address        String?
+  bloodGroup     String?
+  attachmentUrl  String?
+  createdById    String?   @db.Uuid
+  createdAt      DateTime  @default(now())
+  deletedAt      DateTime?
+
+  @@unique([branchId, referenceNo])
+  @@index([branchId, deletedAt, deathDate])
+  @@map("death_record")
+}
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  type      String   @default("notice") // notice | sms | email | credential
+  subject   String
+  body      String?
+  audience  String?  // group / role the notice targets (legacy)
+  roles     String[] @default([]) // "Message To" recipient role labels
+  noticeDate DateTime?
+  publishOn  DateTime?
+  date      DateTime @default(now())
+  createdById String? @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  @@index([branchId, deletedAt, date])
+  @@map("notification")
+}
+
+model ContentShare {
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
+  title         String
+  contentTypeId String?   @db.Uuid
+  sendToGroup   String?
+  fileUrl       String?
+  description   String?
+  shareDate     DateTime  @default(now())
+  validUpto     DateTime?
+  sharedById    String?   @db.Uuid
+  createdAt     DateTime  @default(now())
+  deletedAt     DateTime?
+
+  @@index([branchId, deletedAt, shareDate])
+  @@map("content_share")
+}
+
+model InventoryItem {
+  id            String   @id @default(uuid()) @db.Uuid
+  branchId      String   @db.Uuid
+  name          String
+  categoryId    String?  @db.Uuid
+  supplierId    String?  @db.Uuid
+  unit          String?
+  description   String?
+  purchasePrice Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  stocks ItemStock[]
+  issues ItemIssue[]
+
+  @@index([branchId, deletedAt])
+  @@map("inventory_item")
+}
+
+model ItemStock {
+  id            String   @id @default(uuid()) @db.Uuid
+  branchId      String   @db.Uuid
+  itemId        String   @db.Uuid
+  supplierId    String?  @db.Uuid
+  storeId       String?  @db.Uuid
+  qty           Int      @default(0)
+  purchasePrice Decimal  @default(0) @db.Decimal(14, 2)
+  description   String?
+  documentUrl   String?
+  date          DateTime @default(now())
+  createdById   String?  @db.Uuid
+  deletedAt     DateTime?
+
+  item InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@index([branchId, itemId])
+  @@map("item_stock")
+}
+
+model ItemIssue {
+  id          String   @id @default(uuid()) @db.Uuid
+  branchId    String   @db.Uuid
+  itemId      String   @db.Uuid
+  userType    String?
+  issuedTo    String?
+  qty         Int      @default(1)
+  note        String?
+  date        DateTime @default(now())
+  returnDate  DateTime?
+  status      String   @default("issued") // issued | returned
+  returnedAt  DateTime?
+  createdById String?  @db.Uuid
+  deletedAt   DateTime?
+
+  item InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@index([branchId, itemId])
+  @@map("item_issue")
+}
+
+model LiveConsultation {
+  id          String   @id @default(uuid()) @db.Uuid
+  branchId    String   @db.Uuid
+  kind        String   @default("consultation") // consultation | meeting
+  title       String
+  description String?
+  date        DateTime
+  durationMin Int?
+  apiUsed     String?  // Zoom | Jitsi | ...
+  createdFor  String?
+  status      String   @default("scheduled")
+  // Phase C5: optional encounter scoping (a live consult attached to an OPD/IPD encounter).
+  patientId     String?  @db.Uuid
+  encounterType String?
+  encounterId   String?  @db.Uuid
+  joinUrl       String?
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  deletedAt   DateTime?
+
+  patient Patient? @relation(fields: [patientId], references: [id])
+
+  @@index([branchId, kind, deletedAt, date])
+  @@index([branchId, patientId, encounterType, encounterId])
+  @@map("live_consultation")
+}
+
+// Phase 7 name-catalogs (Setup master lists)
+model FrontOfficePurpose {
+  id String @id @default(uuid()) @db.Uuid
+  branchId String @db.Uuid
+  name String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  @@index([branchId, deletedAt])
+  @@map("front_office_purpose")
+}
+
+model ComplaintType {
+  id String @id @default(uuid()) @db.Uuid
+  branchId String @db.Uuid
+  name String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  @@index([branchId, deletedAt])
+  @@map("complaint_type")
+}
+
+model ContentType {
+  id String @id @default(uuid()) @db.Uuid
+  branchId String @db.Uuid
+  name String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  @@index([branchId, deletedAt])
+  @@map("content_type")
+}
+
+model ItemCategory {
+  id String @id @default(uuid()) @db.Uuid
+  branchId String @db.Uuid
+  name String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  @@index([branchId, deletedAt])
+  @@map("item_category")
+}
+
+model ItemStore {
+  id String @id @default(uuid()) @db.Uuid
+  branchId String @db.Uuid
+  name String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  @@index([branchId, deletedAt])
+  @@map("item_store")
+}
+
+model ItemSupplier {
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
+  name          String
+  phone         String?
+  email         String?
+  contactPerson String?
+  contactPhone  String?
+  contactEmail  String?
+  address       String?
+  description   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  @@index([branchId, deletedAt])
+  @@map("item_supplier")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase 8 — Front CMS (public website content).
+// ─────────────────────────────────────────────────────────────
+model CmsPage {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  title     String
+  slug      String
+  pageType  String   @default("standard") // standard | event | gallery
+  body      String?
+  published Boolean  @default(false)
+  createdById String? @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@unique([branchId, slug])
+  @@index([branchId, deletedAt])
+  @@map("cms_page")
+}
+
+model CmsBanner {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  title     String
+  imageUrl  String?
+  link      String?
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@index([branchId, deletedAt])
+  @@map("cms_banner")
+}
+
+model CmsMenu {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  label     String
+  url       String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@index([branchId, deletedAt])
+  @@map("cms_menu")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase C0–C2 — Clinical EMR: vitals, findings, symptoms, timeline.
+// Sub-records link to the patient and optionally to an encounter
+// (opd | ipd) so the same widgets serve the profile + both detail pages.
+// ─────────────────────────────────────────────────────────────
+model VitalType {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  unit      String?
+  refMin    Decimal? @db.Decimal(10, 2)
+  refMax    Decimal? @db.Decimal(10, 2)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  readings VitalReading[]
+
+  @@index([branchId, deletedAt])
+  @@map("vital_type")
+}
+
+model VitalReading {
+  id            String   @id @default(uuid()) @db.Uuid
+  branchId      String   @db.Uuid
+  patientId     String   @db.Uuid
+  encounterType String?  // opd | ipd
+  encounterId   String?  @db.Uuid
+  vitalTypeId   String   @db.Uuid
+  value         String   // free string to allow "90/80" etc.
+  recordedAt    DateTime @default(now())
+  createdById   String?  @db.Uuid
+  deletedAt     DateTime?
+
+  patient   Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  vitalType VitalType @relation(fields: [vitalTypeId], references: [id])
+
+  @@index([branchId, patientId, recordedAt])
+  @@map("vital_reading")
+}
+
+model FindingCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  findings Finding[]
+
+  @@index([branchId, deletedAt])
+  @@map("finding_category")
+}
+
+model Finding {
+  id          String   @id @default(uuid()) @db.Uuid
+  branchId    String   @db.Uuid
+  categoryId  String?  @db.Uuid
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  category FindingCategory? @relation(fields: [categoryId], references: [id])
+  records  FindingRecord[]
+
+  @@index([branchId, deletedAt])
+  @@map("finding")
+}
+
+model FindingRecord {
+  id            String   @id @default(uuid()) @db.Uuid
+  branchId      String   @db.Uuid
+  patientId     String   @db.Uuid
+  encounterType String?
+  encounterId   String?  @db.Uuid
+  findingId     String?  @db.Uuid
+  text          String
+  createdById   String?  @db.Uuid
+  createdAt     DateTime @default(now())
+  deletedAt     DateTime?
+
+  patient Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  finding Finding? @relation(fields: [findingId], references: [id])
+
+  @@index([branchId, patientId, deletedAt])
+  @@map("finding_record")
+}
+
+model SymptomHead {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  types SymptomType[]
+
+  @@index([branchId, deletedAt])
+  @@map("symptom_head")
+}
+
+model SymptomType {
+  id          String   @id @default(uuid()) @db.Uuid
+  branchId    String   @db.Uuid
+  headId      String?  @db.Uuid
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  head    SymptomHead?    @relation(fields: [headId], references: [id])
+  records SymptomRecord[]
+
+  @@index([branchId, deletedAt])
+  @@map("symptom_type")
+}
+
+model SymptomRecord {
+  id            String   @id @default(uuid()) @db.Uuid
+  branchId      String   @db.Uuid
+  patientId     String   @db.Uuid
+  encounterType String?
+  encounterId   String?  @db.Uuid
+  symptomTypeId String?  @db.Uuid
+  title         String
+  description   String?
+  createdById   String?  @db.Uuid
+  createdAt     DateTime @default(now())
+  deletedAt     DateTime?
+
+  patient     Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  symptomType SymptomType? @relation(fields: [symptomTypeId], references: [id])
+
+  @@index([branchId, patientId, deletedAt])
+  @@map("symptom_record")
+}
+
+model TimelineEntry {
+  id              String   @id @default(uuid()) @db.Uuid
+  branchId        String   @db.Uuid
+  patientId       String   @db.Uuid
+  encounterType   String?
+  encounterId     String?  @db.Uuid
+  title           String
+  date            DateTime
+  description     String?
+  fileUrl         String?
+  visibleToPatient Boolean @default(true)
+  createdById     String?  @db.Uuid
+  createdAt       DateTime @default(now())
+  deletedAt       DateTime?
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, patientId, deletedAt, date])
+  @@map("timeline_entry")
+}
+
+// ── Phase C4: Diagnostics depth (encounter-scoped clinical records) ──
+
+/// One ordered pathology/radiology test with its parameter-level result + approval workflow.
+model LabInvestigation {
+  id             String    @id @default(uuid()) @db.Uuid
+  branchId       String    @db.Uuid
+  patientId      String    @db.Uuid
+  encounterType  String? // opd | ipd
+  encounterId    String?   @db.Uuid
+  modality       String // pathology | radiology
+  testId         String?   @db.Uuid
+  testName       String
+  unit           String?
+  referenceRange String?
+  reportValue    String?
+  previousValue  String?
+  sampleDate     DateTime?
+  expectedDate   DateTime?
+  center         String?
+  status         String    @default("pending") // pending | reported | approved
+  approvedById   String?   @db.Uuid
+  approvedAt     DateTime?
+  invoiceId      String?   @db.Uuid
+  invoiceItemId  String?   @db.Uuid
+  tax            Decimal?  @db.Decimal(14, 2)
+  netAmount      Decimal?  @db.Decimal(14, 2)
+  createdById    String?   @db.Uuid
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, patientId, deletedAt])
+  @@index([branchId, encounterType, encounterId])
+  @@map("lab_investigation")
+}
+
+model Prescription {
+  id             String    @id @default(uuid()) @db.Uuid
+  branchId       String    @db.Uuid
+  patientId      String    @db.Uuid
+  encounterType  String?
+  encounterId    String?   @db.Uuid
+  prescribedById String?   @db.Uuid
+  symptoms       String?
+  findings       String?
+  note           String?
+  headerNote         String?
+  footerNote         String?
+  findingCategoryId  String?  @db.Uuid
+  findingList        String[] @default([])
+  findingDescription String?
+  findingPrint       Boolean  @default(true)
+  attachmentUrl      String?
+  pathologyTestIds   String[] @default([])
+  radiologyTestIds   String[] @default([])
+  notifyRoles        String[] @default([])
+  createdById    String?   @db.Uuid
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  patient Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  items   PrescriptionItem[]
+
+  @@index([branchId, patientId, deletedAt])
+  @@index([branchId, encounterType, encounterId])
+  @@map("prescription")
+}
+
+model PrescriptionItem {
+  id             String  @id @default(uuid()) @db.Uuid
+  prescriptionId String  @db.Uuid
+  medicineId     String? @db.Uuid
+  medicineName   String
+  dosage         String?
+  interval       String?
+  duration       String?
+  instruction    String?
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  @@index([prescriptionId])
+  @@map("prescription_item")
+}
+
+model MedicationDose {
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
+  patientId     String    @db.Uuid
+  encounterType String?
+  encounterId   String?   @db.Uuid
+  medicineId    String?   @db.Uuid
+  medicineName  String
+  dosage        String?
+  dateTime      DateTime  @default(now())
+  remarks       String?
+  createdById   String?   @db.Uuid
+  createdAt     DateTime  @default(now())
+  deletedAt     DateTime?
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, patientId, deletedAt])
+  @@index([branchId, encounterType, encounterId])
+  @@map("medication_dose")
+}
+
+// ── Phase C5: Operations (OT) + Live Consultation (encounter-scoped) ──
+
+model OperationRecord {
+  id             String    @id @default(uuid()) @db.Uuid
+  branchId       String    @db.Uuid
+  patientId      String    @db.Uuid
+  encounterType  String?
+  encounterId    String?   @db.Uuid
+  category       String?
+  name           String
+  date           DateTime
+  consultant     String?
+  assistant1     String?
+  assistant2     String?
+  anesthetist    String?
+  anesthesiaType String?
+  otTechnician   String?
+  otAssistant    String?
+  result         String?
+  refNo          String?
+  remark         String?
+  createdById    String?   @db.Uuid
+  createdAt      DateTime  @default(now())
+  deletedAt      DateTime?
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, patientId, deletedAt])
+  @@index([branchId, encounterType, encounterId])
+  @@map("operation_record")
+}
+
+// ── Phase C6: IPD Profile — Nurse Notes, Consultant Register, Bed History ──
+
+model NurseNote {
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
+  patientId     String    @db.Uuid
+  encounterType String?
+  encounterId   String?   @db.Uuid
+  nurseName     String?
+  note          String
+  comment       String?
+  createdById   String?   @db.Uuid
+  createdAt     DateTime  @default(now())
+  deletedAt     DateTime?
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, patientId, deletedAt])
+  @@index([branchId, encounterType, encounterId])
+  @@map("nurse_note")
+}
+
+model ConsultantRegister {
+  id             String    @id @default(uuid()) @db.Uuid
+  branchId       String    @db.Uuid
+  patientId      String    @db.Uuid
+  encounterType  String?
+  encounterId    String?   @db.Uuid
+  doctorName     String
+  instruction    String?
+  appliedDate    DateTime
+  consultantDate DateTime?
+  createdById    String?   @db.Uuid
+  createdAt      DateTime  @default(now())
+  deletedAt      DateTime?
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, patientId, deletedAt])
+  @@index([branchId, encounterType, encounterId])
+  @@map("consultant_register")
+}
+
+model BedTransfer {
+  id             String    @id @default(uuid()) @db.Uuid
+  branchId       String    @db.Uuid
+  ipdAdmissionId String    @db.Uuid
+  bedId          String    @db.Uuid
+  bedLabel       String
+  fromDate       DateTime  @default(now())
+  toDate         DateTime?
+  active         Boolean   @default(true)
+  createdById    String?   @db.Uuid
+  createdAt      DateTime  @default(now())
+
+  @@index([branchId, ipdAdmissionId])
+  @@map("bed_transfer")
+}
+
+// ── Phase A0: Appointment scheduling masters ──
+
+model AppointmentPriority {
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
+  name      String
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([branchId, deletedAt])
+  @@map("appointment_priority")
+}
+
+/// A doctor's configuration for a shift: whether they work it (active) + the
+/// consultation duration and charge that generate slots & set the fee (Setup → Slots).
+model DoctorShift {
+  id                          String    @id @default(uuid()) @db.Uuid
+  branchId                    String    @db.Uuid
+  doctorId                    String    @db.Uuid
+  shiftId                     String    @db.Uuid
+  active                      Boolean   @default(true)
+  consultationDurationMinutes Int?
+  chargeId                    String?   @db.Uuid
+  amount                      Decimal   @default(0) @db.Decimal(14, 2)
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+  deletedAt                   DateTime?
+
+  @@unique([doctorId, shiftId])
+  @@index([branchId, deletedAt])
+  @@map("doctor_shift")
+}

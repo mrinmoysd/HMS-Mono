@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@smart-hospital/web", "dev"],
+      "port": 3001
+    },
+    {
+      "name": "patient",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@smart-hospital/patient", "dev"],
+      "port": 3002
+    }
+  ]
+}

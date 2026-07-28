@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "notification" ADD COLUMN     "noticeDate" TIMESTAMP(3),
+ADD COLUMN     "publishOn" TIMESTAMP(3),
+ADD COLUMN     "roles" TEXT[] DEFAULT ARRAY[]::TEXT[],
+ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

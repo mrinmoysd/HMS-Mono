@@ -1,0 +1,384 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================================
+   MERIDIAN DESIGN SYSTEM — token layer            (docs/UI_SYSTEM_PLAN.md §2)
+   ----------------------------------------------------------------------------
+   Colours are stored as space-separated RGB *channels* (`30 99 233`), never as
+   hex or rgb(). Tailwind consumes them as `rgb(var(--token) / <alpha-value>)`,
+   which is what makes `bg-primary/10` and `border-border/60` work. A token
+   written as a hex value silently breaks every alpha variant in the app —
+   keep the channel format.
+
+   Defaults: the SLATE palette at COMPACT density. Alternate palettes are opt-in
+   via `data-theme` on <html>; `data-density="comfortable"` loosens the metrics;
+   the `dark` class switches mode.
+
+   These blocks live OUTSIDE Tailwind's layers on purpose. Tailwind tree-shakes
+   class-based selectors written inside `@layer`, so a `.dark` rule was silently
+   dropped from the build (the literal class "dark" appears in no source file —
+   the theme toggle sets it at runtime). Attribute selectors survived, which
+   made the bug look theme-specific. Keep the tokens unlayered.
+
+   Each palette block must redefine the FULL neutral + brand set for its mode,
+   because `:root[data-theme=x]` and the dark-mode rule have equal specificity
+   and resolve by source order. Status colours are declared once per mode and
+   inherited by every palette.
+   ========================================================================= */
+
+/* ───────────────────────────────────────────────────────────────────────────
+   SLATE (default) — deep navy on cool grey. Understated, dense, enterprise.
+   ─────────────────────────────────────────────────────────────────────── */
+:root {
+  /* surfaces */
+  --canvas: 244 246 248;
+  --surface-1: 255 255 255;
+  --surface-2: 255 255 255;
+  --surface-3: 255 255 255;
+  --surface-sunken: 237 240 244;
+
+  /* lines */
+  --line: 221 227 234;
+  --line-strong: 195 204 214;
+
+  /* text */
+  --fg: 20 26 33;
+  --fg-muted: 91 104 117;
+  --fg-subtle: 139 151 164;
+
+  /* brand */
+  --primary: 40 85 138;
+  --primary-hover: 31 70 115;
+  --primary-active: 25 58 97;
+  --primary-soft: 228 235 244;
+  --primary-fg: 255 255 255;
+
+  --accent: 168 118 15;
+  --accent-soft: 246 239 221;
+  --accent-fg: 255 255 255;
+
+  --focus: 40 85 138;
+
+  /* ── status — shared across palettes, light mode ── */
+  --success: 31 138 91;
+  --success-soft: 228 244 236;
+  --success-fg: 255 255 255;
+  --warning: 178 106 0;
+  --warning-soft: 251 240 221;
+  --warning-fg: 255 255 255;
+  --danger: 201 56 56;
+  --danger-soft: 251 234 234;
+  --danger-fg: 255 255 255;
+  --info: 37 99 201;
+  --info-soft: 231 239 251;
+  --info-fg: 255 255 255;
+  --occupied: 217 83 139;
+  --occupied-soft: 252 235 242;
+
+  /* ── legacy aliases — DO NOT REMOVE ──
+     ~108 components still reference these names. Resolving them through to the
+     new roles is what lets the re-theme land without touching a .tsx. */
+  --bg: var(--canvas);
+  --surface: var(--surface-1);
+  --border: var(--line);
+
+  /* ── density: COMPACT is the default (see [data-density] below) ── */
+  --row-h: 2.25rem;
+  --control-h: 2rem;
+  --control-h-sm: 1.75rem;
+  --pad-x: 0.625rem;
+  --pad-y: 0.3125rem;
+  --cell-pad-x: 0.625rem;
+  --cell-pad-y: 0.4375rem;
+
+  /* ── layout ── */
+  --page-pad: 1.25rem;
+  --card-pad: 1rem;
+  --sidebar-w: 15rem;
+  --sidebar-rail-w: 3.5rem;
+  --header-h: 3.25rem;
+
+  color-scheme: light;
+}
+
+:root.dark {
+  --canvas: 16 21 25;
+  --surface-1: 23 29 35;
+  --surface-2: 31 38 46;
+  --surface-3: 39 47 56;
+  --surface-sunken: 19 26 32;
+
+  --line: 44 53 62;
+  --line-strong: 62 73 84;
+
+  --fg: 230 235 240;
+  --fg-muted: 149 163 176;
+  --fg-subtle: 108 122 135;
+
+  --primary: 109 164 224;
+  --primary-hover: 135 181 232;
+  --primary-active: 158 196 238;
+  --primary-soft: 23 39 58;
+  --primary-fg: 12 20 28;
+
+  --accent: 217 164 65;
+  --accent-soft: 51 41 19;
+  --accent-fg: 26 20 6;
+
+  --focus: 109 164 224;
+
+  /* ── status — shared across palettes, dark mode ── */
+  --success: 74 222 148;
+  --success-soft: 22 48 42;
+  --success-fg: 8 26 19;
+  --warning: 224 168 60;
+  --warning-soft: 51 42 22;
+  --warning-fg: 28 21 6;
+  --danger: 240 107 107;
+  --danger-soft: 58 31 34;
+  --danger-fg: 32 10 10;
+  --info: 107 163 240;
+  --info-soft: 28 42 63;
+  --info-fg: 8 18 32;
+  --occupied: 238 123 173;
+  --occupied-soft: 58 28 42;
+
+  color-scheme: dark;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   MERIDIAN — indigo-violet on warm stone. Calm, premium.
+   ─────────────────────────────────────────────────────────────────────── */
+:root[data-theme='meridian'] {
+  --canvas: 247 246 243;
+  --surface-1: 255 255 255;
+  --surface-2: 255 255 255;
+  --surface-3: 255 255 255;
+  --surface-sunken: 242 241 237;
+
+  --line: 229 226 219;
+  --line-strong: 211 207 197;
+
+  --fg: 28 26 23;
+  --fg-muted: 107 101 89;
+  --fg-subtle: 154 147 136;
+
+  --primary: 91 84 214;
+  --primary-hover: 76 69 196;
+  --primary-active: 65 58 173;
+  --primary-soft: 238 237 251;
+  --primary-fg: 255 255 255;
+
+  --accent: 217 119 87;
+  --accent-soft: 251 239 234;
+  --accent-fg: 255 255 255;
+
+  --focus: 91 84 214;
+}
+
+:root[data-theme='meridian'].dark {
+  --canvas: 22 21 26;
+  --surface-1: 30 29 36;
+  --surface-2: 38 37 48;
+  --surface-3: 46 45 57;
+  --surface-sunken: 25 24 32;
+
+  --line: 51 49 61;
+  --line-strong: 70 68 81;
+
+  --fg: 237 234 228;
+  --fg-muted: 162 156 147;
+  --fg-subtle: 122 117 109;
+
+  --primary: 143 136 245;
+  --primary-hover: 162 156 248;
+  --primary-active: 180 175 250;
+  --primary-soft: 40 38 65;
+  --primary-fg: 20 19 32;
+
+  --accent: 232 148 118;
+  --accent-soft: 58 42 36;
+  --accent-fg: 26 18 14;
+
+  --focus: 143 136 245;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   PLUM — violet-plum on warm white. Higher contrast, more expressive.
+   ─────────────────────────────────────────────────────────────────────── */
+:root[data-theme='plum'] {
+  --canvas: 250 247 250;
+  --surface-1: 255 255 255;
+  --surface-2: 255 255 255;
+  --surface-3: 255 255 255;
+  --surface-sunken: 243 238 244;
+
+  --line: 232 223 234;
+  --line-strong: 212 198 216;
+
+  --fg: 31 21 36;
+  --fg-muted: 106 92 114;
+  --fg-subtle: 154 141 161;
+
+  --primary: 109 46 147;
+  --primary-hover: 94 38 127;
+  --primary-active: 78 31 107;
+  --primary-soft: 243 233 249;
+  --primary-fg: 255 255 255;
+
+  --accent: 192 122 12;
+  --accent-soft: 252 241 220;
+  --accent-fg: 255 255 255;
+
+  --focus: 109 46 147;
+}
+
+:root[data-theme='plum'].dark {
+  --canvas: 22 16 24;
+  --surface-1: 31 23 34;
+  --surface-2: 41 31 45;
+  --surface-3: 51 39 56;
+  --surface-sunken: 26 19 28;
+
+  --line: 55 43 60;
+  --line-strong: 75 60 81;
+
+  --fg: 239 231 240;
+  --fg-muted: 168 153 172;
+  --fg-subtle: 124 109 128;
+
+  --primary: 192 132 232;
+  --primary-hover: 206 155 238;
+  --primary-active: 219 178 243;
+  --primary-soft: 44 28 54;
+  --primary-fg: 26 16 32;
+
+  --accent: 224 168 60;
+  --accent-soft: 51 41 22;
+  --accent-fg: 28 21 6;
+
+  --focus: 192 132 232;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Density — compact is the default (set in :root above); this is the opt-out.
+   Primitives read these vars instead of hard-coding heights, so the toggle is
+   global.
+   ─────────────────────────────────────────────────────────────────────── */
+:root[data-density='comfortable'] {
+  --row-h: 2.75rem;
+  --control-h: 2.375rem;
+  --control-h-sm: 2rem;
+  --pad-x: 0.875rem;
+  --pad-y: 0.5rem;
+  --cell-pad-x: 0.875rem;
+  --cell-pad-y: 0.6875rem;
+  --page-pad: 1.5rem;
+  --card-pad: 1.25rem;
+}
+
+/* ===========================================================================
+   Base element styles — these DO belong in `@layer base` so Tailwind utilities
+   can override them.
+   ======================================================================== */
+@layer base {
+  body {
+    background-color: rgb(var(--bg));
+    color: rgb(var(--fg));
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* One consistent focus treatment everywhere. `:focus-visible` (not `:focus`)
+     so mouse clicks stay clean while keyboard users always get the ring. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--focus));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background-color: rgb(var(--primary) / 0.22);
+  }
+
+  ::placeholder {
+    color: rgb(var(--fg-subtle));
+  }
+
+  /* Scrollbars tuned to the palette — the OS default reads as a bright grey
+     slab against the dark theme. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--line-strong)) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--line-strong));
+    border: 3px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(var(--fg-subtle));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* Money / quantity columns use tabular figures. Referenced across every
+     billing surface — must not be removed. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Density-aware sizing helpers, consumed by the primitives. */
+  .h-control {
+    height: var(--control-h);
+  }
+  /* Padding-derived control height. Preferred over `.h-control` for inputs:
+     callers that pass an explicit height (`h-8` on the compact inline selects
+     in purchase-medicine-form / diagnostic-bill-form) still win, because an
+     explicit height overrides a content+padding height. */
+  .py-control {
+    padding-top: var(--pad-y);
+    padding-bottom: var(--pad-y);
+  }
+  .h-control-sm {
+    height: var(--control-h-sm);
+  }
+  .h-row {
+    height: var(--row-h);
+  }
+  .px-cell {
+    padding-left: var(--cell-pad-x);
+    padding-right: var(--cell-pad-x);
+  }
+  .py-cell {
+    padding-top: var(--cell-pad-y);
+    padding-bottom: var(--cell-pad-y);
+  }
+  .p-card {
+    padding: var(--card-pad);
+  }
+  .p-page {
+    padding: var(--page-pad);
+  }
+}

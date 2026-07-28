@@ -1,0 +1,61 @@
+/** Consolidated "Patient Details" report — every visit + all department bills (demo's ☰ show action). */
+
+export interface PatientReportHeader {
+  patientNo: string;
+  name: string;
+  gender: string | null;
+  age: string;
+  maritalStatus: string | null;
+  bloodGroup: string | null;
+  guardianName: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  tpaName: string | null;
+  tpaIdNo: string | null;
+  tpaValidity: string | null;
+  allergies: string | null;
+}
+
+export interface PatientReportVisit {
+  no: string;
+  caseNo: string | null;
+  date: string;
+  doctorName: string;
+  symptoms: string | null;
+  findings: string | null;
+}
+
+export interface PatientReportBill {
+  billNo: string;
+  caseNo: string | null;
+  date: string;
+  amount: number;
+  discount: number;
+  tax: number;
+  paid: number;
+  refund: number;
+  balance: number;
+}
+
+export interface PatientReportBillTotals {
+  amount: number;
+  discount: number;
+  tax: number;
+  paid: number;
+  refund: number;
+  balance: number;
+}
+
+export interface PatientReportModuleGroup {
+  module: string;
+  rows: PatientReportBill[];
+  totals: PatientReportBillTotals;
+}
+
+export interface PatientReportDto {
+  header: PatientReportHeader;
+  opd: PatientReportVisit[];
+  ipd: PatientReportVisit[];
+  bills: PatientReportModuleGroup[];
+}
