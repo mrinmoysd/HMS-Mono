@@ -64,7 +64,11 @@ done
 chmod 600 "$SSH_KEY" 2>/dev/null || true
 
 SSH=(ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 "$SERVER_USER@$SERVER_IP")
-RSYNC_RSH="ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new"
+# rsync splits -e on whitespace, so a key path containing spaces has to be
+# single-quoted *inside* the string. Backslash-escaping does not work here —
+# rsync honours quotes but not escapes. The stock OCI key path
+# ("…/espl OCI keys/…") hits this, so it is not a hypothetical.
+RSYNC_RSH="ssh -i '$SSH_KEY' -o StrictHostKeyChecking=accept-new"
 
 # ── preflight ───────────────────────────────────────────────────────────────
 log "Preflight"
@@ -97,7 +101,11 @@ fi
 log "Sync source"
 # --delete keeps the server tree honest; excludes keep build state and secrets
 # from being clobbered or shipped.
-rsync -az --delete --info=stats1 -e "$RSYNC_RSH" \
+#
+# --stats, not --info=stats1: macOS ships openrsync (an Apple reimplementation
+# advertising "rsync 2.6.9 compatible"), which has no --info at all. --stats is
+# understood by both it and GNU rsync.
+rsync -az --delete --stats -e "$RSYNC_RSH" \
   --exclude '.git' \
   --exclude 'node_modules' \
   --exclude '.next' \
