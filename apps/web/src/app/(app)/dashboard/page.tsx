@@ -12,6 +12,10 @@ import { KpiCards } from '@/components/dashboard/kpi-cards';
 import { DetailCards } from '@/components/dashboard/detail-cards';
 import { IncomeExpenseChart } from '@/components/dashboard/income-expense-chart';
 import { IncomeDonut } from '@/components/dashboard/income-donut';
+import { NoticesBanner } from '@/components/dashboard/notices-banner';
+import { RecentActivity } from '@/components/dashboard/recent-activity';
+import { StaffAttendance } from '@/components/dashboard/staff-attendance';
+import { ModuleRevenueTable } from '@/components/dashboard/module-revenue-table';
 import { hasWidget } from '@/lib/hooks/use-dashboard';
 import { moduleHref } from '@/components/app-shell/nav-config';
 
@@ -50,6 +54,12 @@ export default function DashboardPage() {
         </p>
       )}
 
+      {/* Notices are ungated by design, so they sit above the KPI row where
+          every role sees them — including one with no other widget at all. */}
+      {data && hasWidget(data, 'notices') && data.notices && (
+        <NoticesBanner notices={data.notices} />
+      )}
+
       {data && <KpiCards data={data} />}
       {data && <DetailCards data={data} />}
 
@@ -70,6 +80,30 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Audit trail and attendance. Different gates (setup:edit vs
+          human_resource:view), so a role can hold either alone — each takes the
+          full width when it is the only one. */}
+      {data && (hasWidget(data, 'recentActivity') || hasWidget(data, 'staffAttendance')) && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {hasWidget(data, 'recentActivity') && data.recentActivity && (
+            <div className={data.staffAttendance ? 'lg:col-span-2' : 'lg:col-span-3'}>
+              <RecentActivity rows={data.recentActivity} />
+            </div>
+          )}
+          {hasWidget(data, 'staffAttendance') && data.staffAttendance && (
+            <div className={data.recentActivity ? '' : 'lg:col-span-3'}>
+              <StaffAttendance data={data.staffAttendance} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Month-on-month movement per module. The donut above shows composition;
+          this shows direction. */}
+      {data && hasWidget(data, 'incomeByModule') && data.incomeByModule && (
+        <ModuleRevenueTable data={data.incomeByModule} />
       )}
 
       {/* A role with only a couple of widgets would otherwise land on a
