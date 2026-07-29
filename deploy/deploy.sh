@@ -63,7 +63,14 @@ done
 [[ -f "$SSH_KEY" ]] || die "SSH key not found: $SSH_KEY"
 chmod 600 "$SSH_KEY" 2>/dev/null || true
 
-SSH=(ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 "$SERVER_USER@$SERVER_IP")
+# ServerAlive* matters more than it looks: the build phase goes ~20 minutes with
+# no output, which is long enough for a NAT or router to drop an idle SSH
+# session. When that happened the remote release.sh kept running and finished
+# fine, but the local end hung and then reported failure — a deploy that had
+# actually succeeded looked broken. The keepalives hold the session open, and
+# the count gives up after ~5 min of genuine silence rather than hanging forever.
+SSH=(ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20
+     -o ServerAliveInterval=30 -o ServerAliveCountMax=10 "$SERVER_USER@$SERVER_IP")
 # rsync splits -e on whitespace, so a key path containing spaces has to be
 # single-quoted *inside* the string. Backslash-escaping does not work here —
 # rsync honours quotes but not escapes. The stock OCI key path

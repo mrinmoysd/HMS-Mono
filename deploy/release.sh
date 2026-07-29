@@ -125,13 +125,31 @@ pnpm --filter @smart-hospital/api prisma:deploy 2>&1 | tail -6
 ok "schema up to date"
 
 # ── seed ────────────────────────────────────────────────────────────────────
+# The guard fails CLOSED. An earlier version queried "Patient", but Prisma maps
+# models to snake_case, so the query errored, 2>/dev/null swallowed it, and the
+# count defaulted to 0 — the guard would have waved a seed straight over live
+# patient data. Now: the tables are named explicitly, and anything unexpected
+# (missing table, psql failure, non-numeric result) aborts instead of seeding.
 if [[ "$DO_SEED" == "1" ]]; then
   log "Seed"
-  EXISTING=$(sudo -u postgres psql -tAd "$PG_DB" -c \
-    'SELECT count(*) FROM "Patient"' 2>/dev/null || echo 0)
-  if [[ "${EXISTING:-0}" -gt 0 ]]; then
-    warn "database already holds $EXISTING patients — refusing to seed over live data"
-    warn "restore from $BACKUP if you truly meant to reset, then re-run with --seed"
+
+  seed_blocked=0
+  for tbl in patient '"user"'; do
+    n=$(sudo -u postgres psql -tAd "$PG_DB" -c "SELECT count(*) FROM $tbl" 2>&1 | tr -d '[:space:]')
+    if ! [[ "$n" =~ ^[0-9]+$ ]]; then
+      warn "cannot read $tbl — refusing to seed"
+      warn "  psql said: ${n:0:120}"
+      seed_blocked=1
+    elif [[ "$n" -gt 0 ]]; then
+      warn "$tbl already holds $n rows — refusing to seed over existing data"
+      seed_blocked=1
+    else
+      ok "$tbl is empty"
+    fi
+  done
+
+  if [[ "$seed_blocked" == "1" ]]; then
+    warn "seed skipped. To reset deliberately, restore $BACKUP first, then re-run with --seed"
   else
     pnpm --filter @smart-hospital/api prisma:seed 2>&1 | tail -5
     ok "seeded"

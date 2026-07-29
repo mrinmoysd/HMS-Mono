@@ -185,9 +185,25 @@ before migrating, and archives the previous build so rollback is fast.
 `superadmin` account. On a live database this will collide with, or overwrite,
 real records.
 
-**Pass `--seed` on the very first deploy and never again.** The script asks for
-confirmation if it detects existing patient rows, but do not rely on that as
-your only guard.
+**Pass `--seed` on the very first deploy and never again.**
+
+`release.sh` guards this, and the guard **fails closed**: it counts both
+`patient` and `user`, and refuses to seed if either has rows *or* if either
+query fails for any reason. Two details worth knowing, because the first
+version of this guard got both wrong:
+
+- **Table names are snake_case.** Prisma maps models through `@@map`, so the
+  table is `patient`, not `"Patient"`. The original query used the model name,
+  errored, had the error swallowed by `2>/dev/null`, and defaulted the count to
+  `0` — it would have waved a seed straight over live data.
+- **Checking `patient` alone is not enough.** The seed creates branch, roles,
+  permissions and nine demo users but *no patients*, so a freshly seeded
+  database still has zero patient rows. Only the `user` count catches a
+  re-seed.
+
+The guard is a backstop, not permission to be casual. A pre-migration dump is
+written to `/opt/smart-hospital/backups` on every deploy; restore that if you
+ever do need to reset deliberately.
 
 ---
 
