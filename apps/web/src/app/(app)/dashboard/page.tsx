@@ -10,6 +10,9 @@ import { useAuthStore, useAbility } from '@/lib/auth-store';
 import { useDashboardOverview } from '@/lib/hooks/use-dashboard';
 import { KpiCards } from '@/components/dashboard/kpi-cards';
 import { DetailCards } from '@/components/dashboard/detail-cards';
+import { IncomeExpenseChart } from '@/components/dashboard/income-expense-chart';
+import { IncomeDonut } from '@/components/dashboard/income-donut';
+import { hasWidget } from '@/lib/hooks/use-dashboard';
 import { moduleHref } from '@/components/app-shell/nav-config';
 
 export default function DashboardPage() {
@@ -49,6 +52,25 @@ export default function DashboardPage() {
 
       {data && <KpiCards data={data} />}
       {data && <DetailCards data={data} />}
+
+      {/* Both charts are gated on finance:view, so in practice they appear
+          together — but each is checked on its own so neither can leak if the
+          contract changes. The line chart carries 12 points and needs the
+          width; the donut is happy in a third. */}
+      {data && (hasWidget(data, 'incomeExpense') || hasWidget(data, 'incomeByModule')) && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {hasWidget(data, 'incomeExpense') && data.incomeExpense && (
+            <div className="lg:col-span-2">
+              <IncomeExpenseChart data={data.incomeExpense} />
+            </div>
+          )}
+          {hasWidget(data, 'incomeByModule') && data.incomeByModule && (
+            <div className={data.incomeExpense ? '' : 'lg:col-span-3'}>
+              <IncomeDonut data={data.incomeByModule} />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* A role with only a couple of widgets would otherwise land on a
           near-empty screen, so point it at the modules it can actually reach. */}
