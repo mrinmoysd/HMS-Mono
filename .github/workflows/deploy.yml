@@ -39,17 +39,21 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck
-        run: pnpm turbo run typecheck --concurrency=2
-
-      # The runner has ~16 GB, so unlike the 1 GB server it can build these in
-      # parallel. Order still matters: the API imports the compiled output of
-      # packages/shared, and needs the generated Prisma client.
+      # Both of these MUST precede typecheck, not just the builds. A fresh
+      # checkout has neither, and apps/api needs both to typecheck at all:
+      #   · packages/shared/dist — it imports the compiled .d.ts, not the source
+      #   · .prisma/client       — every Prisma.*WhereInput/CreateInput type
+      # Without them tsc reports dozens of "has no exported member" and
+      # "implicitly has an 'any' type" errors that look like real code faults
+      # but are just a missing codegen step. This bit the first CI run.
       - name: Build shared
         run: pnpm --filter @smart-hospital/shared build
 
       - name: Generate Prisma client
         run: pnpm --filter @smart-hospital/api prisma:generate
+
+      - name: Typecheck
+        run: pnpm turbo run typecheck --concurrency=2
 
       - name: Build API
         run: pnpm --filter @smart-hospital/api build
