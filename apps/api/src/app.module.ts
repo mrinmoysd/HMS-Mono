@@ -7,6 +7,7 @@ import { RbacModule } from './rbac/rbac.module';
 import { AuthModule } from './auth/auth.module';
 import { AuditModule } from './common/audit/audit.module';
 import { SequenceModule } from './common/sequence/sequence.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { PatientModule } from './patient/patient.module';
 import { TpaModule } from './tpa/tpa.module';
 import { MastersModule } from './masters/masters.module';
@@ -63,6 +64,7 @@ const envSchema = z.object({
     AuditModule,
     SequenceModule,
     AuthModule,
+    DashboardModule,
     PatientModule,
     TpaModule,
     MastersModule,

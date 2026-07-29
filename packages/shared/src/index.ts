@@ -28,6 +28,7 @@ export * from './dto/hr';
 export * from './dto/front-office';
 export * from './dto/records';
 export * from './dto/comms';
+export * from './dto/dashboard';
 export * from './dto/inventory';
 export * from './dto/reports';
 export * from './dto/branch';
