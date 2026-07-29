@@ -87,6 +87,18 @@ export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 pnpm install --frozen-lockfile --prefer-offline 2>&1 | tail -3
 ok "installed (playwright browsers skipped)"
 
+# ── reclaim build outputs ───────────────────────────────────────────────────
+# The Permissions step below hands .next to hms so the service can write its
+# runtime cache. That makes the outputs undeletable by ubuntu, which is who
+# runs the *next* deploy — so every deploy after the first would fail, either
+# here on rebuild or in CI when it unpacks fresh artifacts. Take them back
+# first; they get handed to hms again at the end.
+if [[ -e "$APP_DIR/apps/web/.next" ]]; then
+  sudo chown -R ubuntu:ubuntu "$APP_DIR/apps/web/.next" \
+    "$APP_DIR/apps/api/dist" "$APP_DIR/packages/shared/dist" 2>/dev/null || true
+  ok "reclaimed build outputs from $SVC_USER"
+fi
+
 if [[ "$SKIP_BUILD" != "1" ]]; then
   # ── build ─────────────────────────────────────────────────────────────────
   # Sequential and heap-capped. turbo parallelises by default and two of these

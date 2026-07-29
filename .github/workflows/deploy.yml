@@ -130,7 +130,11 @@ jobs:
           ssh -i ~/.ssh/deploy_key "$USER@$HOST" '
             set -euo pipefail
             cd /opt/smart-hospital/app
-            rm -rf packages/shared/dist apps/api/dist apps/web/.next
+            # sudo: the previous deploy handed .next to the hms service user so
+            # Next can write its runtime cache, which leaves it undeletable by
+            # ubuntu. release.sh reclaims ownership too, but this step runs
+            # before it.
+            sudo rm -rf packages/shared/dist apps/api/dist apps/web/.next
             tar --zstd -xf /tmp/build-artifacts.tar.zst -C /opt/smart-hospital/app
             rm -f /tmp/build-artifacts.tar.zst
             echo "artifacts unpacked"
