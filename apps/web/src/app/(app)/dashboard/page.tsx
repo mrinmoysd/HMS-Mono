@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { useAuthStore, useAbility } from '@/lib/auth-store';
 import { useDashboardOverview } from '@/lib/hooks/use-dashboard';
 import { KpiCards } from '@/components/dashboard/kpi-cards';
+import { DetailCards } from '@/components/dashboard/detail-cards';
 import { moduleHref } from '@/components/app-shell/nav-config';
 
 export default function DashboardPage() {
@@ -47,6 +48,7 @@ export default function DashboardPage() {
       )}
 
       {data && <KpiCards data={data} />}
+      {data && <DetailCards data={data} />}
 
       {/* A role with only a couple of widgets would otherwise land on a
           near-empty screen, so point it at the modules it can actually reach. */}

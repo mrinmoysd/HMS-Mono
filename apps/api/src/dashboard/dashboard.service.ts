@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   Ability,
+  BLOOD_GROUPS,
   permittedDashboardWidgets,
   type DashboardOverviewDto,
   type DashboardWidgetKey,
@@ -243,7 +244,10 @@ export class DashboardService {
     if (wantKpi) {
       out.appointmentsKpi = {
         today: todays.length,
-        confirmed: todays.filter((a) => a.status === 'confirmed' || a.status === 'approved').length,
+        // The DTO calls this "confirmed" to match the dashboard's wording, but
+        // the domain status is `approved` — APPOINTMENT_STATUSES is
+        // pending|approved|cancelled|completed, with no "confirmed" member.
+        confirmed: todays.filter((a) => a.status === 'approved').length,
         pending: todays.filter((a) => a.status === 'pending').length,
         trend: daySeries(
           spark.map((a) => ({ at: a.apptDate, value: 1 })),
@@ -354,13 +358,21 @@ export class DashboardService {
     }
 
     out.bloodBank = {
-      groups: [...byGroup.entries()]
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([group, units]) => ({
+      // Report all eight groups, not just the stocked ones. A group missing
+      // from the grid reads as "fine"; a group showing 0 units in red is the
+      // thing staff actually need to see. Padding happens here rather than in
+      // the UI so the low/critical thresholds stay in one place.
+      groups: BLOOD_GROUPS.map((group) => {
+        const units = byGroup.get(group) ?? 0;
+        return {
           group,
           units,
-          level: units <= BLOOD_CRITICAL ? 'critical' : units <= BLOOD_LOW ? 'low' : 'ok',
-        })),
+          level: (units <= BLOOD_CRITICAL ? 'critical' : units <= BLOOD_LOW ? 'low' : 'ok') as
+            | 'ok'
+            | 'low'
+            | 'critical',
+        };
+      }),
       issuedToday,
       issuedThisWeek: issuedWeek,
     };
