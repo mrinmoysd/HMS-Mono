@@ -1,0 +1,170 @@
+name: Deploy to production
+
+# Push to main deploys. Also runnable by hand from the Actions tab.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time. Without this, two quick pushes race each other through
+# `prisma migrate deploy` and a systemd restart on the same box.
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '20'
+  # Same-origin behind nginx. This is inlined into the client bundle at BUILD
+  # time, so it has to be set here, on the runner — not on the server.
+  NEXT_PUBLIC_API_URL: /api/v1
+  NEXT_TELEMETRY_DISABLED: '1'
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm turbo run typecheck --concurrency=2
+
+      # The runner has ~16 GB, so unlike the 1 GB server it can build these in
+      # parallel. Order still matters: the API imports the compiled output of
+      # packages/shared, and needs the generated Prisma client.
+      - name: Build shared
+        run: pnpm --filter @smart-hospital/shared build
+
+      - name: Generate Prisma client
+        run: pnpm --filter @smart-hospital/api prisma:generate
+
+      - name: Build API
+        run: pnpm --filter @smart-hospital/api build
+
+      - name: Build web
+        run: pnpm --filter @smart-hospital/web build
+
+      - name: Verify build outputs
+        run: |
+          test -f apps/api/dist/src/main.js || { echo "::error::API build produced no dist/src/main.js"; exit 1; }
+          test -d apps/web/.next            || { echo "::error::web build produced no .next"; exit 1; }
+          test -d packages/shared/dist      || { echo "::error::shared build produced no dist"; exit 1; }
+
+      - name: Package artifacts
+        run: |
+          tar --zstd -cf build-artifacts.tar.zst \
+            packages/shared/dist apps/api/dist apps/web/.next
+          ls -lh build-artifacts.tar.zst
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: build-artifacts.tar.zst
+          retention-days: 7
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    # `production` can carry required reviewers and its own secrets. Configure
+    # it under Settings → Environments to gate deploys behind an approval.
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Pin the host key rather than trusting on first use: TOFU inside CI
+          # accepts whatever answers, which is no authentication at all.
+          if [ -n "${{ secrets.SSH_KNOWN_HOSTS }}" ]; then
+            printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          else
+            echo "::warning::SSH_KNOWN_HOSTS not set — falling back to scanning the host. Set it to pin the key."
+            ssh-keyscan -H "${{ secrets.SERVER_HOST }}" > ~/.ssh/known_hosts 2>/dev/null
+          fi
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Sync source
+        env:
+          HOST: ${{ secrets.SERVER_HOST }}
+          USER: ${{ secrets.SERVER_USER }}
+        run: |
+          rsync -az --delete --stats \
+            -e "ssh -i ~/.ssh/deploy_key -o ServerAliveInterval=30" \
+            --exclude '.git' --exclude 'node_modules' --exclude '.next' \
+            --exclude '.turbo' --exclude 'dist' \
+            --exclude '.env' --exclude '.env.local' --exclude '.env.production' \
+            --exclude '*.pdf' \
+            ./ "$USER@$HOST:/opt/smart-hospital/app/"
+
+      - name: Ship build artifacts
+        env:
+          HOST: ${{ secrets.SERVER_HOST }}
+          USER: ${{ secrets.SERVER_USER }}
+        run: |
+          scp -i ~/.ssh/deploy_key build-artifacts.tar.zst "$USER@$HOST:/tmp/"
+          ssh -i ~/.ssh/deploy_key "$USER@$HOST" '
+            set -euo pipefail
+            cd /opt/smart-hospital/app
+            rm -rf packages/shared/dist apps/api/dist apps/web/.next
+            tar --zstd -xf /tmp/build-artifacts.tar.zst -C /opt/smart-hospital/app
+            rm -f /tmp/build-artifacts.tar.zst
+            echo "artifacts unpacked"
+          '
+
+      # SKIP_BUILD=1 because the runner already built. Install still runs on the
+      # server — it needs runtime node_modules, and that step was never the slow
+      # part. Migrations, the pre-migration backup, artifact archiving, the
+      # restart and the health checks all happen inside release.sh.
+      - name: Release
+        env:
+          HOST: ${{ secrets.SERVER_HOST }}
+          USER: ${{ secrets.SERVER_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o ServerAliveInterval=30 -o ServerAliveCountMax=20 \
+            "$USER@$HOST" "
+              chmod +x /opt/smart-hospital/app/deploy/*.sh &&
+              SKIP_BUILD=1 DO_SEED=0 PUBLIC_ORIGIN='http://$HOST' \
+              bash /opt/smart-hospital/app/deploy/release.sh
+            "
+
+      - name: Smoke test
+        env:
+          HOST: ${{ secrets.SERVER_HOST }}
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 25 "http://$HOST/login")
+          echo "GET /login -> $code"
+          [ "$code" = "200" ] || { echo "::error::site not serving after deploy (HTTP $code)"; exit 1; }
+
+          # Login must actually work — a 200 on /login only proves Next is up,
+          # not that the API and database behind it are healthy.
+          auth=$(curl -s -o /dev/null -w '%{http_code}' --max-time 25 \
+            -X POST "http://$HOST/api/v1/auth/login" \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"__ci_probe__","password":"__invalid__"}')
+          echo "POST /api/v1/auth/login (bad creds) -> $auth"
+          [ "$auth" = "401" ] || { echo "::error::API not answering correctly (expected 401, got $auth)"; exit 1; }
+
+      - name: Clean up key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

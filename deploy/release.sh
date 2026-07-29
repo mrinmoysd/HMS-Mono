@@ -74,17 +74,20 @@ printf 'DATABASE_URL=postgresql://%s:%s@localhost:5432/%s?schema=public\n' \
 chmod 600 "$APP_DIR/.env"
 ok "build-time env split (secrets stay out of the web bundle dir)"
 
-if [[ "$SKIP_BUILD" != "1" ]]; then
-  # ── install ───────────────────────────────────────────────────────────────
-  log "Dependencies"
-  corepack enable >/dev/null 2>&1 || true
-  # apps/e2e is in the workspace, so a plain install pulls @playwright/test —
-  # whose postinstall downloads ~300 MB of browsers. Useless on a server that
-  # never runs the tests, and painful on this disk and link.
-  export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-  pnpm install --frozen-lockfile --prefer-offline 2>&1 | tail -3
-  ok "installed (playwright browsers skipped)"
+# ── install ─────────────────────────────────────────────────────────────────
+# Always runs, including when the build is skipped: even a CI deploy that ships
+# prebuilt artifacts still needs runtime node_modules on the server. It is ~2
+# minutes and idempotent — it was never the slow part; the build was.
+log "Dependencies"
+corepack enable >/dev/null 2>&1 || true
+# apps/e2e is in the workspace, so a plain install pulls @playwright/test —
+# whose postinstall downloads ~300 MB of browsers. Useless on a server that
+# never runs the tests, and painful on this disk and link.
+export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+pnpm install --frozen-lockfile --prefer-offline 2>&1 | tail -3
+ok "installed (playwright browsers skipped)"
 
+if [[ "$SKIP_BUILD" != "1" ]]; then
   # ── build ─────────────────────────────────────────────────────────────────
   # Sequential and heap-capped. turbo parallelises by default and two of these
   # builds at once will not fit in 954 MiB even with swap behind them.
