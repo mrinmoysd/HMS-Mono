@@ -10,8 +10,9 @@ import { PatientSelect } from '@/components/patient-select';
 import { PatientForm } from '@/app/(app)/patient/patient-form';
 import { useDoctors } from '@/lib/hooks/use-clinical';
 import { useCharges } from '@/lib/hooks/use-masters';
-import { useBloodBags, useIssueBlood } from '@/lib/hooks/use-departments';
+import { useBloodBags, useIssueBlood, useNextBloodIssueNo } from '@/lib/hooks/use-departments';
 import { ApiRequestError } from '@/lib/api';
+import { toLocalDateInput } from '@/lib/datetime';
 
 type IssueKind = 'blood' | 'component';
 
@@ -41,6 +42,10 @@ export function BloodIssueForm({ open, kind, title, initialBloodGroup, onClose }
   const [error, setError] = useState<string | null>(null);
 
   const { data: bags } = useBloodBags({ kind, status: 'available', bloodGroup: bloodGroup || undefined, size: 200 });
+
+  // Header strip preview. Must sit above the early return — hooks cannot be
+  // conditional — and is gated on `open` so a closed form issues no request.
+  const { data: nextIssue } = useNextBloodIssueNo(open, patientId || undefined);
 
   useEffect(() => {
     if (open) setBloodGroup(initialBloodGroup ?? '');
@@ -114,6 +119,21 @@ export function BloodIssueForm({ open, kind, title, initialBloodGroup, onClose }
       >
         <div className="space-y-4">
           {error && <p role="alert" className="rounded-sm bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
+
+          <div className="grid grid-cols-3 gap-4 rounded-sm border border-border bg-surface-2 px-4 py-3 text-sm">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-fg-muted">Bill No</p>
+              <p className="font-medium tabular-nums">{nextIssue?.billNo ?? '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-fg-muted">Case ID</p>
+              <p className="font-medium tabular-nums">{patientId ? nextIssue?.caseNo ?? '—' : '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-fg-muted">Date</p>
+              <p className="font-medium tabular-nums">{toLocalDateInput(new Date())}</p>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="sm:col-span-2">

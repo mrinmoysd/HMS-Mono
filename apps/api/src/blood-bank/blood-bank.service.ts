@@ -9,8 +9,11 @@ import {
   type BloodDonorInput,
   type BloodIssueDto,
   type BloodIssueInput,
+  type BloodIssueNextNoDto,
+  type BloodIssueUpdateInput,
   type BloodProductDto,
   type BloodProductInput,
+  BLOOD_GROUPS,
   type ListQuery,
   type Paginated,
 } from '@smart-hospital/shared';
@@ -18,9 +21,45 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit/audit.service';
 import { InvoiceService } from '../billing/invoice.service';
 import { paginate, toPrismaPage } from '../common/pagination';
+import { SequenceService } from '../common/sequence/sequence.service';
 import type { RequestUser } from '../common/types/request-user';
 
 const bagInclude = { donor: true, charge: { select: { id: true, name: true } } } satisfies Prisma.BloodBagInclude;
+
+/**
+ * Columns each list may be ordered by. Without a whitelist `toPrismaPage`
+ * ignores `sort` entirely, which is why these lists silently refused to sort.
+ * Only DTO-backed scalar columns belong here — never relation or internal ones.
+ */
+const DONOR_SORTABLE = ['name', 'bloodGroup', 'gender', 'age', 'phone', 'lastDonation', 'createdAt'] as const;
+const BAG_SORTABLE = ['bagNo', 'bloodGroup', 'component', 'volume', 'lot', 'status', 'donateDate', 'createdAt'] as const;
+/**
+ * Issue-list columns that can actually be ordered on.
+ *
+ * BloodIssue carries only scalar FKs — there is no `invoice` or `patient`
+ * relation on the model — so bill no, patient name and the money columns cannot
+ * be reached from an orderBy without a schema change. Those columns are left
+ * unsortable in the UI rather than offering a control that quietly does
+ * nothing, which is the bug this whole pass exists to remove.
+ */
+const ISSUE_ORDER_BY: Record<string, Prisma.BloodIssueOrderByWithRelationInput> = {
+  issueDate: { issuedAt: 'asc' },
+  technician: { technician: 'asc' },
+  bagNo: { bag: { bagNo: 'asc' } },
+  bloodGroup: { bag: { bloodGroup: 'asc' } },
+  component: { bag: { component: 'asc' } },
+  donorName: { donor: { name: 'asc' } },
+};
+
+/** Rewrite the leaf direction of a (possibly nested) orderBy built above. */
+function withDirection<T>(order: T, dir: 'asc' | 'desc'): T {
+  if (dir === 'asc') return order;
+  const flip = (node: unknown): unknown =>
+    node && typeof node === 'object'
+      ? Object.fromEntries(Object.entries(node as object).map(([k, v]) => [k, flip(v)]))
+      : 'desc';
+  return flip(order) as T;
+}
 type BagRow = Prisma.BloodBagGetPayload<{ include: typeof bagInclude }>;
 
 @Injectable()
@@ -29,6 +68,7 @@ export class BloodBankService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly invoices: InvoiceService,
+    private readonly sequence: SequenceService,
   ) {}
 
   // ── Legacy flat products (+ live stock) — Setup masters only ─
@@ -94,7 +134,7 @@ export class BloodBankService {
 
   // ── Donors ─────────────────────────────────────────────────
   async listDonors(branchId: string, query: ListQuery): Promise<Paginated<BloodDonorDto>> {
-    const { skip, take, orderBy } = toPrismaPage(query);
+    const { skip, take, orderBy } = toPrismaPage(query, DONOR_SORTABLE);
     const where: Prisma.BloodDonorWhereInput = {
       branchId,
       deletedAt: null,
@@ -170,7 +210,7 @@ export class BloodBankService {
     branchId: string,
     query: ListQuery & { kind?: 'blood' | 'component'; bloodGroup?: string; status?: string },
   ): Promise<Paginated<BloodBagDto>> {
-    const { skip, take, orderBy } = toPrismaPage(query);
+    const { skip, take, orderBy } = toPrismaPage(query, BAG_SORTABLE);
     const where: Prisma.BloodBagWhereInput = {
       branchId,
       deletedAt: null,
@@ -201,9 +241,49 @@ export class BloodBankService {
         _count: { _all: true },
       }),
     ]);
+    // Pad to every blood group, including the ones at zero. groupBy only
+    // returns groups that have rows, so an empty shelf used to render as
+    // "No blood in stock" — hiding exactly the fact staff need to see, which
+    // is *which* group ran out. A zero row is information; a missing row is not.
+    const bloodCounts = new Map(blood.map((b) => [b.bloodGroup, b._count._all]));
+    const componentCounts = new Map(
+      components.map((c) => [`${c.bloodGroup}|${c.component!}`, c._count._all]),
+    );
+    // Same for components. The names come from every component bag on record,
+    // not just the available ones, plus anything configured in Setup — otherwise
+    // issuing the last Plasma bag makes the whole Plasma row disappear rather
+    // than showing it at 0, which is the same bug one level down.
+    const [products, seen] = await Promise.all([
+      this.prisma.bloodProduct.findMany({
+        where: { branchId, deletedAt: null },
+        select: { component: true },
+      }),
+      this.prisma.bloodBag.findMany({
+        where: { branchId, deletedAt: null, component: { not: null } },
+        select: { component: true },
+        distinct: ['component'],
+      }),
+    ]);
+    const componentNames = [
+      ...new Set(
+        [...products, ...seen]
+          .map((r) => r.component)
+          .filter((c): c is string => !!c),
+      ),
+    ].sort();
+
     return {
-      blood: blood.map((b) => ({ bloodGroup: b.bloodGroup, count: b._count._all })),
-      components: components.map((c) => ({ bloodGroup: c.bloodGroup, component: c.component!, count: c._count._all })),
+      blood: BLOOD_GROUPS.map((bloodGroup) => ({
+        bloodGroup,
+        count: bloodCounts.get(bloodGroup) ?? 0,
+      })),
+      components: componentNames.flatMap((component) =>
+        BLOOD_GROUPS.map((bloodGroup) => ({
+          bloodGroup,
+          component,
+          count: componentCounts.get(`${bloodGroup}|${component}`) ?? 0,
+        })),
+      ),
     };
   }
 
@@ -282,7 +362,12 @@ export class BloodBankService {
 
   // ── Issue (blood or component) → invoice via shared engine ─
   async listIssues(branchId: string, type: 'blood' | 'component', query: ListQuery): Promise<Paginated<BloodIssueDto>> {
-    const { skip, take, orderBy } = toPrismaPage(query);
+    const { skip, take } = toPrismaPage(query);
+    const [sortKey, sortDir] = (query.sort ?? '').split(':');
+    const mapped = sortKey ? ISSUE_ORDER_BY[sortKey] : undefined;
+    const orderBy: Prisma.BloodIssueOrderByWithRelationInput = mapped
+      ? withDirection(mapped, sortDir === 'desc' ? 'desc' : 'asc')
+      : { createdAt: 'desc' };
     let patientFilter: Prisma.BloodIssueWhereInput = {};
     if (query.search) {
       const patients = await this.prisma.patient.findMany({ where: { branchId, deletedAt: null, name: { contains: query.search, mode: 'insensitive' } }, select: { id: true } });
@@ -406,6 +491,132 @@ export class BloodBankService {
     const inv = await this.invoices.get(branchId, created.invoiceId!);
     return this.toIssueDto(created, inv);
   }
+
+  /** Bill No + Case ID the Issue form shows before saving. A preview, not a reservation. */
+  async nextIssueNo(branchId: string, patientId?: string): Promise<BloodIssueNextNoDto> {
+    const billNo = await this.sequence.peek(branchId, 'blood_bill');
+    if (!patientId) return { billNo, caseNo: null };
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: patientId, branchId, deletedAt: null },
+      select: { cases: { take: 1, orderBy: { createdAt: 'asc' }, select: { caseNo: true } } },
+    });
+    return { billNo, caseNo: patient?.cases[0]?.caseNo ?? null };
+  }
+
+  /**
+   * Edit an issue's header and its bill-level discount.
+   *
+   * The bag is out of scope — see bloodIssueUpdateSchema. The discount is
+   * applied by re-running the shared totals function over the stored invoice
+   * items with the bill-level percentage substituted, so the arithmetic matches
+   * how the issue was billed rather than being a second implementation.
+   */
+  async updateIssue(
+    user: RequestUser,
+    branchId: string,
+    id: string,
+    input: BloodIssueUpdateInput,
+  ): Promise<BloodIssueDto> {
+    const row = await this.prisma.bloodIssue.findFirst({ where: { id, branchId } });
+    if (!row || !row.invoiceId) throw new NotFoundException('Blood issue not found');
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { id: row.invoiceId, deletedAt: null },
+      include: { items: true },
+    });
+    if (!invoice) throw new NotFoundException('Bill not found');
+
+    const invoiceData: Prisma.InvoiceUpdateInput = {
+      consultantId: input.consultantId ?? null,
+      referenceDoctor: input.referenceDoctor || null,
+      note: input.note || null,
+    };
+
+    if (input.discountPct !== undefined) {
+      const totals = computeInvoiceTotals(
+        invoice.items.map((it) => ({
+          name: it.name,
+          standardCharge: Number(it.standardCharge),
+          appliedCharge: Number(it.appliedCharge),
+          qty: it.qty,
+          discountPct: input.discountPct as number,
+          taxPct: Number(it.taxPct),
+        })),
+      );
+      const paid = Number(invoice.paid);
+      invoiceData.subtotal = totals.subtotal;
+      invoiceData.discount = totals.discount;
+      invoiceData.tax = totals.tax;
+      invoiceData.netAmount = totals.netAmount;
+      invoiceData.balance = round2(totals.netAmount - paid);
+      invoiceData.status = paid <= 0 ? 'unpaid' : paid >= totals.netAmount ? 'paid' : 'partial';
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.invoice.update({ where: { id: invoice.id }, data: invoiceData }),
+      this.prisma.bloodIssue.update({
+        where: { id },
+        data: {
+          technician: input.technician || null,
+          bloodQty: input.bloodQty || null,
+          note: input.note || null,
+        },
+      }),
+    ]);
+    await this.audit.record({ branchId, userId: user.id, action: 'update', entity: 'blood_issue', entityId: id });
+    return this.getIssue(branchId, id);
+  }
+
+  /**
+   * Void an issue: soft-delete its bill and hand the bag back to stock.
+   *
+   * Returning the bag is the whole point. `issue()` flips the bag to `issued`,
+   * so deleting the record without undoing that would strand the bag — it would
+   * never appear in stock again and never be issuable, with nothing on screen
+   * explaining why. Only bags still marked `issued` are reset, so a bag that was
+   * since discarded or split is left alone.
+   */
+  async deleteIssue(user: RequestUser, branchId: string, id: string): Promise<void> {
+    const row = await this.prisma.bloodIssue.findFirst({ where: { id, branchId } });
+    if (!row) throw new NotFoundException('Blood issue not found');
+
+    await this.prisma.$transaction(async (tx) => {
+      if (row.invoiceId) {
+        await tx.invoice.update({ where: { id: row.invoiceId }, data: { deletedAt: new Date() } });
+      }
+      if (row.bagId) {
+        await tx.bloodBag.updateMany({
+          where: { id: row.bagId, branchId, status: 'issued' },
+          data: { status: 'available' },
+        });
+      }
+      await tx.bloodIssue.delete({ where: { id } });
+    });
+    await this.audit.record({
+      branchId, userId: user.id, action: 'delete', entity: 'blood_issue',
+      entityId: id, before: { bagId: row.bagId, invoiceId: row.invoiceId },
+    });
+  }
+
+  /**
+   * Discard a bag. Refused once the bag has been issued — that bag is in a
+   * patient, and removing the record would make the issue reference nothing.
+   */
+  async removeBag(user: RequestUser, branchId: string, id: string): Promise<void> {
+    const bag = await this.prisma.bloodBag.findFirst({ where: { id, branchId, deletedAt: null } });
+    if (!bag) throw new NotFoundException('Bag not found');
+    if (bag.status === 'issued') {
+      throw new BadRequestException('This bag has been issued and cannot be deleted. Void the issue first.');
+    }
+    await this.prisma.bloodBag.update({ where: { id }, data: { deletedAt: new Date() } });
+    await this.audit.record({
+      branchId, userId: user.id, action: 'delete', entity: 'blood_bag',
+      entityId: id, before: { bagNo: bag.bagNo },
+    });
+  }
+}
+
+function round2(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
 function toDonorDto(d: {

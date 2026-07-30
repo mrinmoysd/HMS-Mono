@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Plus, Eye, Pencil, Trash2, CreditCard, Printer, Droplet } from 'lucide-react';
 import type { BloodBagDto, BloodDonorDto, BloodIssueDto } from '@smart-hospital/shared';
-import { DataTable, type Column } from '@/components/ui/data-table';
+import { DataTable, type Column, type SortState } from '@/components/ui/data-table';
 import { Tabs } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
@@ -13,6 +13,7 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import type { ExportTable } from '@/lib/export';
 import {
   useBloodDonors, useDeleteBloodDonor, useBloodBagStatus, useBloodBags, useBloodIssues,
+  useDeleteBloodBag, useDeleteBloodIssue,
 } from '@/lib/hooks/use-departments';
 import { useAbility } from '@/lib/auth-store';
 import { formatAge } from '@/lib/utils';
@@ -23,13 +24,21 @@ import { BloodBagForm } from '@/components/emr/blood-bag-form';
 import { BloodComponentSplitForm } from '@/components/emr/blood-component-split-form';
 import { BloodIssueForm } from '@/components/emr/blood-issue-form';
 import { BloodIssueDetailsModal } from '@/components/emr/blood-issue-details-modal';
+import { BloodIssueEditModal } from '@/components/emr/blood-issue-edit-modal';
 import { BloodIssuePaymentsModal } from '@/components/emr/blood-issue-payments-modal';
 
 type Tab = 'status' | 'donors' | 'components' | 'blood-issues' | 'component-issues';
 
+/** asc → desc → unsorted, matching the diagnostics lists. */
+function nextSort(cur: SortState | undefined, key: string): SortState | undefined {
+  if (cur?.key !== key) return { key, dir: 'asc' };
+  return cur.dir === 'asc' ? { key, dir: 'desc' } : undefined;
+}
+
 export default function BloodBankPage() {
   const ability = useAbility();
   const canAdd = ability.can('blood_bank', 'add');
+  const canEdit = ability.can('blood_bank', 'edit');
   const canDelete = ability.can('blood_bank', 'delete');
 
   const [tab, setTab] = useState<Tab>('status');
@@ -55,9 +64,9 @@ export default function BloodBankPage() {
 
       {tab === 'status' && <StatusPanel canAdd={canAdd} />}
       {tab === 'donors' && <DonorsPanel canAdd={canAdd} canDelete={canDelete} />}
-      {tab === 'components' && <ComponentsPanel canAdd={canAdd} />}
-      {tab === 'blood-issues' && <IssuesPanel kind="blood" title="Blood" canAdd={canAdd} />}
-      {tab === 'component-issues' && <IssuesPanel kind="component" title="Component" canAdd={canAdd} />}
+      {tab === 'components' && <ComponentsPanel canAdd={canAdd} canDelete={canDelete} />}
+      {tab === 'blood-issues' && <IssuesPanel kind="blood" title="Blood" canAdd={canAdd} canEdit={canEdit} canDelete={canDelete} />}
+      {tab === 'component-issues' && <IssuesPanel kind="component" title="Component" canAdd={canAdd} canEdit={canEdit} canDelete={canDelete} />}
     </div>
   );
 }
@@ -152,12 +161,17 @@ function StatusPanel({ canAdd }: { canAdd: boolean }) {
 function DonorsPanel({ canAdd, canDelete }: { canAdd: boolean; canDelete: boolean }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  // These four lists all passed `onSize={() => {}}`: the rows-per-page control
+  // rendered and responded to clicks, but the query never changed, so picking
+  // 100 did nothing. Real state, and a sort the API now honours.
+  const [size, setSize] = useState(25);
+  const [sort, setSort] = useState<SortState | undefined>();
   const [formOpen, setFormOpen] = useState(false);
   const [editingDonor, setEditingDonor] = useState<BloodDonorDto | null>(null);
   const [detailDonor, setDetailDonor] = useState<BloodDonorDto | null>(null);
   const [bagFormOpen, setBagFormOpen] = useState(false);
 
-  const donors = useBloodDonors({ search, page, size: 25 });
+  const donors = useBloodDonors({ search, page, size, sort: sort ? `${sort.key}:${sort.dir}` : undefined });
   const deleteDonor = useDeleteBloodDonor();
   const toast = useToast();
   const confirm = useConfirm();
@@ -173,11 +187,11 @@ function DonorsPanel({ canAdd, canDelete }: { canAdd: boolean; canDelete: boolea
   }
 
   const cols: Column<BloodDonorDto>[] = [
-    { key: 'name', header: 'Donor Name', className: 'font-medium' },
-    { key: 'bloodGroup', header: 'Blood Group' },
-    { key: 'gender', header: 'Gender', render: (d) => d.gender ?? '—' },
-    { key: 'age', header: 'Age', render: (d) => formatAge(d.age) },
-    { key: 'phone', header: 'Contact No', render: (d) => d.phone ?? '—' },
+    { key: 'name', header: 'Donor Name', className: 'font-medium', sortable: true },
+    { key: 'bloodGroup', header: 'Blood Group', sortable: true },
+    { key: 'gender', header: 'Gender', sortable: true, render: (d) => d.gender ?? '—' },
+    { key: 'age', header: 'Age', sortable: true, render: (d) => formatAge(d.age) },
+    { key: 'phone', header: 'Contact No', sortable: true, render: (d) => d.phone ?? '—' },
     { key: 'address', header: 'Address', render: (d) => d.address ?? '—' },
   ];
 
@@ -191,7 +205,9 @@ function DonorsPanel({ canAdd, canDelete }: { canAdd: boolean; canDelete: boolea
         search={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
         onPage={setPage}
-        onSize={() => {}}
+        onSize={(v) => { setSize(v); setPage(1); }}
+        sort={sort}
+        onSort={(k) => { setSort((c) => nextSort(c, k)); setPage(1); }}
         toolbar={
           <>
             <ExportMenu table={exportTable} />
@@ -250,12 +266,20 @@ function DonorsPanel({ canAdd, canDelete }: { canAdd: boolean; canDelete: boolea
   );
 }
 
-function ComponentsPanel({ canAdd }: { canAdd: boolean }) {
+function ComponentsPanel({ canAdd, canDelete }: { canAdd: boolean; canDelete: boolean }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [size, setSize] = useState(25);
+  const [sort, setSort] = useState<SortState | undefined>();
   const [splitOpen, setSplitOpen] = useState(false);
 
-  const components = useBloodBags({ kind: 'component', search, page, size: 25 });
+  const deleteBag = useDeleteBloodBag();
+  const toast = useToast();
+  const confirm = useConfirm();
+
+  const components = useBloodBags({
+    kind: 'component', search, page, size, sort: sort ? `${sort.key}:${sort.dir}` : undefined,
+  });
 
   function exportTable(): ExportTable {
     const rows = components.data?.data ?? [];
@@ -268,13 +292,13 @@ function ComponentsPanel({ canAdd }: { canAdd: boolean }) {
   }
 
   const cols: Column<BloodBagDto>[] = [
-    { key: 'component', header: 'Component', className: 'font-medium', render: (c) => c.component ?? '—' },
-    { key: 'bagNo', header: 'Bag No' },
-    { key: 'bloodGroup', header: 'Blood Group' },
-    { key: 'volume', header: 'Volume', render: (c) => c.volume ?? '—' },
-    { key: 'lot', header: 'Lot', render: (c) => c.lot ?? '—' },
+    { key: 'component', header: 'Component', className: 'font-medium', sortable: true, render: (c) => c.component ?? '—' },
+    { key: 'bagNo', header: 'Bag No', sortable: true },
+    { key: 'bloodGroup', header: 'Blood Group', sortable: true },
+    { key: 'volume', header: 'Volume', sortable: true, render: (c) => c.volume ?? '—' },
+    { key: 'lot', header: 'Lot', sortable: true, render: (c) => c.lot ?? '—' },
     {
-      key: 'status', header: 'Status',
+      key: 'status', header: 'Status', sortable: true,
       render: (c) => <span className={`rounded-sm px-2 py-0.5 text-xs ${c.status === 'available' ? 'bg-success/10 text-success' : 'bg-fg-muted/10 text-fg-muted'}`}>{c.status}</span>,
     },
   ];
@@ -289,7 +313,9 @@ function ComponentsPanel({ canAdd }: { canAdd: boolean }) {
         search={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
         onPage={setPage}
-        onSize={() => {}}
+        onSize={(v) => { setSize(v); setPage(1); }}
+        sort={sort}
+        onSort={(k) => { setSort((c) => nextSort(c, k)); setPage(1); }}
         toolbar={
           <>
             <ExportMenu table={exportTable} />
@@ -300,20 +326,58 @@ function ComponentsPanel({ canAdd }: { canAdd: boolean }) {
             )}
           </>
         }
+        rowActions={
+          canDelete
+            ? (c) => (
+                <button
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: `Discard bag ${c.bagNo}?`,
+                      description: 'The component is removed from stock. This cannot be undone.',
+                      confirmLabel: 'Discard bag',
+                      tone: 'danger',
+                    });
+                    if (!ok) return;
+                    try {
+                      await deleteBag.mutateAsync(c.id);
+                      toast.success(`Bag ${c.bagNo} discarded`);
+                    } catch (e) {
+                      toast.error('Could not discard bag', { description: (e as Error).message });
+                    }
+                  }}
+                  aria-label="Discard" title="Discard bag"
+                  className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )
+            : undefined
+        }
       />
       <BloodComponentSplitForm open={splitOpen} onClose={() => setSplitOpen(false)} />
     </div>
   );
 }
 
-function IssuesPanel({ kind, title, canAdd }: { kind: 'blood' | 'component'; title: string; canAdd: boolean }) {
+function IssuesPanel({ kind, title, canAdd, canEdit, canDelete }: {
+  kind: 'blood' | 'component'; title: string; canAdd: boolean; canEdit: boolean; canDelete: boolean;
+}) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [size, setSize] = useState(25);
+  const [sort, setSort] = useState<SortState | undefined>();
   const [issueOpen, setIssueOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [paymentsId, setPaymentsId] = useState<string | null>(null);
+  const [editingIssue, setEditingIssue] = useState<BloodIssueDto | null>(null);
 
-  const issues = useBloodIssues({ type: kind, search, page, size: 25 });
+  const deleteIssue = useDeleteBloodIssue();
+  const toast = useToast();
+  const confirm = useConfirm();
+
+  const issues = useBloodIssues({
+    type: kind, search, page, size, sort: sort ? `${sort.key}:${sort.dir}` : undefined,
+  });
 
   function exportTable(): ExportTable {
     const rows = issues.data?.data ?? [];
@@ -328,15 +392,17 @@ function IssuesPanel({ kind, title, canAdd }: { kind: 'blood' | 'component'; tit
     };
   }
 
+  // Only the columns the API can genuinely order on are marked sortable — the
+  // bill/amount columns live on the invoice, which BloodIssue has no relation to.
   const cols: Column<BloodIssueDto>[] = [
     { key: 'billNo', header: 'Bill No', className: 'font-medium' },
     { key: 'caseNo', header: 'Case ID', render: (i) => i.caseNo ?? '—' },
-    { key: 'issueDate', header: 'Issue Date', render: (i) => new Date(i.issueDate).toLocaleString() },
+    { key: 'issueDate', header: 'Issue Date', sortable: true, render: (i) => new Date(i.issueDate).toLocaleString() },
     { key: 'patientName', header: 'Patient Name' },
-    { key: 'bloodGroup', header: 'Blood Group', render: (i) => i.bloodGroup ?? '—' },
-    { key: 'bagNo', header: 'Bags', render: (i) => i.bagNo ?? '—' },
-    ...(kind === 'component' ? [{ key: 'component', header: 'Component', render: (i: BloodIssueDto) => i.component ?? '—' } as Column<BloodIssueDto>] : []),
-    { key: 'donorName', header: 'Donor Name', render: (i) => i.donorName ?? '—' },
+    { key: 'bloodGroup', header: 'Blood Group', sortable: true, render: (i) => i.bloodGroup ?? '—' },
+    { key: 'bagNo', header: 'Bags', sortable: true, render: (i) => i.bagNo ?? '—' },
+    ...(kind === 'component' ? [{ key: 'component', header: 'Component', sortable: true, render: (i: BloodIssueDto) => i.component ?? '—' } as Column<BloodIssueDto>] : []),
+    { key: 'donorName', header: 'Donor Name', sortable: true, render: (i) => i.donorName ?? '—' },
     { key: 'subtotal', header: 'Amount (#)', className: 'tabular', render: (i) => i.subtotal.toFixed(2) },
     { key: 'paid', header: 'Paid (#)', className: 'tabular', render: (i) => i.paid.toFixed(2) },
     {
@@ -355,7 +421,9 @@ function IssuesPanel({ kind, title, canAdd }: { kind: 'blood' | 'component'; tit
         search={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
         onPage={setPage}
-        onSize={() => {}}
+        onSize={(v) => { setSize(v); setPage(1); }}
+        sort={sort}
+        onSort={(k) => { setSort((c) => nextSort(c, k)); setPage(1); }}
         toolbar={
           <>
             <ExportMenu table={exportTable} />
@@ -382,7 +450,37 @@ function IssuesPanel({ kind, title, canAdd }: { kind: 'blood' | 'component'; tit
       />
 
       <BloodIssueForm open={issueOpen} kind={kind} title={title} onClose={() => setIssueOpen(false)} />
-      <BloodIssueDetailsModal id={detailId} title={title} open={!!detailId} onClose={() => setDetailId(null)} />
+      <BloodIssueDetailsModal
+        id={detailId}
+        title={title}
+        open={!!detailId}
+        onClose={() => setDetailId(null)}
+        canEdit={canEdit}
+        canDelete={canDelete}
+        onEdit={(i) => { setDetailId(null); setEditingIssue(i); }}
+        onDelete={async (i) => {
+          const ok = await confirm({
+            title: `Delete issue ${i.billNo}?`,
+            description: `The bill is voided and bag ${i.bagNo ?? ''} returns to stock. This cannot be undone.`,
+            confirmLabel: 'Delete issue',
+            tone: 'danger',
+          });
+          if (!ok) return;
+          try {
+            await deleteIssue.mutateAsync(i.id);
+            toast.success(`${i.billNo} deleted`);
+            setDetailId(null);
+          } catch (e) {
+            toast.error('Could not delete issue', { description: (e as Error).message });
+          }
+        }}
+      />
+      <BloodIssueEditModal
+        issue={editingIssue}
+        title={title}
+        open={!!editingIssue}
+        onClose={() => setEditingIssue(null)}
+      />
       <BloodIssuePaymentsModal id={paymentsId} open={!!paymentsId} onClose={() => setPaymentsId(null)} />
     </div>
   );

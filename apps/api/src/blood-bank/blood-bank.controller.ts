@@ -6,12 +6,14 @@ import {
   bloodComponentSplitSchema,
   bloodDonorSchema,
   bloodIssueSchema,
+  bloodIssueUpdateSchema,
   bloodProductSchema,
   listQuerySchema,
   type BloodBagInput,
   type BloodComponentSplitInput,
   type BloodDonorInput,
   type BloodIssueInput,
+  type BloodIssueUpdateInput,
   type BloodProductInput,
   type ListQuery,
 } from '@smart-hospital/shared';
@@ -117,6 +119,13 @@ export class BloodBankController {
     return this.bloodBank.createBag(user, branchId, body);
   }
 
+  @Delete('bags/:id')
+  @HttpCode(204)
+  @RequirePermission('blood_bank', 'delete')
+  removeBag(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
+    return this.bloodBank.removeBag(user, branchId, id);
+  }
+
   @Post('components')
   @RequirePermission('blood_bank', 'add')
   splitComponents(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Body(new ZodValidationPipe(bloodComponentSplitSchema)) body: BloodComponentSplitInput) {
@@ -130,6 +139,13 @@ export class BloodBankController {
     return this.bloodBank.listIssues(branchId, q.type === 'component' ? 'component' : 'blood', q);
   }
 
+  /** Declared before `issues/:id` so the literal segment wins the route match. */
+  @Get('issues/next-no')
+  @RequirePermission('blood_bank', 'add')
+  nextIssueNo(@BranchId() branchId: string, @Query('patientId') patientId?: string) {
+    return this.bloodBank.nextIssueNo(branchId, patientId);
+  }
+
   @Get('issues/:id')
   @RequirePermission('blood_bank', 'view')
   getIssue(@BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
@@ -140,5 +156,23 @@ export class BloodBankController {
   @RequirePermission('blood_bank', 'add')
   issue(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Body(new ZodValidationPipe(bloodIssueSchema)) body: BloodIssueInput) {
     return this.bloodBank.issue(user, branchId, body);
+  }
+
+  @Patch('issues/:id')
+  @RequirePermission('blood_bank', 'edit')
+  updateIssue(
+    @CurrentUser() user: RequestUser,
+    @BranchId() branchId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(bloodIssueUpdateSchema)) body: BloodIssueUpdateInput,
+  ) {
+    return this.bloodBank.updateIssue(user, branchId, id, body);
+  }
+
+  @Delete('issues/:id')
+  @HttpCode(204)
+  @RequirePermission('blood_bank', 'delete')
+  deleteIssue(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
+    return this.bloodBank.deleteIssue(user, branchId, id);
   }
 }

@@ -9,6 +9,8 @@ import type {
   BloodDonorInput,
   BloodIssueDto,
   BloodIssueInput,
+  BloodIssueUpdateInput,
+  BloodIssueNextNoDto,
   BloodProductDto,
   BloodProductInput,
   BulkDeleteInput,
@@ -484,5 +486,48 @@ export function useIssueBlood() {
       qc.invalidateQueries({ queryKey: ['blood-issues'] });
       qc.invalidateQueries({ queryKey: ['invoices'] });
     },
+  });
+}
+export function useUpdateBloodIssue() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: BloodIssueUpdateInput }) =>
+      api.patch<BloodIssueDto>(`/blood-bank/issues/${id}`, input),
+    onSuccess: (_d, { id }) => {
+      qc.invalidateQueries({ queryKey: ['blood-issues'] });
+      qc.invalidateQueries({ queryKey: ['blood-issues', 'detail', id] });
+      qc.invalidateQueries({ queryKey: ['invoices'] });
+    },
+  });
+}
+export function useDeleteBloodIssue() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/blood-bank/issues/${id}`),
+    // Bag status too: voiding an issue hands the bag back to stock, so the
+    // status board and bag lists are stale the moment this succeeds.
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['blood-issues'] });
+      qc.invalidateQueries({ queryKey: ['blood-bags'] });
+      qc.invalidateQueries({ queryKey: ['invoices'] });
+    },
+  });
+}
+export function useDeleteBloodBag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/blood-bank/bags/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['blood-bags'] }),
+  });
+}
+export function useNextBloodIssueNo(enabled: boolean, patientId?: string) {
+  return useQuery({
+    queryKey: ['blood-issue-next-no', patientId ?? null],
+    queryFn: () =>
+      api.get<BloodIssueNextNoDto>(
+        `/blood-bank/issues/next-no${patientId ? `?patientId=${encodeURIComponent(patientId)}` : ''}`,
+      ),
+    enabled,
+    staleTime: 0,
   });
 }

@@ -1,14 +1,26 @@
 'use client';
 
-import { Printer } from 'lucide-react';
+import { Pencil, Printer, Trash2 } from 'lucide-react';
 import { IconButton } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { SkeletonText } from '@/components/ui/skeleton';
+import type { BloodIssueDto } from '@smart-hospital/shared';
 import { useBloodIssue } from '@/lib/hooks/use-departments';
 import { printBloodIssueBill } from '@/lib/print';
 
 /** "Bill Details" for a Blood/Component Issue — full field grid matching the demo. */
-export function BloodIssueDetailsModal({ id, title, open, onClose }: { id: string | null; title: string; open: boolean; onClose: () => void }) {
+export function BloodIssueDetailsModal({
+  id, title, open, onClose, onEdit, onDelete, canEdit, canDelete,
+}: {
+  id: string | null;
+  title: string;
+  open: boolean;
+  onClose: () => void;
+  onEdit?: (issue: BloodIssueDto) => void;
+  onDelete?: (issue: BloodIssueDto) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}) {
   const { data, isLoading } = useBloodIssue(open ? id : null);
 
   return (
@@ -19,9 +31,21 @@ export function BloodIssueDetailsModal({ id, title, open, onClose }: { id: strin
       size="xl"
       headerActions={
         data ? (
-          <IconButton label="Print bill" tone="primary" onClick={() => printBloodIssueBill(title, data)}>
-            <Printer className="h-4 w-4" />
-          </IconButton>
+          <>
+            <IconButton label="Print bill" tone="primary" onClick={() => printBloodIssueBill(title, data)}>
+              <Printer className="h-4 w-4" />
+            </IconButton>
+            {canEdit && onEdit && (
+              <IconButton label="Edit issue" tone="primary" onClick={() => onEdit(data)}>
+                <Pencil className="h-4 w-4" />
+              </IconButton>
+            )}
+            {canDelete && onDelete && (
+              <IconButton label="Delete issue" tone="danger" onClick={() => onDelete(data)}>
+                <Trash2 className="h-4 w-4" />
+              </IconButton>
+            )}
+          </>
         ) : null
       }
     >

@@ -161,3 +161,33 @@ export interface BloodIssueDto {
   balance: number;
   createdByName: string | null;
 }
+
+/**
+ * Edit an existing Blood/Component Issue.
+ *
+ * Scope is the issue's header plus its bill-level discount — deliberately not
+ * the bag. The bag was marked `issued` when this record was created and may
+ * since have been split, discarded or re-counted; swapping it here would have
+ * to unwind that, and a mis-click would silently return a transfused bag to
+ * stock. Issuing a different bag means voiding this issue and raising a new
+ * one, which is also what leaves an audit trail.
+ */
+export const bloodIssueUpdateSchema = z.object({
+  consultantId: z.string().uuid().optional().nullable(),
+  referenceDoctor: z.string().trim().optional().or(z.literal('')),
+  technician: z.string().trim().optional().or(z.literal('')),
+  bloodQty: z.string().trim().optional().or(z.literal('')),
+  note: z.string().trim().optional().or(z.literal('')),
+  discountPct: z.coerce.number().min(0).max(100).optional(),
+});
+export type BloodIssueUpdateInput = z.infer<typeof bloodIssueUpdateSchema>;
+
+/**
+ * Header strip values for the Issue form: the bill number that would be issued
+ * next (a preview — not reserved) and, when a patient is given, the case the
+ * issue would be filed under. Both mirror what `issue()` actually does.
+ */
+export interface BloodIssueNextNoDto {
+  billNo: string;
+  caseNo: string | null;
+}
