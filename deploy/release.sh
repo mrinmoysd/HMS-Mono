@@ -87,6 +87,22 @@ export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 pnpm install --frozen-lockfile --prefer-offline 2>&1 | tail -3
 ok "installed (playwright browsers skipped)"
 
+# ── prisma client ───────────────────────────────────────────────────────────
+# Must run on EVERY release, not only when we build here. The client is
+# generated into the server's own node_modules from the rsynced schema; CI ships
+# dist but never node_modules, so the artifact path cannot supply it.
+#
+# This used to sit inside the build block, so every CI deploy (SKIP_BUILD=1)
+# skipped it. The client stayed frozen at whatever schema was current the last
+# time someone ran a full on-server build, and every column added by a migration
+# after that was invisible at runtime — findMany simply never selected it, so
+# the API returned rows with the new fields silently missing and no error
+# anywhere. Caught when appointment paymentNote/transactionId/serialNo came back
+# absent from a server whose database definitely had the columns.
+log "Prisma client"
+pnpm --filter @smart-hospital/api prisma:generate 2>&1 | tail -2
+ok "prisma client matches the schema on disk"
+
 # ── reclaim build outputs ───────────────────────────────────────────────────
 # The Permissions step below hands .next to hms so the service can write its
 # runtime cache. That makes the outputs undeletable by ubuntu, which is who
@@ -111,10 +127,6 @@ if [[ "$SKIP_BUILD" != "1" ]]; then
   echo "  · packages/shared"
   pnpm --filter @smart-hospital/shared build 2>&1 | tail -2
   ok "shared → dist (must precede the API; it imports the compiled JS)"
-
-  echo "  · prisma client"
-  pnpm --filter @smart-hospital/api prisma:generate 2>&1 | tail -2
-  ok "prisma client generated"
 
   echo "  · apps/api"
   pnpm --filter @smart-hospital/api build 2>&1 | tail -2
