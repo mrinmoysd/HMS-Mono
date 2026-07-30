@@ -22,6 +22,8 @@ export const appointmentSchema = z.object({
   status: z.enum(APPOINTMENT_STATUSES).default('pending'),
   message: z.string().trim().optional().or(z.literal('')),
   alternateAddress: z.string().trim().optional().or(z.literal('')),
+  paymentNote: z.string().trim().optional().or(z.literal('')),
+  transactionId: z.string().trim().optional().or(z.literal('')),
 });
 export type AppointmentInput = z.infer<typeof appointmentSchema>;
 
@@ -56,6 +58,10 @@ export interface AppointmentDetailDto extends AppointmentDto {
   patientEmail: string | null;
   patientAge: string | null;
   department: string | null;
+  paymentNote: string | null;
+  transactionId: string | null;
+  /** Per-branch running counter, shown as "Appointment S.No." */
+  serialNo: number | null;
 }
 
 /** Reschedule an appointment (edit scheduling; fee recomputed client-side from the slot config). */
@@ -70,6 +76,8 @@ export const rescheduleAppointmentSchema = z.object({
   liveConsult: z.boolean().default(false),
   message: z.string().trim().optional().or(z.literal('')),
   alternateAddress: z.string().trim().optional().or(z.literal('')),
+  paymentNote: z.string().trim().optional().or(z.literal('')),
+  transactionId: z.string().trim().optional().or(z.literal('')),
 });
 export type RescheduleAppointmentInput = z.infer<typeof rescheduleAppointmentSchema>;
 

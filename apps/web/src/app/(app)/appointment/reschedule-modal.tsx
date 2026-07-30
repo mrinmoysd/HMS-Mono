@@ -10,6 +10,7 @@ import {
 } from '@/lib/hooks/use-appointment-setup';
 import { useRescheduleAppointment } from '@/lib/hooks/use-appointment';
 import { ApiRequestError } from '@/lib/api';
+import { toLocalDateTimeInput, toLocalDateInput, localInputToIso } from '@/lib/datetime';
 
 const STATUSES = ['pending', 'approved', 'cancelled', 'completed'] as const;
 
@@ -32,7 +33,8 @@ export function RescheduleModal({ appt, open, onClose }: { appt: AppointmentDto 
 
   const doctorId = appt?.doctorId ?? '';
   const { data: fee } = useDoctorFee(doctorId, shiftId);
-  const { data: slots = [] } = useAvailableSlots(doctorId, shiftId, apptDate);
+  // The slot engine keys off a calendar day, not the chosen time.
+  const { data: slots = [] } = useAvailableSlots(doctorId, shiftId, toLocalDateInput(apptDate));
   const fees = fee?.amount ?? appt?.fees ?? 0;
 
   const doctorShifts = useMemo(() => {
@@ -45,7 +47,9 @@ export function RescheduleModal({ appt, open, onClose }: { appt: AppointmentDto 
   useEffect(() => {
     if (open && appt) {
       setShiftId(shifts.find((s) => s.name === appt.shift)?.id ?? '');
-      setApptDate(appt.apptDate.slice(0, 10));
+      // Local-time, not `slice(0,10)` — that reads the UTC date and lands a day
+      // early anywhere east of UTC, silently rescheduling on save.
+      setApptDate(toLocalDateTimeInput(appt.apptDate));
       setSlot(appt.slot ?? '');
       setPriority(appt.priority || 'Normal');
       setDiscountPct(String(appt.discountPct));
@@ -62,7 +66,7 @@ export function RescheduleModal({ appt, open, onClose }: { appt: AppointmentDto 
     setApiError(null);
     const shiftName = shifts.find((s) => s.id === shiftId)?.name ?? '';
     const parsed = rescheduleAppointmentSchema.safeParse({
-      apptDate, shift: shiftName, slot, fees, discountPct,
+      apptDate: localInputToIso(apptDate), shift: shiftName, slot, fees, discountPct,
       priority: priority || 'Normal', status, liveConsult: liveConsult === 'yes', message, alternateAddress,
     });
     if (!parsed.success) { setApiError(parsed.error.issues[0]?.message ?? 'Invalid'); return; }
@@ -84,7 +88,7 @@ export function RescheduleModal({ appt, open, onClose }: { appt: AppointmentDto 
           <Select value={shiftId} onChange={(e) => { setShiftId(e.target.value); setSlot(''); }} placeholder="Select…" options={doctorShifts.map((s) => ({ value: s.id, label: s.name }))} />
         </Field>
         <Field label="Appointment Date" required>
-          <TextInput type="date" value={apptDate} onChange={(e) => { setApptDate(e.target.value); setSlot(''); }} />
+          <TextInput type="datetime-local" value={apptDate} onChange={(e) => { setApptDate(e.target.value); setSlot(''); }} />
         </Field>
         <Field label="Slot">
           <Select value={slot} onChange={(e) => setSlot(e.target.value)} placeholder={slots.length ? 'Select…' : 'No slots'}

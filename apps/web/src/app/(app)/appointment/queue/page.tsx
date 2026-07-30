@@ -71,7 +71,12 @@ export default function QueuePage() {
           </Field>
         </div>
         <div className="mt-4 flex justify-end gap-2">
-          {q && dirty && <Button size="sm" variant="secondary" loading={reorder.isPending} onClick={() => reorder.mutate(ordered.map((r) => r.id))}><ListOrdered className="h-4 w-4" /> Reorder Queue</Button>}
+          {/* Shown whenever a queue is loaded (the reference always shows it),
+              but disabled until the order actually differs — pressing it with no
+              change would just re-save the same sequence. */}
+          {q && (
+            <Button size="sm" variant="secondary" disabled={!dirty} loading={reorder.isPending} onClick={() => reorder.mutate(ordered.map((r) => r.id))}><ListOrdered className="h-4 w-4" /> Reorder Queue</Button>
+          )}
           <Button size="sm" disabled={!doctorId || !shiftId || !date} onClick={search}><Search className="h-4 w-4" /> Search</Button>
         </div>
       </div>

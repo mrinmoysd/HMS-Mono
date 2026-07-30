@@ -56,6 +56,11 @@ export default function OpdPage() {
     if (params.get('new') === '1' && canAdd) setOpen(true);
   }, [params, canAdd]);
 
+  // Deep-link from the Appointment list: ?tab=patientView&patientId=…
+  useEffect(() => {
+    if (params.get('tab') === 'patientView') setTab('patientView');
+  }, [params]);
+
   const isPatientView = tab === 'patientView';
   const { data, isLoading, error } = useOpdVisits(isPatientView ? 'today' : tab, { search, page, size });
 
@@ -133,7 +138,7 @@ export default function OpdPage() {
       />
 
       {isPatientView ? (
-        <PatientViewPanel />
+        <PatientViewPanel initialPatientId={presetPatientId || undefined} />
       ) : (
         <DataTable
           columns={columns}

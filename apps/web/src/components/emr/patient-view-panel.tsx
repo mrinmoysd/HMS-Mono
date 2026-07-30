@@ -7,10 +7,17 @@ import { usePatientDirectory } from '@/lib/hooks/use-clinical';
 import { usePatientProfile } from '@/lib/hooks/use-emr';
 import { VisitsPanel } from './visits-panel';
 
-/** OPD "Patient View" tab: searchable patient sidebar + the selected patient's visit history. */
-export function PatientViewPanel() {
+/**
+ * OPD "Patient View" tab: searchable patient sidebar + the selected patient's
+ * visit history.
+ *
+ * `initialPatientId` lets the Appointment list deep-link straight to a patient's
+ * OPD record, which is what the reference expects when you click a patient name
+ * or appointment number there.
+ */
+export function PatientViewPanel({ initialPatientId }: { initialPatientId?: string } = {}) {
   const [search, setSearch] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialPatientId ?? null);
   const { data, isLoading } = usePatientDirectory(search);
   const patients = data?.data ?? [];
   const selected = patients.find((p) => p.id === selectedId);

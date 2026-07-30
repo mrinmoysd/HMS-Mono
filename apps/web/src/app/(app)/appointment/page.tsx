@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, Printer, Users, ListOrdered, Menu as MenuIcon, CalendarClock } from 'lucide-react';
 import type { AppointmentDto, AppointmentTab } from '@smart-hospital/shared';
+import type { SortState } from '@/components/ui/data-table';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Tabs } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -32,43 +33,64 @@ export default function AppointmentPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(25);
+  const [sort, setSort] = useState<SortState | undefined>();
   const [open, setOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [rescheduleAppt, setRescheduleAppt] = useState<AppointmentDto | null>(null);
 
-  const { data, isLoading, error } = useAppointments(tab, { search, page, size });
+  const sortParam = sort ? `${sort.key}:${sort.dir}` : undefined;
+  const { data, isLoading, error } = useAppointments(tab, { search, page, size, sort: sortParam });
   const setStatus = useSetAppointmentStatus();
 
   const columns: Column<AppointmentDto>[] = [
     {
-      key: 'patientName', header: 'Patient Name',
-      render: (a) => <Link href={`/patient/${a.patientId}`} className="font-medium text-primary hover:underline">{a.patientName}</Link>,
+      key: 'patientName', header: 'Patient Name', sortable: true,
+      render: (a) => <Link href={opdHref(a)} className="font-medium text-primary hover:underline">{a.patientName}</Link>,
     },
     {
-      key: 'apptNo', header: 'Appointment No',
-      render: (a) => <Link href={`/patient/${a.patientId}`} className="text-primary hover:underline">{a.apptNo}</Link>,
+      key: 'apptNo', header: 'Appointment No', sortable: true,
+      render: (a) => <Link href={opdHref(a)} className="text-primary hover:underline">{a.apptNo}</Link>,
     },
     { key: 'createdByName', header: 'Created By', render: (a) => a.createdByName ?? '—' },
-    { key: 'apptDate', header: 'Appointment Date', render: (a) => new Date(a.apptDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) },
-    { key: 'patientPhone', header: 'Phone', render: (a) => a.patientPhone ?? '—' },
-    { key: 'patientGender', header: 'Gender', render: (a) => a.patientGender ?? '—' },
-    { key: 'doctorName', header: 'Doctor' },
-    { key: 'source', header: 'Source', render: (a) => a.source ?? '—' },
-    { key: 'priority', header: 'Priority' },
-    { key: 'liveConsult', header: 'Live Consultant', render: (a) => (a.liveConsult ? 'Yes' : 'No') },
-    { key: 'alternateAddress', header: 'Alternate Address', render: (a) => a.alternateAddress ?? '—' },
-    { key: 'fees', header: 'Fees', className: 'tabular', render: (a) => a.fees.toFixed(2) },
-    { key: 'discountPct', header: 'Discount (%)', className: 'tabular', render: (a) => `${discountAmt(a).toFixed(2)} (${a.discountPct}%)` },
-    { key: 'paid', header: 'Paid', className: 'tabular', render: (a) => a.paid.toFixed(2) },
+    { key: 'apptDate', header: 'Appointment Date', sortable: true, render: (a) => new Date(a.apptDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) },
+    { key: 'patientPhone', header: 'Phone', sortable: true, render: (a) => a.patientPhone ?? '—' },
+    { key: 'patientGender', header: 'Gender', sortable: true, render: (a) => a.patientGender ?? '—' },
+    { key: 'doctorName', header: 'Doctor', sortable: true },
+    { key: 'source', header: 'Source', sortable: true, render: (a) => a.source ?? '—' },
+    { key: 'priority', header: 'Priority', sortable: true, render: (a) => <span className="capitalize">{a.priority}</span> },
+    { key: 'liveConsult', header: 'Live Consultant', sortable: true, render: (a) => (a.liveConsult ? 'Yes' : 'No') },
+    { key: 'alternateAddress', header: 'Alternate Address', sortable: true, render: (a) => a.alternateAddress ?? '—' },
+    { key: 'fees', header: 'Fees ($)', sortable: true, className: 'tabular', render: (a) => a.fees.toFixed(2) },
+    { key: 'discountPct', header: 'Discount (%)', sortable: true, className: 'tabular', render: (a) => `${discountAmt(a).toFixed(2)} (${a.discountPct}%)` },
+    { key: 'paid', header: 'Paid ($)', sortable: true, className: 'tabular', render: (a) => a.paid.toFixed(2) },
     {
-      key: 'status', header: 'Status',
+      key: 'status', header: 'Status', sortable: true,
+      // The reference shows a coloured pill. Editors additionally get a select
+      // layered over it, so the status reads the same for everyone and stays
+      // one click to change for those allowed to.
       render: (a) => canEdit ? (
-        <select value={a.status} onChange={(e) => setStatus.mutate({ id: a.id, status: e.target.value })} className="rounded-sm border border-border bg-surface px-1.5 py-0.5 text-xs">
-          {['pending', 'approved', 'cancelled', 'completed'].map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
+        <span className="relative inline-flex items-center">
+          <StatusPill status={a.status} />
+          <select
+            value={a.status}
+            aria-label={`Status for ${a.patientName}`}
+            onChange={(e) => setStatus.mutate({ id: a.id, status: e.target.value })}
+            className="absolute inset-0 cursor-pointer opacity-0"
+          >
+            {['pending', 'approved', 'cancelled', 'completed'].map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </span>
       ) : <StatusPill status={a.status} />,
     },
   ];
+
+  /** asc → desc → cleared, so a third click restores the default ordering. */
+  function toggleSort(key: string) {
+    setSort((cur) =>
+      cur?.key !== key ? { key, dir: 'asc' } : cur.dir === 'asc' ? { key, dir: 'desc' } : undefined,
+    );
+    setPage(1);
+  }
 
   function exportTable(): ExportTable {
     const rows = data?.data ?? [];
@@ -106,6 +128,8 @@ export default function AppointmentPage() {
         onSearch={(v) => { setSearch(v); setPage(1); }}
         onPage={setPage}
         onSize={(s) => { setSize(s); setPage(1); }}
+        sort={sort}
+        onSort={toggleSort}
         toolbar={<ExportMenu table={exportTable} />}
         rowActions={(a) => (
           <>
@@ -129,6 +153,15 @@ export default function AppointmentPage() {
       <RescheduleModal appt={rescheduleAppt} open={!!rescheduleAppt} onClose={() => setRescheduleAppt(null)} />
     </div>
   );
+}
+
+/**
+ * Patient Name and Appointment No both open the patient's OPD record, per the
+ * annotation on the reference screenshot ("should navigate to OPD details of
+ * that patient") — not the Patient 360 page.
+ */
+function opdHref(a: AppointmentDto): string {
+  return `/opd?tab=patientView&patientId=${a.patientId}&patientName=${encodeURIComponent(a.patientName)}`;
 }
 
 function discountAmt(a: AppointmentDto): number {

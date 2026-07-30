@@ -62,7 +62,7 @@ export class AppointmentService {
         where,
         skip,
         take,
-        orderBy: { apptDate: tab === 'old' ? 'desc' : 'asc' },
+        orderBy: orderBy(query.sort) ?? { apptDate: tab === 'old' ? 'desc' : 'asc' },
         include,
       }),
       this.prisma.appointment.count({ where }),
@@ -86,10 +86,15 @@ export class AppointmentService {
     if (!patient) throw new NotFoundException('Patient not found');
 
     const apptNo = await this.sequence.next(branchId, 'appointment');
+    // "Appointment S.No." is a plain per-branch running count, separate from the
+    // formatted apptNo the patient is given. Derived rather than stored on a
+    // counter so it stays correct if rows are removed.
+    const serialNo = (await this.prisma.appointment.count({ where: { branchId } })) + 1;
     const appt = await this.prisma.appointment.create({
       data: {
         branchId,
         apptNo,
+        serialNo,
         patientId: input.patientId,
         caseId: patient.cases[0]?.id ?? null,
         doctorId: input.doctorId,
@@ -106,6 +111,8 @@ export class AppointmentService {
         status: input.status,
         message: input.message || null,
         alternateAddress: input.alternateAddress || null,
+        paymentNote: input.paymentNote || null,
+        transactionId: input.transactionId || null,
         createdById: user.id,
       },
       include,
@@ -148,6 +155,9 @@ export class AppointmentService {
       patientEmail: a.patient.email,
       patientAge: a.patient.age,
       department: a.doctor.staffProfile?.department?.name ?? null,
+      paymentNote: a.paymentNote,
+      transactionId: a.transactionId,
+      serialNo: a.serialNo,
     };
   }
 
@@ -170,6 +180,11 @@ export class AppointmentService {
         liveConsult: input.liveConsult,
         message: input.message || null,
         alternateAddress: input.alternateAddress || null,
+        // Only touched when the caller actually sent them. The Reschedule form
+        // has no payment fields, so writing `|| null` unconditionally would
+        // wipe a recorded payment note or transaction ID on every reschedule.
+        ...(input.paymentNote !== undefined ? { paymentNote: input.paymentNote || null } : {}),
+        ...(input.transactionId !== undefined ? { transactionId: input.transactionId || null } : {}),
       },
       include,
     });
@@ -236,6 +251,43 @@ export class AppointmentService {
 
 function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * Whitelist of sortable list columns, mapped to Prisma orderBy.
+ *
+ * A whitelist rather than passing the key through: the client key is
+ * attacker-controlled, and Prisma would happily order by a relation the caller
+ * has no business traversing.
+ *
+ * `createdByName` is deliberately absent — creator names are resolved in a
+ * second query after the page is fetched, so the database cannot order by them
+ * and offering the header as sortable would silently do nothing.
+ */
+const SORTABLE: Record<string, (dir: 'asc' | 'desc') => Prisma.AppointmentOrderByWithRelationInput> = {
+  patientName: (d) => ({ patient: { name: d } }),
+  patientPhone: (d) => ({ patient: { phone: d } }),
+  patientGender: (d) => ({ patient: { gender: d } }),
+  doctorName: (d) => ({ doctor: { name: d } }),
+  apptNo: (d) => ({ apptNo: d }),
+  apptDate: (d) => ({ apptDate: d }),
+  source: (d) => ({ source: d }),
+  priority: (d) => ({ priority: d }),
+  liveConsult: (d) => ({ liveConsult: d }),
+  alternateAddress: (d) => ({ alternateAddress: d }),
+  fees: (d) => ({ fees: d }),
+  discountPct: (d) => ({ discountPct: d }),
+  paid: (d) => ({ paid: d }),
+  status: (d) => ({ status: d }),
+};
+
+/** Parse `"field:dir"` into a Prisma orderBy, or null to fall back to the default. */
+function orderBy(sort: string | undefined): Prisma.AppointmentOrderByWithRelationInput | null {
+  if (!sort) return null;
+  const [key, rawDir] = sort.split(':');
+  const build = key ? SORTABLE[key] : undefined;
+  if (!build) return null;
+  return build(rawDir === 'desc' ? 'desc' : 'asc');
 }
 
 function toDto(a: Row, createdByName: string | null): AppointmentDto {

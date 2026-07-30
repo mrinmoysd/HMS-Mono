@@ -539,6 +539,12 @@ model Appointment {
   status           String   @default("pending") // pending | approved | cancelled | completed
   message          String?
   alternateAddress String?
+  // Surfaced on the Appointment Details screen alongside Payment Mode.
+  paymentNote      String?
+  transactionId    String?
+  /// Per-branch running counter shown as "Appointment S.No." — distinct from
+  /// apptNo, which is the formatted reference the patient is given.
+  serialNo         Int?
   queueOrder       Int?
   createdById      String?  @db.Uuid
   createdAt        DateTime @default(now())

@@ -57,6 +57,7 @@ export function AppointmentDetailsModal({ id, open, onClose }: { id: string | nu
           <Row label="Patient Name" value={data.patientName} />
           <Row label="Appointment No" value={data.apptNo} />
           <Row label="Age" value={formatAge(data.patientAge)} />
+          <Row label="Appointment S.No." value={data.serialNo ?? '—'} />
           <Row label="Appointment Date" value={new Date(data.apptDate).toLocaleString()} />
           <Row label="Email" value={data.patientEmail ?? '—'} />
           <Row label="Appointment Priority" value={data.priority} />
@@ -70,6 +71,8 @@ export function AppointmentDetailsModal({ id, open, onClose }: { id: string | nu
           <Row label="Status" value={<StatusPill status={data.status} />} />
           <Row label="Live Consultation" value={data.liveConsult ? 'Yes' : 'No'} />
           <Row label="Payment Mode" value={data.paymentMode} />
+          <Row label="Payment Note" value={data.paymentNote ?? '—'} />
+          <Row label="Transaction ID" value={data.transactionId ?? '—'} />
           <Row label="Source" value={data.source ?? '—'} />
           <Row label="Collected By" value={data.createdByName ?? '—'} />
           <Row label="Message" value={data.message ?? '—'} />

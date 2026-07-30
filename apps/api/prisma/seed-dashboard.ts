@@ -87,12 +87,19 @@ async function main(): Promise<void> {
 
   const slots = ['09:00 AM', '09:30 AM', '10:00 AM', '11:15 AM', '12:00 PM', '02:30 PM', '04:00 PM'];
   const statuses = ['approved', 'approved', 'approved', 'pending', 'pending', 'completed', 'approved'];
-  const lastAppt = await prisma.appointment.findFirst({
-    where: { branchId },
-    orderBy: { apptNo: 'desc' },
-    select: { apptNo: true },
+
+  // Draw appointment numbers from the same counter the API uses, and advance it.
+  // Deriving them from max(apptNo) instead left the counter behind, so the next
+  // appointment booked through the UI reused a number already taken and died on
+  // the (branchId, apptNo) unique constraint.
+  const counter = await prisma.sequenceCounter.upsert({
+    where: { branchId_key: { branchId, key: 'appointment' } },
+    create: { branchId, key: 'appointment', prefix: 'APPT', next: 1 },
+    update: {},
+    select: { next: true, prefix: true },
   });
-  let apptSeq = Number((lastAppt?.apptNo ?? 'APPT000000').replace(/\D/g, '')) || 0;
+  let apptSeq = counter.next - 1;
+  const apptPrefix = counter.prefix;
 
   for (let i = 0; i < slots.length; i++) {
     const p = patients[i % patients.length]!;
@@ -100,7 +107,8 @@ async function main(): Promise<void> {
     await prisma.appointment.create({
       data: {
         branchId,
-        apptNo: `APPT${String(apptSeq).padStart(6, '0')}`,
+        apptNo: `${apptPrefix}${String(apptSeq).padStart(6, '0')}`,
+        serialNo: apptSeq,
         patientId: p.id,
         doctorId: doctor.userId,
         apptDate: today,
@@ -115,7 +123,12 @@ async function main(): Promise<void> {
       },
     });
   }
-  console.log(`  ✔ ${slots.length} appointments today`);
+  // Leave the counter where the API expects to pick up.
+  await prisma.sequenceCounter.update({
+    where: { branchId_key: { branchId, key: 'appointment' } },
+    data: { next: apptSeq + 1 },
+  });
+  console.log(`  ✔ ${slots.length} appointments today (counter → ${apptSeq + 1})`);
 
   // ── 2) Blood stock across all eight groups ────────────────────────────────
   // The grid pads to all eight groups, so without stock rows it was a wall of

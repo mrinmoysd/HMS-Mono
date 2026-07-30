@@ -14,6 +14,7 @@ import {
 import { printDocument } from '@/lib/print';
 import { PatientForm } from '../patient/patient-form';
 import { ApiRequestError } from '@/lib/api';
+import { nowLocalDateTimeInput, toLocalDateInput, localInputToIso } from '@/lib/datetime';
 
 const PAYMENT_MODES = ['cash', 'card', 'upi', 'tpa', 'cheque'] as const;
 const STATUSES = ['pending', 'approved', 'cancelled', 'completed'] as const;
@@ -31,7 +32,7 @@ export function AppointmentForm({ open, onClose }: { open: boolean; onClose: () 
   const [patientLabel, setPatientLabel] = useState('');
   const [doctorId, setDoctorId] = useState('');
   const [shiftId, setShiftId] = useState('');
-  const [apptDate, setApptDate] = useState(new Date().toISOString().slice(0, 10));
+  const [apptDate, setApptDate] = useState(nowLocalDateTimeInput());
   const [slot, setSlot] = useState('');
   const [priority, setPriority] = useState('');
   const [paymentMode, setPaymentMode] = useState('cash');
@@ -40,12 +41,15 @@ export function AppointmentForm({ open, onClose }: { open: boolean; onClose: () 
   const [liveConsult, setLiveConsult] = useState('no');
   const [message, setMessage] = useState('');
   const [alternateAddress, setAlternateAddress] = useState('');
+  const [paymentNote, setPaymentNote] = useState('');
+  const [transactionId, setTransactionId] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [newPatientOpen, setNewPatientOpen] = useState(false);
 
   const { data: fee } = useDoctorFee(doctorId, shiftId);
-  const { data: slots = [] } = useAvailableSlots(doctorId, shiftId, apptDate);
+  // The slot engine keys off a calendar day, not the chosen time.
+  const { data: slots = [] } = useAvailableSlots(doctorId, shiftId, toLocalDateInput(apptDate));
   const fees = fee?.amount ?? 0;
 
   // Only the shifts this doctor is assigned to.
@@ -62,20 +66,24 @@ export function AppointmentForm({ open, onClose }: { open: boolean; onClose: () 
   function reset() {
     setPatientId(''); setPatientLabel(''); setDoctorId(''); setShiftId(''); setSlot('');
     setDiscountPct('0'); setLiveConsult('no'); setMessage(''); setAlternateAddress('');
-    setStatus('pending'); setPaymentMode('cash'); setErrors({}); setApiError(null);
+    setStatus('pending'); setPaymentMode('cash'); setPaymentNote(''); setTransactionId('');
+    setErrors({}); setApiError(null);
   }
 
   function buildInput() {
     const shiftName = shifts.find((s) => s.id === shiftId)?.name ?? '';
     const paid = round2(fees * (1 - (Number(discountPct) || 0) / 100));
     return {
-      patientId, doctorId, apptDate,
+      patientId, doctorId,
+      // Resolve against the browser's zone; a bare 'YYYY-MM-DD' would be read as
+      // UTC midnight and land the appointment on the wrong day west of UTC.
+      apptDate: localInputToIso(apptDate),
       shift: shiftName, slot,
       fees, discountPct, paid,
       priority: priority || 'Normal',
       source: 'Offline',
       paymentMode, liveConsult: liveConsult === 'yes',
-      status, message, alternateAddress,
+      status, message, alternateAddress, paymentNote, transactionId,
     };
   }
 
@@ -114,17 +122,17 @@ export function AppointmentForm({ open, onClose }: { open: boolean; onClose: () 
           <Field label="Doctor" required error={errors.doctorId}>
             <Select value={doctorId} onChange={(e) => setDoctorId(e.target.value)} placeholder="Select…" options={doctors.map((d) => ({ value: d.id, label: d.name }))} />
           </Field>
-          <Field label="Doctor Fees">
+          <Field label="Doctor Fees ($)" required>
             <TextInput value={fees.toFixed(2)} readOnly className="bg-bg/60" />
           </Field>
           <Field label="Shift" required>
             <Select value={shiftId} onChange={(e) => setShiftId(e.target.value)} placeholder={doctorId ? (doctorShifts.length ? 'Select…' : 'No shifts assigned') : 'Select doctor first'} options={doctorShifts.map((s) => ({ value: s.id, label: s.name }))} />
           </Field>
           <Field label="Appointment Date" required error={errors.apptDate}>
-            <TextInput type="date" value={apptDate} onChange={(e) => setApptDate(e.target.value)} />
+            <TextInput type="datetime-local" value={apptDate} onChange={(e) => setApptDate(e.target.value)} />
           </Field>
 
-          <Field label="Slot">
+          <Field label="Slot" required>
             <Select value={slot} onChange={(e) => setSlot(e.target.value)} placeholder={shiftId ? (slots.length ? 'Select…' : 'Configure slots in Setup') : 'Select shift first'}
               options={slots.map((s) => ({ value: s.label, label: s.available ? s.label : `${s.label} (booked)` }))} />
           </Field>
@@ -134,15 +142,21 @@ export function AppointmentForm({ open, onClose }: { open: boolean; onClose: () 
           <Field label="Payment Mode">
             <Select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} options={PAYMENT_MODES.map((m) => ({ value: m, label: m }))} />
           </Field>
-          <Field label="Status">
+          <Field label="Status" required>
             <Select value={status} onChange={(e) => setStatus(e.target.value)} options={STATUSES.map((s) => ({ value: s, label: s }))} />
           </Field>
 
           <Field label="Discount Percentage">
             <TextInput type="number" value={discountPct} onChange={(e) => setDiscountPct(e.target.value)} />
           </Field>
-          <Field label="Live Consultant (On Video Conference)">
+          <Field label="Live Consultant (On Video Conference)" required>
             <Select value={liveConsult} onChange={(e) => setLiveConsult(e.target.value)} options={[{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' }]} />
+          </Field>
+          <Field label="Transaction ID">
+            <TextInput value={transactionId} onChange={(e) => setTransactionId(e.target.value)} />
+          </Field>
+          <Field label="Payment Note">
+            <TextInput value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} />
           </Field>
           <Field label="Message" className="col-span-2">
             <TextArea value={message} onChange={(e) => setMessage(e.target.value)} />
@@ -153,7 +167,13 @@ export function AppointmentForm({ open, onClose }: { open: boolean; onClose: () 
         </div>
       </FormDrawer>
 
-      <PatientForm open={newPatientOpen} onClose={() => setNewPatientOpen(false)} />
+      {/* Pick the new patient up straight away — the reference flow returns you
+          to the appointment with them already selected. */}
+      <PatientForm
+        open={newPatientOpen}
+        onClose={() => setNewPatientOpen(false)}
+        onCreated={(p) => { setPatientId(p.id); setPatientLabel(p.name); setNewPatientOpen(false); }}
+      />
     </>
   );
 }
