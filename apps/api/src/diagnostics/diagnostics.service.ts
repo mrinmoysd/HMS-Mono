@@ -29,6 +29,16 @@ const testInclude = {
 
 type TestRow = Prisma.DiagnosticTestGetPayload<{ include: typeof testInclude }>;
 
+/**
+ * Columns the Pathology/Radiology test list may be ordered by — the headers the
+ * reference marks sortable. `categoryName` is absent because the category is a
+ * relation resolved into the DTO, not a scalar the list query can order on.
+ */
+const TEST_SORTABLE = [
+  'name', 'shortName', 'testType', 'subCategory', 'method',
+  'reportDays', 'taxPercent', 'standardCharge', 'charge',
+] as const;
+
 @Injectable()
 export class DiagnosticsService {
   constructor(
@@ -38,7 +48,7 @@ export class DiagnosticsService {
   ) {}
 
   async listTests(branchId: string, modality: Modality, query: ListQuery): Promise<Paginated<DiagnosticTestDto>> {
-    const { skip, take, orderBy } = toPrismaPage(query);
+    const { skip, take, orderBy } = toPrismaPage(query, TEST_SORTABLE);
     const where: Prisma.DiagnosticTestWhereInput = {
       branchId,
       modality,
@@ -246,6 +256,7 @@ export class DiagnosticsService {
         taxPct: it.taxPct,
       })),
       note: input.note || null,
+      previousReportValue: input.previousReportValue || null,
       createdById: user.id,
       initialPayment: input.payment && input.payment.amount > 0 ? input.payment : null,
     });
@@ -340,6 +351,7 @@ function toTestDto(t: TestRow): DiagnosticTestDto {
     chargeName: t.chargeRef?.name ?? null,
     chargeCategoryName: t.chargeRef?.category?.name ?? null,
     taxPercent: t.chargeRef?.taxCategory ? Number(t.chargeRef.taxCategory.percent) : 0,
+    taxCategoryName: t.chargeRef?.taxCategory?.name ?? null,
     standardCharge: t.chargeRef ? Number(t.chargeRef.standardCharge) : 0,
     unitId: t.unitId,
     unitName: t.unit?.name ?? null,

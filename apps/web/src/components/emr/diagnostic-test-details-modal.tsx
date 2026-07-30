@@ -54,7 +54,10 @@ export function DiagnosticTestDetailsModal({ test, modality, open, onClose, onEd
           <Row label="Category Name" value={test.categoryName ?? '—'} />
           <Row label="Charge Name" value={test.chargeName ?? '—'} />
           <Row label="Charge Category" value={test.chargeCategoryName ?? '—'} />
-          <Row label="Tax Category" value={`${test.taxPercent.toFixed(2)}%`} />
+          {/* This row used to be labelled "Tax Category" while showing the
+              percentage — the reference shows both, separately. */}
+          <Row label="Tax Category" value={test.taxCategoryName ?? '—'} />
+          <Row label="Tax (%)" value={`${test.taxPercent.toFixed(2)}%`} />
           <Row label="Standard Charge" value={`#${test.standardCharge.toFixed(2)}`} />
           <Row label="Amount" value={`#${test.charge.toFixed(2)}`} />
         </div>

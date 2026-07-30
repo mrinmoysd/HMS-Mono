@@ -167,7 +167,7 @@ export class PortalService {
       caseNo: r.case?.caseNo ?? null, billDate: r.billDate.toISOString(), subtotal: Number(r.subtotal),
       discount: Number(r.discount), tax: Number(r.tax), netAmount: Number(r.netAmount), paid: Number(r.paid),
       refund: Number(r.refund), balance: Number(r.balance), status: r.status,
-      consultantId: null, consultantName: null, referenceDoctor: null, prescriptionNo: null, note: r.note, createdByName: null,
+      consultantId: null, consultantName: null, referenceDoctor: null, prescriptionNo: null, note: r.note, previousReportValue: r.previousReportValue, createdByName: null,
       tpaName: null, tpaIdNo: null, tpaValidity: null, patientAge: p.age, patientGender: p.gender,
       patientBloodGroup: p.bloodGroup, patientEmail: p.email, patientAddress: p.address,
     }));

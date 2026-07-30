@@ -52,6 +52,7 @@ export interface DiagnosticTestDto {
   chargeName: string | null;
   chargeCategoryName: string | null;
   taxPercent: number;
+  taxCategoryName: string | null;
   standardCharge: number;
   unitId: string | null;
   unitName: string | null;
@@ -100,6 +101,7 @@ export const diagnosticBillSchema = z.object({
   prescriptionNo: z.string().trim().optional().or(z.literal('')),
   applyTpa: z.boolean().optional().default(false),
   note: z.string().trim().optional().or(z.literal('')),
+  previousReportValue: z.string().trim().optional().or(z.literal('')),
   items: z
     .array(
       z.object({

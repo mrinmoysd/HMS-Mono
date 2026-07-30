@@ -469,6 +469,9 @@ model Invoice {
   referenceDoctor String?
   prescriptionNo  String?
   note        String?
+  /// Free-text carried on Pathology/Radiology bills and shown as its own list
+  /// column — distinct from the previous-reports history, which is derived.
+  previousReportValue String?
   createdById String?  @db.Uuid
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

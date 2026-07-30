@@ -25,6 +25,7 @@ export interface CreateInvoiceParams {
   referenceDoctor?: string | null;
   prescriptionNo?: string | null;
   note?: string | null;
+  previousReportValue?: string | null;
   createdById: string;
   initialPayment?: { amount: number; mode: string } | null;
 }
@@ -37,6 +38,16 @@ const MODULE_SEQUENCE_KEY: Record<string, string> = { pharmacy: 'pharmacy_bill',
  * `create()` so charge math, numbering, payment and balance are identical
  * everywhere (docs/DEVELOPMENT_PLAN §6). Safe to call inside a caller's tx.
  */
+/**
+ * Columns a bill list may be ordered by. `patientName` and `createdByName` are
+ * absent: both are resolved through relations/second queries rather than being
+ * scalars on Invoice, so the database cannot order by them here.
+ */
+const INVOICE_SORTABLE = [
+  'billNo', 'billDate', 'module', 'subtotal', 'discount', 'tax',
+  'netAmount', 'paid', 'balance', 'status', 'previousReportValue',
+] as const;
+
 @Injectable()
 export class InvoiceService {
   constructor(
@@ -73,6 +84,7 @@ export class InvoiceService {
           referenceDoctor: params.referenceDoctor ?? null,
           prescriptionNo: params.prescriptionNo ?? null,
           note: params.note ?? null,
+          previousReportValue: params.previousReportValue ?? null,
           createdById: params.createdById,
           items: {
             create: params.items.map((it) => ({
@@ -251,7 +263,7 @@ export class InvoiceService {
   }
 
   async list(branchId: string, module: string | undefined, query: ListQuery): Promise<Paginated<InvoiceDto>> {
-    const { skip, take, orderBy } = toPrismaPage(query);
+    const { skip, take, orderBy } = toPrismaPage(query, INVOICE_SORTABLE);
     const where: Prisma.InvoiceWhereInput = {
       branchId,
       deletedAt: null,
@@ -329,6 +341,7 @@ function toDto(inv: InvoiceRow, withChildren = false, names: Map<string, string>
     referenceDoctor: inv.referenceDoctor,
     prescriptionNo: inv.prescriptionNo,
     note: inv.note,
+    previousReportValue: inv.previousReportValue,
     createdByName: inv.createdById ? names.get(inv.createdById) ?? null : null,
     tpaName: inv.patient.tpa?.name ?? null,
     tpaIdNo: inv.patient.tpaIdNo,

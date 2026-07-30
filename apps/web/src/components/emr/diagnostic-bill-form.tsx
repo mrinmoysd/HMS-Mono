@@ -44,6 +44,7 @@ export function DiagnosticBillForm({ open, modality, title, onClose }: { open: b
   const [consultantId, setConsultantId] = useState('');
   const [referenceDoctor, setReferenceDoctor] = useState('');
   const [note, setNote] = useState('');
+  const [previousReportValue, setPreviousReportValue] = useState('');
   const [discountPct, setDiscountPct] = useState('0');
   const [paymentMode, setPaymentMode] = useState('cash');
   const [paymentAmount, setPaymentAmount] = useState('0');
@@ -83,7 +84,7 @@ export function DiagnosticBillForm({ open, modality, title, onClose }: { open: b
 
   function reset() {
     setPatientId(''); setPatientLabel(''); setPrescriptionNo(''); setApplyTpa(false); setPatientTpaId(null);
-    setLines([{ ...EMPTY_LINE }]); setConsultantId(''); setReferenceDoctor(''); setNote('');
+    setLines([{ ...EMPTY_LINE }]); setConsultantId(''); setReferenceDoctor(''); setNote(''); setPreviousReportValue('');
     setDiscountPct('0'); setPaymentMode('cash'); setPaymentAmount('0'); setError(null);
   }
 
@@ -97,6 +98,7 @@ export function DiagnosticBillForm({ open, modality, title, onClose }: { open: b
       prescriptionNo,
       applyTpa,
       note,
+      previousReportValue,
       items: validLines.map((l) => ({
         testId: l.testId,
         name: l.name,
@@ -211,6 +213,9 @@ export function DiagnosticBillForm({ open, modality, title, onClose }: { open: b
         </div>
         <Field label="Note">
           <TextArea value={note} onChange={(e) => setNote(e.target.value)} />
+        </Field>
+        <Field label="Previous Report Value">
+          <TextInput value={previousReportValue} onChange={(e) => setPreviousReportValue(e.target.value)} />
         </Field>
 
         {patientId && previousReports && previousReports.length > 0 && (

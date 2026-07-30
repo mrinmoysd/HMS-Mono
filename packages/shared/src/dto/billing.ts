@@ -73,6 +73,7 @@ export interface InvoiceDto {
   referenceDoctor: string | null;
   prescriptionNo: string | null;
   note: string | null;
+  previousReportValue: string | null;
   createdByName: string | null;
   tpaName: string | null;
   tpaIdNo: string | null;
