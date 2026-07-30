@@ -9,9 +9,10 @@ import { Button } from '@/components/ui/button';
 import { PatientSelect } from '@/components/patient-select';
 import { PatientForm } from '@/app/(app)/patient/patient-form';
 import { useDoctors } from '@/lib/hooks/use-clinical';
-import { useDiagnosticTests, useGenerateDiagnosticBill, usePreviousReports } from '@/lib/hooks/use-departments';
+import { useDiagnosticTests, useGenerateDiagnosticBill, useNextBillNo, usePreviousReports } from '@/lib/hooks/use-departments';
 import { useCharge } from '@/lib/hooks/use-masters';
 import { ApiRequestError } from '@/lib/api';
+import { toLocalDateInput } from '@/lib/datetime';
 
 interface Line {
   testId: string;
@@ -24,8 +25,10 @@ interface Line {
 
 const EMPTY_LINE: Line = { testId: '', name: '', reportDays: 1, reportDate: today(), taxPct: 0, appliedCharge: 0 };
 
+// Local calendar date, not the UTC one: toISOString().slice(0,10) rolls a day
+// early anywhere east of UTC, which put report dates on the wrong day.
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalDateInput(new Date());
 }
 
 /** Pathology/Radiology "Generate Bill" — patient (+ inline New Patient), test line editor, referral doctor, Apply TPA, previous reports. */
@@ -51,6 +54,9 @@ export function DiagnosticBillForm({ open, modality, title, onClose }: { open: b
   const [error, setError] = useState<string | null>(null);
 
   const { data: previousReports } = usePreviousReports(modality, patientId || null);
+  // Header strip preview. Called before the early return below — hooks cannot
+  // be conditional — and gated by `open` so a closed form issues no request.
+  const { data: nextBill } = useNextBillNo(modality, open, patientId || undefined);
 
   if (!open) return null;
 
@@ -147,6 +153,21 @@ export function DiagnosticBillForm({ open, modality, title, onClose }: { open: b
     >
       <div className="space-y-4">
         {error && <p role="alert" className="rounded-sm bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
+
+        <div className="grid grid-cols-3 gap-4 rounded-sm border border-border bg-surface-2 px-4 py-3 text-sm">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-fg-muted">Bill No</p>
+            <p className="font-medium tabular-nums">{nextBill?.billNo ?? '—'}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-fg-muted">Case ID</p>
+            <p className="font-medium tabular-nums">{patientId ? nextBill?.caseNo ?? '—' : '—'}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-fg-muted">Date</p>
+            <p className="font-medium tabular-nums">{today()}</p>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="sm:col-span-2">

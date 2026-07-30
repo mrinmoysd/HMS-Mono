@@ -19,7 +19,9 @@ import type {
   DiagnosticTestInput,
   DiagnosticUnitDto,
   DiagnosticUnitInput,
+  DiagnosticBillUpdateInput,
   InvoiceDto,
+  NextBillNoDto,
   ListQuery,
   MedicineBadStockInput,
   MedicineBatchTpaDetailDto,
@@ -257,6 +259,40 @@ export function useDeleteDiagnosticTest(modality: Modality) {
   return useMutation({
     mutationFn: (id: string) => api.delete<void>(`/${modality}/tests/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['diag-tests', modality] }),
+  });
+}
+
+/** Preview the next bill number for the Generate Bill header. Never persisted. */
+export function useNextBillNo(modality: Modality, enabled: boolean, patientId?: string) {
+  return useQuery({
+    queryKey: ['diag-next-bill-no', modality, patientId ?? null],
+    queryFn: () =>
+      api.get<NextBillNoDto>(
+        `/${modality}/bills/next-no${patientId ? `?patientId=${encodeURIComponent(patientId)}` : ''}`,
+      ),
+    enabled,
+    // Always refetch when the form opens: another user may have consumed it.
+    staleTime: 0,
+  });
+}
+
+export function useUpdateDiagnosticBill(modality: Modality) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: DiagnosticBillUpdateInput }) =>
+      api.patch<InvoiceDto>(`/${modality}/bills/${id}`, input),
+    onSuccess: (inv) => {
+      qc.invalidateQueries({ queryKey: ['invoices'] });
+      qc.invalidateQueries({ queryKey: ['invoice', inv.id] });
+    },
+  });
+}
+
+export function useDeleteDiagnosticBill(modality: Modality) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/${modality}/bills/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['invoices'] }),
   });
 }
 

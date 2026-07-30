@@ -2,11 +2,13 @@ import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, P
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   diagnosticBillSchema,
+  diagnosticBillUpdateSchema,
   diagnosticCategorySchema,
   diagnosticTestSchema,
   diagnosticUnitSchema,
   listQuerySchema,
   type DiagnosticBillInput,
+  type DiagnosticBillUpdateInput,
   type DiagnosticCategoryInput,
   type DiagnosticTestInput,
   type DiagnosticUnitInput,
@@ -79,6 +81,31 @@ export class RadiologyController {
     @Body(new ZodValidationPipe(diagnosticBillSchema)) body: DiagnosticBillInput,
   ) {
     return this.diagnostics.generateBill(user, branchId, { ...body, modality: 'radiology' });
+  }
+
+  /** Preview the next bill number for the Generate Bill form. Does not consume it. */
+  @Get('bills/next-no')
+  @RequirePermission('radiology', 'add')
+  nextBillNo(@BranchId() branchId: string, @Query('patientId') patientId?: string) {
+    return this.diagnostics.nextBillNo(branchId, 'radiology', patientId);
+  }
+
+  @Patch('bills/:id')
+  @RequirePermission('radiology', 'edit')
+  updateBill(
+    @CurrentUser() user: RequestUser,
+    @BranchId() branchId: string,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(diagnosticBillUpdateSchema)) body: DiagnosticBillUpdateInput,
+  ) {
+    return this.diagnostics.updateBill(user, branchId, 'radiology', id, body);
+  }
+
+  @Delete('bills/:id')
+  @RequirePermission('radiology', 'delete')
+  @HttpCode(204)
+  deleteBill(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id') id: string) {
+    return this.diagnostics.deleteBill(user, branchId, 'radiology', id);
   }
 
   // Category (Setup master)

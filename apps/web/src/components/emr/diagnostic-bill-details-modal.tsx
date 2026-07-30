@@ -1,7 +1,7 @@
 'use client';
 
-import { Printer } from 'lucide-react';
-import type { Modality } from '@smart-hospital/shared';
+import { Pencil, Printer, Trash2 } from 'lucide-react';
+import type { InvoiceDto, Modality } from '@smart-hospital/shared';
 import { useInvoice } from '@/lib/hooks/use-clinical';
 import { Modal } from '@/components/ui/modal';
 import { usePreviousReports } from '@/lib/hooks/use-departments';
@@ -9,7 +9,19 @@ import { printDiagnosticBill } from '@/lib/print';
 import { formatAge } from '@/lib/utils';
 
 /** "Bill Details" for a Pathology/Radiology invoice — full field grid + Previous Report Value history. */
-export function DiagnosticBillDetailsModal({ id, modality, title, open, onClose }: { id: string | null; modality: Modality; title: string; open: boolean; onClose: () => void }) {
+export function DiagnosticBillDetailsModal({
+  id, modality, title, open, onClose, onEdit, onDelete, canEdit, canDelete,
+}: {
+  id: string | null;
+  modality: Modality;
+  title: string;
+  open: boolean;
+  onClose: () => void;
+  onEdit?: (bill: InvoiceDto) => void;
+  onDelete?: (bill: InvoiceDto) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}) {
   const { data, isLoading } = useInvoice(open ? id : null);
   const { data: previousReports } = usePreviousReports(modality, open ? data?.patientId ?? null : null);
 
@@ -24,10 +36,22 @@ export function DiagnosticBillDetailsModal({ id, modality, title, open, onClose 
       headerActions={
         <>
           {data && (
+            <>
               <button onClick={() => printDiagnosticBill(title, data)} aria-label="Print" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary">
                 <Printer className="h-4 w-4" />
               </button>
-            )}
+              {canEdit && onEdit && (
+                <button onClick={() => onEdit(data)} aria-label="Edit" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary">
+                  <Pencil className="h-4 w-4" />
+                </button>
+              )}
+              {canDelete && onDelete && (
+                <button onClick={() => onDelete(data)} aria-label="Delete" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </>
+          )}
         </>
       }
     >

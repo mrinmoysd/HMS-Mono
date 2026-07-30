@@ -50,4 +50,22 @@ export class SequenceService {
     const consumed = counter.next - 1;
     return `${counter.prefix || prefix}${String(consumed).padStart(6, '0')}`;
   }
+
+  /**
+   * The number `next()` would hand out, without consuming it.
+   *
+   * For showing a bill/case number on a form before it is saved. It is a
+   * preview, not a reservation: two forms open at once will show the same
+   * number and the first to save wins, which is the same race the reference
+   * screens have. Never persist this — persist what `next()` returns.
+   */
+  async peek(branchId: string, key: string): Promise<string> {
+    const prefix = DEFAULT_PREFIXES[key] ?? key.toUpperCase();
+    const counter = await this.prisma.sequenceCounter.findUnique({
+      where: { branchId_key: { branchId, key } },
+      select: { next: true, prefix: true },
+    });
+    const upcoming = counter?.next ?? 1;
+    return `${counter?.prefix || prefix}${String(upcoming).padStart(6, '0')}`;
+  }
 }

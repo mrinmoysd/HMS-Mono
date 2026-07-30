@@ -123,6 +123,36 @@ export const diagnosticBillSchema = z.object({
 });
 export type DiagnosticBillInput = z.infer<typeof diagnosticBillSchema>;
 
+/**
+ * Editable fields on an existing Pathology/Radiology bill.
+ *
+ * Deliberately excludes `items`. Each bill line has a matching LabInvestigation
+ * row carrying reportValue, status, approvedById and approvedAt — replacing the
+ * lines on save would silently destroy recorded and approved results. Tests are
+ * added or removed by raising a new bill, not by editing this one.
+ */
+export const diagnosticBillUpdateSchema = z.object({
+  consultantId: z.string().uuid().optional().nullable(),
+  referenceDoctor: z.string().trim().optional().or(z.literal('')),
+  prescriptionNo: z.string().trim().optional().or(z.literal('')),
+  note: z.string().trim().optional().or(z.literal('')),
+  previousReportValue: z.string().trim().optional().or(z.literal('')),
+  /** Bill-level discount; totals are recomputed server-side from the subtotal. */
+  discountPct: z.coerce.number().min(0).max(100).optional(),
+});
+export type DiagnosticBillUpdateInput = z.infer<typeof diagnosticBillUpdateSchema>;
+
+/**
+ * Header strip values for a Generate Bill form: the bill number that would be
+ * issued next (a preview — it is not reserved) and, when a patient is given,
+ * the case the bill would be filed under. Both mirror exactly what
+ * `generateBill` will do, so the strip does not lie about the saved record.
+ */
+export interface NextBillNoDto {
+  billNo: string;
+  caseNo: string | null;
+}
+
 /** "Previous Report Value" history row (Pathology Generate Bill + Bill Details). */
 export interface PreviousReportRow {
   id: string;

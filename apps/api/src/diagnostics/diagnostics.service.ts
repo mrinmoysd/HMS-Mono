@@ -13,10 +13,14 @@ import type {
   Modality,
   Paginated,
   PreviousReportRow,
+  DiagnosticBillUpdateInput,
+  NextBillNoDto,
 } from '@smart-hospital/shared';
+import { computeInvoiceTotals } from '@smart-hospital/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit/audit.service';
 import { InvoiceService } from '../billing/invoice.service';
+import { SequenceService } from '../common/sequence/sequence.service';
 import { paginate, toPrismaPage } from '../common/pagination';
 import type { RequestUser } from '../common/types/request-user';
 
@@ -45,6 +49,7 @@ export class DiagnosticsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly invoices: InvoiceService,
+    private readonly sequence: SequenceService,
   ) {}
 
   async listTests(branchId: string, modality: Modality, query: ListQuery): Promise<Paginated<DiagnosticTestDto>> {
@@ -328,6 +333,94 @@ export class DiagnosticsService {
       netAmount: r.netAmount != null ? Number(r.netAmount) : null,
       status: r.status,
     }));
+  }
+
+
+  // ── A bill's own lifecycle: peek number, edit header, delete ──────────────
+
+  /** Number the Generate Bill form should display before saving. Preview only. */
+  async nextBillNo(branchId: string, modality: Modality, patientId?: string): Promise<NextBillNoDto> {
+    const billNo = await this.sequence.peek(branchId, `${modality}_bill`);
+    if (!patientId) return { billNo, caseNo: null };
+    // Same case generateBill() picks: the patient's earliest open case.
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: patientId, branchId, deletedAt: null },
+      select: { cases: { take: 1, orderBy: { createdAt: 'asc' }, select: { caseNo: true } } },
+    });
+    return { billNo, caseNo: patient?.cases[0]?.caseNo ?? null };
+  }
+
+  /**
+   * Edit an existing bill's header and its bill-level discount.
+   *
+   * Items are intentionally out of scope — see diagnosticBillUpdateSchema. The
+   * discount is applied by re-running the shared totals function over the stored
+   * items with each item's discount replaced by the bill-level percentage, so
+   * the arithmetic is identical to how the bill was created rather than a second
+   * implementation that could drift.
+   */
+  async updateBill(
+    user: RequestUser,
+    branchId: string,
+    modality: Modality,
+    id: string,
+    input: DiagnosticBillUpdateInput,
+  ): Promise<InvoiceDto> {
+    const existing = await this.prisma.invoice.findFirst({
+      where: { id, branchId, module: modality, deletedAt: null },
+      include: { items: true },
+    });
+    if (!existing) throw new NotFoundException('Bill not found');
+
+    const data: Prisma.InvoiceUpdateInput = {
+      consultantId: input.consultantId ?? null,
+      referenceDoctor: input.referenceDoctor || null,
+      prescriptionNo: input.prescriptionNo || null,
+      note: input.note || null,
+      previousReportValue: input.previousReportValue || null,
+    };
+
+    if (input.discountPct !== undefined) {
+      const totals = computeInvoiceTotals(
+        existing.items.map((it) => ({
+          name: it.name,
+          standardCharge: Number(it.standardCharge),
+          appliedCharge: Number(it.appliedCharge),
+          qty: it.qty,
+          discountPct: input.discountPct as number,
+          taxPct: Number(it.taxPct),
+        })),
+      );
+      const paid = Number(existing.paid);
+      data.subtotal = totals.subtotal;
+      data.discount = totals.discount;
+      data.tax = totals.tax;
+      data.netAmount = totals.netAmount;
+      data.balance = Math.round((totals.netAmount - paid + Number.EPSILON) * 100) / 100;
+      // Keep status honest against the new total: a discount can settle a bill,
+      // and removing one can un-settle it.
+      data.status = paid <= 0 ? 'unpaid' : paid >= totals.netAmount ? 'paid' : 'partial';
+    }
+
+    await this.prisma.invoice.update({ where: { id }, data });
+    await this.audit.record({
+      branchId, userId: user.id, action: 'update', entity: 'invoice', entityId: id,
+    });
+    return this.invoices.get(branchId, id);
+  }
+
+  /** Soft-delete a bill. Recoverable — the row and its payments stay put. */
+  async deleteBill(user: RequestUser, branchId: string, modality: Modality, id: string): Promise<void> {
+    const existing = await this.prisma.invoice.findFirst({
+      where: { id, branchId, module: modality, deletedAt: null },
+      select: { id: true, billNo: true },
+    });
+    if (!existing) throw new NotFoundException('Bill not found');
+    await this.prisma.invoice.update({ where: { id }, data: { deletedAt: new Date() } });
+    await this.audit.record({
+      branchId, userId: user.id, action: 'delete', entity: 'invoice',
+      entityId: id, before: { billNo: existing.billNo },
+    });
   }
 }
 

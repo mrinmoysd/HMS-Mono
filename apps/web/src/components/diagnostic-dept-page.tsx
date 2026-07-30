@@ -11,10 +11,11 @@ import { Button } from '@/components/ui/button';
 import { ExportMenu } from '@/components/ui/export-menu';
 import type { ExportTable } from '@/lib/export';
 import { useInvoices } from '@/lib/hooks/use-clinical';
-import { useDiagnosticTests, useDeleteDiagnosticTest } from '@/lib/hooks/use-departments';
+import { useDiagnosticTests, useDeleteDiagnosticTest, useDeleteDiagnosticBill } from '@/lib/hooks/use-departments';
 import { useAbility } from '@/lib/auth-store';
 import { DiagnosticBillForm } from '@/components/emr/diagnostic-bill-form';
 import { DiagnosticBillDetailsModal } from '@/components/emr/diagnostic-bill-details-modal';
+import { DiagnosticBillEditModal } from '@/components/emr/diagnostic-bill-edit-modal';
 import { DiagnosticPaymentsModal } from '@/components/emr/diagnostic-payments-modal';
 import { DiagnosticTestForm } from '@/components/emr/diagnostic-test-form';
 import { DiagnosticTestDetailsModal } from '@/components/emr/diagnostic-test-details-modal';
@@ -27,6 +28,7 @@ export function DiagnosticDeptPage({ modality, title }: { modality: Modality; ti
   const ability = useAbility();
   const canAdd = ability.can(modality, 'add');
   const canDelete = ability.can(modality, 'delete');
+  const canEdit = ability.can(modality, 'edit');
 
   const confirmDelete = useConfirmDelete();
   const toast = useToast();
@@ -42,6 +44,7 @@ export function DiagnosticDeptPage({ modality, title }: { modality: Modality; ti
   const [billOpen, setBillOpen] = useState(false);
   const [billDetailId, setBillDetailId] = useState<string | null>(null);
   const [paymentsId, setPaymentsId] = useState<string | null>(null);
+  const [editingBill, setEditingBill] = useState<InvoiceDto | null>(null);
 
   const [testFormOpen, setTestFormOpen] = useState(false);
   const [editingTest, setEditingTest] = useState<DiagnosticTestDto | null>(null);
@@ -51,6 +54,7 @@ export function DiagnosticDeptPage({ modality, title }: { modality: Modality; ti
   const invoices = useInvoices(modality, { search, page, size, sort: sortParam });
   const tests = useDiagnosticTests(modality, { search, page, size, sort: sortParam });
   const deleteTest = useDeleteDiagnosticTest(modality);
+  const deleteBill = useDeleteDiagnosticBill(modality);
 
   function switchTab(t: Tab) {
     setTab(t);
@@ -211,7 +215,32 @@ export function DiagnosticDeptPage({ modality, title }: { modality: Modality; ti
       )}
 
       <DiagnosticBillForm open={billOpen} modality={modality} title={title} onClose={() => setBillOpen(false)} />
-      <DiagnosticBillDetailsModal id={billDetailId} modality={modality} title={title} open={!!billDetailId} onClose={() => setBillDetailId(null)} />
+      <DiagnosticBillDetailsModal
+        id={billDetailId}
+        modality={modality}
+        title={title}
+        open={!!billDetailId}
+        onClose={() => setBillDetailId(null)}
+        canEdit={canEdit}
+        canDelete={canDelete}
+        onEdit={(bill) => { setBillDetailId(null); setEditingBill(bill); }}
+        onDelete={async (bill) => {
+          if (!(await confirmDelete(`bill ${bill.billNo}`))) return;
+          try {
+            await deleteBill.mutateAsync(bill.id);
+            toast.success(`${bill.billNo} deleted`);
+            setBillDetailId(null);
+          } catch (e) {
+            toast.error('Could not delete bill', { description: (e as Error).message });
+          }
+        }}
+      />
+      <DiagnosticBillEditModal
+        bill={editingBill}
+        modality={modality}
+        open={!!editingBill}
+        onClose={() => setEditingBill(null)}
+      />
       <DiagnosticPaymentsModal id={paymentsId} open={!!paymentsId} onClose={() => setPaymentsId(null)} />
 
       <DiagnosticTestForm open={testFormOpen} modality={modality} test={editingTest} onClose={() => setTestFormOpen(false)} />
