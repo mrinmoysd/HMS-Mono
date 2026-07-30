@@ -7,6 +7,11 @@ import { DataTable, type Column, type SortState } from '@/components/ui/data-tab
 import { Tabs } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
+import { Card, CardHeader } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
+import { SkeletonTable } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import { ExportMenu } from '@/components/ui/export-menu';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -71,81 +76,160 @@ export default function BloodBankPage() {
   );
 }
 
+/**
+ * One row of the status board. Both grids share it so the blood and component
+ * tables cannot drift apart, and its classes mirror DataTable's own header/row
+ * styling — these two tables predate the design system and were the last
+ * hand-rolled `<table>` in the app, which is why they looked foreign: square
+ * corners, uppercase headers and no header fill, against a system that uses
+ * rounded cards, sentence-case headers and a sunken header band everywhere else.
+ */
+function StatusTable({
+  columns,
+  children,
+  empty,
+}: {
+  columns: { key: string; header: string; align?: 'left' | 'right' }[];
+  children: React.ReactNode;
+  empty?: React.ReactNode;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-line bg-surface-sunken text-left text-xs text-fg-muted">
+            {columns.map((c) => (
+              <th
+                key={c.key}
+                className={cn(
+                  'px-cell py-cell font-semibold',
+                  c.align === 'right' && 'text-right',
+                )}
+              >
+                {c.header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {empty ? (
+            <tr>
+              <td colSpan={columns.length} className="p-0">
+                {empty}
+              </td>
+            </tr>
+          ) : (
+            children
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function StatusRow({
+  cells,
+  count,
+  onIssue,
+}: {
+  cells: React.ReactNode[];
+  count: number;
+  onIssue?: () => void;
+}) {
+  return (
+    <tr className="border-b border-line/60 transition last:border-0 hover:bg-surface-sunken/60">
+      {cells.map((cell, i) => (
+        <td key={i} className={cn('px-cell py-cell', i === 0 && 'font-medium')}>
+          {cell}
+        </td>
+      ))}
+      <td className="px-cell py-cell text-right">
+        {/* A count is a status, not a number in a cell — the same Badge the rest
+            of the app uses for stock and state, so zero reads as "out of stock"
+            rather than as red text shouting on every empty row. */}
+        <Badge tone={count <= 0 ? 'neutral' : count < 3 ? 'warning' : 'success'}>{count}</Badge>
+      </td>
+      <td className="px-cell py-cell text-right">
+        {onIssue && (
+          <Button size="sm" variant="secondary" onClick={onIssue}>
+            <Droplet className="h-3.5 w-3.5" /> Issue
+          </Button>
+        )}
+      </td>
+    </tr>
+  );
+}
+
 function StatusPanel({ canAdd }: { canAdd: boolean }) {
   const { data } = useBloodBagStatus();
   const [issueOpen, setIssueOpen] = useState<{ kind: 'blood' | 'component'; group: string } | null>(null);
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="mb-2 text-sm font-semibold">Blood</h2>
-        <div className="overflow-x-auto rounded-md border border-border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-muted">
-                <th className="px-3 py-2 font-semibold">Blood Group</th>
-                <th className="px-3 py-2 text-right font-semibold">Available Bags</th>
-                <th className="px-3 py-2 text-right font-semibold">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(!data || data.blood.length === 0) && (
-                <tr><td colSpan={3} className="px-3 py-8 text-center text-fg-muted">No blood in stock</td></tr>
-              )}
-              {data?.blood.map((row) => (
-                <tr key={row.bloodGroup} className="border-b border-border/60 last:border-0">
-                  <td className="px-3 py-2 font-medium">{row.bloodGroup}</td>
-                  <td className="px-3 py-2 text-right tabular">
-                    <span className={row.count <= 0 ? 'text-danger' : row.count < 3 ? 'text-warning' : 'text-success'}>{row.count}</span>
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    {canAdd && (
-                      <Button size="sm" variant="secondary" onClick={() => setIssueOpen({ kind: 'blood', group: row.bloodGroup })}>
-                        <Droplet className="h-3.5 w-3.5" /> Issue
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+  const bloodCols = [
+    { key: 'bloodGroup', header: 'Blood Group' },
+    { key: 'count', header: 'Available Bags', align: 'right' as const },
+    { key: 'action', header: 'Action', align: 'right' as const },
+  ];
+  const componentCols = [
+    { key: 'bloodGroup', header: 'Blood Group' },
+    { key: 'component', header: 'Component' },
+    { key: 'count', header: 'Available Bags', align: 'right' as const },
+    { key: 'action', header: 'Action', align: 'right' as const },
+  ];
 
-      <div>
-        <h2 className="mb-2 text-sm font-semibold">Components</h2>
-        <div className="overflow-x-auto rounded-md border border-border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-muted">
-                <th className="px-3 py-2 font-semibold">Blood Group</th>
-                <th className="px-3 py-2 font-semibold">Component</th>
-                <th className="px-3 py-2 text-right font-semibold">Available Bags</th>
-                <th className="px-3 py-2 text-right font-semibold">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(!data || data.components.length === 0) && (
-                <tr><td colSpan={4} className="px-3 py-8 text-center text-fg-muted">No components in stock</td></tr>
-              )}
-              {data?.components.map((row) => (
-                <tr key={`${row.bloodGroup}-${row.component}`} className="border-b border-border/60 last:border-0">
-                  <td className="px-3 py-2 font-medium">{row.bloodGroup}</td>
-                  <td className="px-3 py-2">{row.component}</td>
-                  <td className="px-3 py-2 text-right tabular">{row.count}</td>
-                  <td className="px-3 py-2 text-right">
-                    {canAdd && (
-                      <Button size="sm" variant="secondary" onClick={() => setIssueOpen({ kind: 'component', group: row.bloodGroup })}>
-                        <Droplet className="h-3.5 w-3.5" /> Issue
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader title="Blood" description="Whole-blood bags available to issue, by group" />
+        <StatusTable
+          columns={bloodCols}
+          empty={
+            !data ? (
+              <SkeletonTable rows={4} columns={3} />
+            ) : data.blood.length === 0 ? (
+              <EmptyState compact icon={Droplet} title="No blood groups configured" />
+            ) : undefined
+          }
+        >
+          {data?.blood.map((row) => (
+            <StatusRow
+              key={row.bloodGroup}
+              cells={[row.bloodGroup]}
+              count={row.count}
+              onIssue={canAdd ? () => setIssueOpen({ kind: 'blood', group: row.bloodGroup }) : undefined}
+            />
+          ))}
+        </StatusTable>
+      </Card>
+
+      <Card>
+        <CardHeader title="Components" description="Separated components available to issue" />
+        <StatusTable
+          columns={componentCols}
+          empty={
+            !data ? (
+              <SkeletonTable rows={4} columns={4} />
+            ) : data.components.length === 0 ? (
+              <EmptyState
+                compact
+                icon={Droplet}
+                title="No components yet"
+                description="Split a whole-blood bag from the Components List to start tracking them."
+              />
+            ) : undefined
+          }
+        >
+          {data?.components.map((row) => (
+            <StatusRow
+              key={`${row.bloodGroup}-${row.component}`}
+              cells={[row.bloodGroup, row.component]}
+              count={row.count}
+              onIssue={
+                canAdd ? () => setIssueOpen({ kind: 'component', group: row.bloodGroup }) : undefined
+              }
+            />
+          ))}
+        </StatusTable>
+      </Card>
 
       <BloodIssueForm
         open={!!issueOpen}
