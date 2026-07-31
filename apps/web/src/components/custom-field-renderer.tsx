@@ -1,5 +1,6 @@
 'use client';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import type { CustomFieldDto } from '@smart-hospital/shared';
 import { Field, TextInput, TextArea, Select } from '@/components/ui/field';
 
@@ -51,12 +52,7 @@ function renderInput(f: CustomFieldDto, val: unknown, set: (v: unknown) => void)
       return <TextInput type="url" value={s} placeholder="https://…" onChange={(e) => set(e.target.value)} />;
     case 'checkbox':
       return (
-        <input
-          type="checkbox"
-          checked={Boolean(val)}
-          onChange={(e) => set(e.target.checked)}
-          className="h-4 w-4"
-        />
+        <Checkbox checked={Boolean(val)} onChange={(e) => set(e.target.checked)} />
       );
     case 'select':
       return (

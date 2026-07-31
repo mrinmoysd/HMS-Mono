@@ -1,5 +1,6 @@
 'use client';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { Plus, ExternalLink } from 'lucide-react';
@@ -82,7 +83,7 @@ export default function FrontCmsPage() {
               <Field label="Slug" required><TextInput value={f.slug ?? ''} onChange={(e) => set('slug', e.target.value)} placeholder="about-us" /></Field>
               <Field label="Page Type"><Select value={f.pageType ?? 'standard'} onChange={(e) => set('pageType', e.target.value)} options={CMS_PAGE_TYPES.map((t) => ({ value: t, label: t }))} /></Field>
               <Field label="Body"><TextArea rows={5} value={f.body ?? ''} onChange={(e) => set('body', e.target.value)} /></Field>
-              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.published === 'true'} onChange={(e) => set('published', e.target.checked ? 'true' : 'false')} /> Published</label>
+              <Checkbox label="Published" checked={f.published === 'true'} onChange={(e) => set('published', e.target.checked ? 'true' : 'false')} />
             </>
           )}
           {tab === 'banners' && (

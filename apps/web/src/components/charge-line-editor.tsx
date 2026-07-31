@@ -1,5 +1,6 @@
 'use client';
 
+import { Select } from '@/components/ui/field';
 import { Plus, Trash2 } from 'lucide-react';
 import {
   computeInvoiceTotals,
@@ -78,18 +79,13 @@ export function ChargeLineEditor({ lines, onChange, charges }: Props) {
                 <td className="px-2 py-1.5">
                   {charges && charges.length > 0 ? (
                     <div className="space-y-1">
-                      <select
+                      <Select
                         value={line.chargeId ?? ''}
                         onChange={(e) => pickCharge(i, e.target.value)}
-                        className="w-full rounded-sm border border-border bg-surface px-2 py-1 text-sm"
-                      >
-                        <option value="">Custom…</option>
-                        {charges.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
+                        placeholder="Custom…"
+                        options={charges.map((c) => ({ value: c.id, label: c.name }))}
+                        className="py-1"
+                      />
                       <input
                         value={line.name}
                         onChange={(e) => update(i, { name: e.target.value })}

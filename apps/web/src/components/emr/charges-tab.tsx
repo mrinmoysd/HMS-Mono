@@ -1,5 +1,6 @@
 'use client';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { EncounterBillingDto, EncounterType } from '@smart-hospital/shared';
@@ -102,10 +103,7 @@ export function ChargesTab({
       <FormDrawer open={open} title="Add Charges" onClose={() => setOpen(false)} onSubmit={save} submitting={add.isPending} wide>
         <div className="space-y-4">
           <ChargeLineEditor lines={lines} onChange={setLines} charges={chargeData?.data} />
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={applyTpa} onChange={(e) => setApplyTpa(e.target.checked)} />
-            Apply TPA (bill to the patient&apos;s third-party administrator)
-          </label>
+          <Checkbox label="Apply TPA (bill to the patient&apos;s third-party administrator)" checked={applyTpa} onChange={(e) => setApplyTpa(e.target.checked)} />
         </div>
       </FormDrawer>
     </div>

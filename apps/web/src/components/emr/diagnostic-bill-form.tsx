@@ -1,9 +1,11 @@
 'use client';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, UserPlus, X } from 'lucide-react';
 import { diagnosticBillSchema, type DiagnosticTestDto, type Modality, type PatientDto } from '@smart-hospital/shared';
 import { Field, TextInput, TextArea, Select } from '@/components/ui/field';
+import { DateInput } from '@/components/ui/date-input';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { PatientSelect } from '@/components/patient-select';
@@ -194,10 +196,7 @@ export function DiagnosticBillForm({ open, modality, title, onClose }: { open: b
             <TextInput value={prescriptionNo} onChange={(e) => setPrescriptionNo(e.target.value)} placeholder="Search / enter…" />
           </Field>
           <div className="flex items-end pb-2">
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={applyTpa} onChange={(e) => setApplyTpa(e.target.checked)} disabled={!patientTpaId} />
-              Apply TPA{!patientTpaId && patientId ? ' (patient has no TPA)' : ''}
-            </label>
+            <Checkbox label="Apply TPA{!patientTpaId && patientId ? ' (patient has no TPA)' : ''}" checked={applyTpa} onChange={(e) => setApplyTpa(e.target.checked)} disabled={!patientTpaId} />
           </div>
         </div>
 
@@ -328,7 +327,7 @@ function TestLineRow({
         <Select value={line.testId} onChange={(e) => onSelect(e.target.value)} placeholder="Select" options={tests.map((t) => ({ value: t.id, label: t.name }))} className="h-8 w-56" />
       </td>
       <td className="px-1 py-1"><input type="number" value={line.reportDays} onChange={(e) => onChange({ reportDays: Number(e.target.value) })} className="h-8 w-20 rounded-sm border border-border bg-surface px-2 text-sm tabular" /></td>
-      <td className="px-1 py-1"><input type="date" value={line.reportDate} onChange={(e) => onChange({ reportDate: e.target.value })} className="h-8 w-36 rounded-sm border border-border bg-surface px-2 text-sm" /></td>
+      <td className="px-1 py-1"><DateInput value={line.reportDate} onChange={(e) => onChange({ reportDate: e.target.value })} className="h-8 w-36 py-0" /></td>
       <td className="px-1 py-1"><input type="number" value={line.taxPct} onChange={(e) => onChange({ taxPct: Number(e.target.value) })} className="h-8 w-16 rounded-sm border border-border bg-surface px-2 text-sm tabular" /></td>
       <td className="px-1 py-1">
         <input type="number" value={effectiveAmount} onChange={(e) => onChange({ appliedCharge: Number(e.target.value) })} className="h-8 w-24 rounded-sm border border-border bg-surface px-2 text-sm tabular" />

@@ -1,5 +1,6 @@
 'use client';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { useMemo, useState } from 'react';
 import { BLOOD_GROUPS, bloodComponentSplitSchema } from '@smart-hospital/shared';
 import { Field, TextInput, Select } from '@/components/ui/field';
@@ -116,10 +117,7 @@ export function BloodComponentSplitForm({ open, onClose }: { open: boolean; onCl
                 {COMPONENT_NAMES.map((name) => (
                   <tr key={name} className="border-b border-border/60 last:border-0">
                     <td className="px-2 py-2">
-                      <label className="flex items-center gap-2 font-medium">
-                        <input type="checkbox" checked={rows[name].checked} onChange={(e) => setRow(name, { checked: e.target.checked })} />
-                        {name}
-                      </label>
+                      <Checkbox label="{name}" checked={rows[name].checked} onChange={(e) => setRow(name, { checked: e.target.checked })} />
                     </td>
                     <td className="px-1 py-1"><input value={rows[name].bagNo} onChange={(e) => setRow(name, { bagNo: e.target.value })} disabled={!rows[name].checked} className="h-8 w-28 rounded-sm border border-border bg-surface px-2 text-sm disabled:opacity-50" /></td>
                     <td className="px-1 py-1"><input value={rows[name].volume} onChange={(e) => setRow(name, { volume: e.target.value })} disabled={!rows[name].checked} className="h-8 w-24 rounded-sm border border-border bg-surface px-2 text-sm disabled:opacity-50" /></td>

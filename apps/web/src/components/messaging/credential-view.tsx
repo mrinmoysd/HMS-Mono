@@ -1,5 +1,6 @@
 'use client';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { useMemo, useState } from 'react';
 import { ChevronLeft, Send } from 'lucide-react';
 import { CREDENTIAL_TYPES, type PatientCredentialDto } from '@smart-hospital/shared';
@@ -57,14 +58,14 @@ export function CredentialView({ onBack }: { onBack: () => void }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-bg text-left text-xs uppercase tracking-wide text-fg-muted">
-                  <th className="px-3 py-2.5"><input type="checkbox" checked={allChecked} onChange={toggleAll} /></th>
+                  <th className="px-3 py-2.5"><Checkbox checked={allChecked} onChange={toggleAll} aria-label="Select all" /></th>
                   {['Patient Id', 'Patient Name', 'Email', 'Mobile Number', 'Username', 'Password'].map((c) => <th key={c} className="px-3 py-2.5 font-semibold">{c}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {rows.map((p: PatientCredentialDto) => (
                   <tr key={p.id} className="border-b border-border/60 last:border-0">
-                    <td className="px-3 py-2.5"><input type="checkbox" checked={selected.has(p.id)} onChange={() => toggle(p.id)} /></td>
+                    <td className="px-3 py-2.5"><Checkbox checked={selected.has(p.id)} onChange={() => toggle(p.id)} aria-label="Select row" /></td>
                     <td className="px-3 py-2.5 font-medium">{p.patientNo}</td>
                     <td className="px-3 py-2.5">{p.name}</td>
                     <td className="px-3 py-2.5">{p.email || '—'}</td>

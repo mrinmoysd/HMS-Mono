@@ -1,5 +1,6 @@
 'use client';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { useEffect, useState } from 'react';
 import { UserPlus } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
@@ -156,10 +157,7 @@ export function BloodIssueForm({ open, kind, title, initialBloodGroup, onClose }
           </div>
 
           <div className="flex items-center gap-2 pb-1">
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={applyTpa} onChange={(e) => setApplyTpa(e.target.checked)} />
-              Apply TPA
-            </label>
+            <Checkbox label="Apply TPA" checked={applyTpa} onChange={(e) => setApplyTpa(e.target.checked)} />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

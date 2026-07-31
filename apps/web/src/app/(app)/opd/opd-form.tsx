@@ -1,5 +1,6 @@
 'use client';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { useEffect, useState } from 'react';
 import { computeInvoiceTotals, opdVisitSchema } from '@smart-hospital/shared';
 import { FormDrawer } from '@/components/ui/form-drawer';
@@ -208,21 +209,11 @@ export function OpdForm({
           </Field>
         </div>
         <div className="flex flex-wrap gap-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={casualty} onChange={(e) => setCasualty(e.target.checked)} /> Casualty
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={oldPatient} onChange={(e) => setOldPatient(e.target.checked)} /> Old Patient
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={applyTpa} onChange={(e) => setApplyTpa(e.target.checked)} /> Apply TPA
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={isAntenatal} onChange={(e) => setIsAntenatal(e.target.checked)} /> Is Antenatal
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={liveConsult} onChange={(e) => setLiveConsult(e.target.checked)} /> Live Consultation
-          </label>
+          <Checkbox label="Casualty" checked={casualty} onChange={(e) => setCasualty(e.target.checked)} />
+          <Checkbox label="Old Patient" checked={oldPatient} onChange={(e) => setOldPatient(e.target.checked)} />
+          <Checkbox label="Apply TPA" checked={applyTpa} onChange={(e) => setApplyTpa(e.target.checked)} />
+          <Checkbox label="Is Antenatal" checked={isAntenatal} onChange={(e) => setIsAntenatal(e.target.checked)} />
+          <Checkbox label="Live Consultation" checked={liveConsult} onChange={(e) => setLiveConsult(e.target.checked)} />
         </div>
 
         <p className="border-t border-border pt-3 text-xs font-semibold uppercase tracking-wide text-fg-muted">Consultant Doctor &amp; Charges</p>

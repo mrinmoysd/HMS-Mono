@@ -1,5 +1,6 @@
 'use client';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { useState } from 'react';
 import { Plus, Trash2, Pencil, FileText, Paperclip } from 'lucide-react';
 import type { TimelineEntryDto } from '@smart-hospital/shared';
@@ -119,7 +120,7 @@ export function TimelineTab({ patientId, entries, canEdit, compact }: { patientI
             </div>
             {fileName && <p className="mt-1 text-xs text-fg-muted">{fileName}</p>}
           </Field>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={visible} onChange={(e) => setVisible(e.target.checked)} /> Visible to this person</label>
+          <Checkbox label="Visible to this person" checked={visible} onChange={(e) => setVisible(e.target.checked)} />
         </div>
       </FormDrawer>
     </div>

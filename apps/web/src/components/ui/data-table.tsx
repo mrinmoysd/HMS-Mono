@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { Checkbox } from './checkbox';
 import { EmptyState } from './empty-state';
 import { Menu } from './menu';
+import { Select } from './field';
 import { SkeletonTable } from './skeleton';
 
 /**
@@ -311,18 +312,13 @@ export function DataTable<T extends { id: string }>({
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-3 py-2.5 text-sm text-fg-muted">
           <div className="flex items-center gap-2">
             <span>Rows per page</span>
-            <select
-              value={meta.size}
+            <Select
+              value={String(meta.size)}
               onChange={(e) => onSize(Number(e.target.value))}
               aria-label="Rows per page"
-              className="cursor-pointer rounded-sm border border-line bg-surface-1 px-2 py-1 text-sm outline-none focus:border-primary"
-            >
-              {PAGE_SIZES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+              options={PAGE_SIZES.map((s) => ({ value: String(s), label: String(s) }))}
+              className="w-20 py-1"
+            />
             <span className="tabular">· {rangeLabel}</span>
           </div>
           <div className="flex items-center gap-2">

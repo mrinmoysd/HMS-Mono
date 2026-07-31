@@ -1,5 +1,6 @@
 'use client';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
@@ -169,18 +170,10 @@ export function MoveToIpdModal({ id, open, onClose }: { id: string | null; open:
                 </Field>
               </div>
               <div className="flex flex-wrap gap-4 pt-1">
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={casualty} onChange={(e) => setCasualty(e.target.checked)} /> Casualty
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={oldPatient} onChange={(e) => setOldPatient(e.target.checked)} /> Old Patient
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={isAntenatal} onChange={(e) => setIsAntenatal(e.target.checked)} /> Is For Antenatal
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={liveConsult} onChange={(e) => setLiveConsult(e.target.checked)} /> Live Consultation
-                </label>
+                <Checkbox label="Casualty" checked={casualty} onChange={(e) => setCasualty(e.target.checked)} />
+                <Checkbox label="Old Patient" checked={oldPatient} onChange={(e) => setOldPatient(e.target.checked)} />
+                <Checkbox label="Is For Antenatal" checked={isAntenatal} onChange={(e) => setIsAntenatal(e.target.checked)} />
+                <Checkbox label="Live Consultation" checked={liveConsult} onChange={(e) => setLiveConsult(e.target.checked)} />
               </div>
             </div>
           </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { CHARGE_MODULES, type ChargeModule, type ChargeTypeDto } from '@smart-hospital/shared';
@@ -188,10 +189,7 @@ export function ChargeTypePanel() {
           <Field label="Visible In Modules">
             <div className="grid grid-cols-2 gap-2">
               {CHARGE_MODULES.map((m) => (
-                <label key={m} className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={modules.has(m)} onChange={() => toggleModule(m)} />
-                  {MODULE_LABELS[m]}
-                </label>
+                <Checkbox key={m} label={MODULE_LABELS[m]} checked={modules.has(m)} onChange={() => toggleModule(m)} />
               ))}
             </div>
           </Field>

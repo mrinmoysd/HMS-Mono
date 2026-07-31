@@ -1,5 +1,6 @@
 'use client';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { useState } from 'react';
 import { ChevronLeft, Paperclip, Send, Users, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -26,7 +27,7 @@ function Recipients({ mode, setMode, selected, toggle, patientId, setPatient }: 
         <div className="rounded-md border border-border">
           {options.map((label) => (
             <label key={label} className="flex cursor-pointer items-center gap-2 border-b border-border/60 px-4 py-2.5 text-sm last:border-0">
-              <input type="checkbox" checked={selected.has(label)} onChange={() => toggle(label)} /> {label}
+              <Checkbox checked={selected.has(label)} onChange={() => toggle(label)} /> {label}
             </label>
           ))}
         </div>
@@ -85,8 +86,8 @@ export function SmsView({ onBack }: { onBack: () => void }) {
               <div>
                 <p className="mb-1 text-sm font-medium">Send Through <span className="text-danger">*</span></p>
                 <div className="flex gap-6 text-sm">
-                  <label className="flex items-center gap-2"><input type="checkbox" checked={through.has('sms')} onChange={() => toggleThrough('sms')} /> SMS</label>
-                  <label className="flex items-center gap-2"><input type="checkbox" checked={through.has('mobile_app')} onChange={() => toggleThrough('mobile_app')} /> Mobile App</label>
+                  <Checkbox label="SMS" checked={through.has('sms')} onChange={() => toggleThrough('sms')} />
+                  <Checkbox label="Mobile App" checked={through.has('mobile_app')} onChange={() => toggleThrough('mobile_app')} />
                 </div>
               </div>
               <Field label="Message" required>

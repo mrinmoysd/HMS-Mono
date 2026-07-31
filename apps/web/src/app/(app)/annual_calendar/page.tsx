@@ -1,5 +1,6 @@
 'use client';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
@@ -61,11 +62,13 @@ export default function AnnualCalendarPage() {
       <DataTable columns={cols} rows={holidays.data?.data ?? []} meta={holidays.data?.meta} loading={holidays.isLoading}
         search="" onSearch={() => {}} onPage={setPage} onSize={() => {}}
         toolbar={
-          <select value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
-            className="rounded-sm border border-border bg-surface px-2 py-1.5 text-sm">
-            <option value="">All types</option>
-            {HOLIDAY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
+          <Select
+            value={typeFilter}
+            onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
+            placeholder="All types"
+            options={HOLIDAY_TYPES.map((t) => ({ value: t, label: t }))}
+            className="w-40 py-1.5"
+          />
         } />
 
       <FormDrawer open={open} title="Add Calendar Entry" onClose={() => setOpen(false)} onSubmit={save} submitting={create.isPending}>
@@ -80,9 +83,7 @@ export default function AnnualCalendarPage() {
             <Field label="To Date (optional)"><TextInput type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
           </div>
           <Field label="Description"><TextArea value={desc} onChange={(e) => setDesc(e.target.value)} /></Field>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={frontSite} onChange={(e) => setFrontSite(e.target.checked)} /> Show on public front site
-          </label>
+          <Checkbox label="Show on public front site" checked={frontSite} onChange={(e) => setFrontSite(e.target.checked)} />
         </div>
       </FormDrawer>
     </div>

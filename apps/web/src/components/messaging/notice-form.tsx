@@ -1,5 +1,6 @@
 'use client';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { useState } from 'react';
 import { CalendarClock, ChevronLeft, Send, Users } from 'lucide-react';
 import type { NoticeDto } from '@smart-hospital/shared';
@@ -68,7 +69,7 @@ export function NoticeForm({ editing, onBack }: { editing: NoticeDto | null; onB
               {roleOptions.map((label) => (
                 <label key={label} className={`flex cursor-pointer items-center justify-between px-4 py-2.5 text-sm ${selected.has(label) ? 'bg-primary/5' : ''}`}>
                   <span className="flex items-center gap-2">
-                    <input type="checkbox" checked={selected.has(label)} onChange={() => toggle(label)} />
+                    <Checkbox checked={selected.has(label)} onChange={() => toggle(label)} />
                     {label}
                   </span>
                   {me?.roleLabel === label && <span className="rounded-full border border-primary/40 px-2 py-0.5 text-xs text-primary">You</span>}

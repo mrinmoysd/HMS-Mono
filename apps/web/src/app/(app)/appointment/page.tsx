@@ -1,5 +1,6 @@
 'use client';
 
+import { Select } from '@/components/ui/field';
 import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, Printer, Users, ListOrdered, Menu as MenuIcon, CalendarClock } from 'lucide-react';
@@ -71,14 +72,17 @@ export default function AppointmentPage() {
       render: (a) => canEdit ? (
         <span className="relative inline-flex items-center">
           <StatusPill status={a.status} />
-          <select
-            value={a.status}
-            aria-label={`Status for ${a.patientName}`}
-            onChange={(e) => setStatus.mutate({ id: a.id, status: e.target.value })}
-            className="absolute inset-0 cursor-pointer opacity-0"
-          >
-            {['pending', 'approved', 'cancelled', 'completed'].map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+          {/* The pill stays the visible control; the Select sits transparently
+              over it so the popup that opens is ours, not the OS list. */}
+          <span className="absolute inset-0">
+            <Select
+              value={a.status}
+              aria-label={`Status for ${a.patientName}`}
+              onChange={(e) => setStatus.mutate({ id: a.id, status: e.target.value })}
+              options={['pending', 'approved', 'cancelled', 'completed'].map((s) => ({ value: s, label: s }))}
+              className="h-full w-full cursor-pointer opacity-0"
+            />
+          </span>
         </span>
       ) : <StatusPill status={a.status} />,
     },

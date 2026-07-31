@@ -1,5 +1,6 @@
 'use client';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { PageHeader } from '@/components/ui/page-header';
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Search } from 'lucide-react';
@@ -222,8 +223,7 @@ function DoctorShiftPanel({ canManage }: { canManage: boolean }) {
                 <td className="px-3 py-2.5 font-medium">{d.name}</td>
                 {shifts.map((s) => (
                   <td key={s.id} className="px-3 py-2.5">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={d.shifts[s.id] ?? false}
                       disabled={!canManage || toggle.isPending}
                       onChange={(e) => toggle.mutate({ doctorId: d.id, shiftId: s.id, active: e.target.checked })}

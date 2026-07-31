@@ -1,5 +1,6 @@
 'use client';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { useMemo, useState } from 'react';
 import { Plus, FlaskConical, Printer, Eye, ClipboardEdit } from 'lucide-react';
 import type { LabInvestigationDto, Modality } from '@smart-hospital/shared';
@@ -239,9 +240,7 @@ export function LabTab({ scope, canEdit, patientName }: { scope: EncounterScope;
             <Field label={`Report Value${reportRow.unit ? ` (${reportRow.unit})` : ''}`}>
               <TextInput value={reportValue} onChange={(e) => setReportValue(e.target.value)} />
             </Field>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={approve} onChange={(e) => setApprove(e.target.checked)} /> Approve report
-            </label>
+            <Checkbox label="Approve report" checked={approve} onChange={(e) => setApprove(e.target.checked)} />
           </div>
         )}
       </FormDrawer>

@@ -1,5 +1,6 @@
 'use client';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { useMemo, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { ROLES, ROLE_META, type CreatePrescriptionInput, type PrescriptionItemInput } from '@smart-hospital/shared';
@@ -158,9 +159,7 @@ export function PrescriptionBuilder({
                 />
               </Field>
               <Field label="Finding Print">
-                <label className="flex h-9 items-center gap-2 text-sm">
-                  <input type="checkbox" checked={findingPrint} onChange={(e) => setFindingPrint(e.target.checked)} /> Include on print
-                </label>
+                <Checkbox label="Include on print" checked={findingPrint} onChange={(e) => setFindingPrint(e.target.checked)} />
               </Field>
             </div>
             <div className="mt-2">
@@ -168,14 +167,12 @@ export function PrescriptionBuilder({
               <div className="flex flex-wrap gap-3 rounded-sm border border-border bg-surface px-3 py-2">
                 {findingsForCategory.length === 0 && <span className="text-sm text-fg-muted">No findings for this category</span>}
                 {findingsForCategory.map((f) => (
-                  <label key={f.id} className="flex items-center gap-1.5 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={findingList.includes(f.description)}
-                      onChange={() => toggle(findingList, setFindingList, f.description)}
-                    />
-                    {f.description}
-                  </label>
+                  <Checkbox
+                    key={f.id}
+                    label={f.description}
+                    checked={findingList.includes(f.description)}
+                    onChange={() => toggle(findingList, setFindingList, f.description)}
+                  />
                 ))}
               </div>
             </div>
@@ -197,18 +194,27 @@ export function PrescriptionBuilder({
                     className="rounded-sm border border-border bg-surface px-2 py-1.5 text-sm"
                   />
                   <datalist id={`rx-med-${i}`}>{(medicines?.data ?? []).map((m) => <option key={m.id} value={m.name} />)}</datalist>
-                  <select value={it.dosage} onChange={(e) => updItem(i, { dosage: e.target.value })} className="rounded-sm border border-border bg-surface px-2 py-1.5 text-sm">
-                    <option value="">Dose…</option>
-                    {(dosages?.data ?? []).map((d) => <option key={d.id} value={d.dosage}>{d.dosage}</option>)}
-                  </select>
-                  <select value={it.interval} onChange={(e) => updItem(i, { interval: e.target.value })} className="rounded-sm border border-border bg-surface px-2 py-1.5 text-sm">
-                    <option value="">Interval…</option>
-                    {(intervals?.data ?? []).map((d) => <option key={d.id} value={d.name}>{d.name}</option>)}
-                  </select>
-                  <select value={it.duration} onChange={(e) => updItem(i, { duration: e.target.value })} className="rounded-sm border border-border bg-surface px-2 py-1.5 text-sm">
-                    <option value="">Duration…</option>
-                    {(durations?.data ?? []).map((d) => <option key={d.id} value={d.name}>{d.name}</option>)}
-                  </select>
+                  <Select
+                    value={it.dosage}
+                    onChange={(e) => updItem(i, { dosage: e.target.value })}
+                    placeholder="Dose…"
+                    options={(dosages?.data ?? []).map((d) => ({ value: d.dosage, label: d.dosage }))}
+                    className="py-1.5"
+                  />
+                  <Select
+                    value={it.interval}
+                    onChange={(e) => updItem(i, { interval: e.target.value })}
+                    placeholder="Interval…"
+                    options={(intervals?.data ?? []).map((d) => ({ value: d.name, label: d.name }))}
+                    className="py-1.5"
+                  />
+                  <Select
+                    value={it.duration}
+                    onChange={(e) => updItem(i, { duration: e.target.value })}
+                    placeholder="Duration…"
+                    options={(durations?.data ?? []).map((d) => ({ value: d.name, label: d.name }))}
+                    className="py-1.5"
+                  />
                   <input
                     value={it.instruction}
                     onChange={(e) => updItem(i, { instruction: e.target.value })}
@@ -253,10 +259,7 @@ export function PrescriptionBuilder({
             <div className="flex max-h-32 flex-col gap-1.5 overflow-y-auto rounded-sm border border-border bg-surface px-3 py-2">
               {(pathologyTests?.data ?? []).length === 0 && <span className="text-sm text-fg-muted">No tests</span>}
               {(pathologyTests?.data ?? []).map((t) => (
-                <label key={t.id} className="flex items-center gap-1.5 text-sm">
-                  <input type="checkbox" checked={pathologyTestIds.includes(t.id)} onChange={() => toggle(pathologyTestIds, setPathologyTestIds, t.id)} />
-                  {t.name}
-                </label>
+                <Checkbox key={t.id} label={t.name} checked={pathologyTestIds.includes(t.id)} onChange={() => toggle(pathologyTestIds, setPathologyTestIds, t.id)} />
               ))}
             </div>
           </div>
@@ -266,10 +269,7 @@ export function PrescriptionBuilder({
             <div className="flex max-h-32 flex-col gap-1.5 overflow-y-auto rounded-sm border border-border bg-surface px-3 py-2">
               {(radiologyTests?.data ?? []).length === 0 && <span className="text-sm text-fg-muted">No tests</span>}
               {(radiologyTests?.data ?? []).map((t) => (
-                <label key={t.id} className="flex items-center gap-1.5 text-sm">
-                  <input type="checkbox" checked={radiologyTestIds.includes(t.id)} onChange={() => toggle(radiologyTestIds, setRadiologyTestIds, t.id)} />
-                  {t.name}
-                </label>
+                <Checkbox key={t.id} label={t.name} checked={radiologyTestIds.includes(t.id)} onChange={() => toggle(radiologyTestIds, setRadiologyTestIds, t.id)} />
               ))}
             </div>
           </div>
@@ -279,7 +279,7 @@ export function PrescriptionBuilder({
             <div className="flex flex-wrap gap-3 rounded-sm border border-border bg-surface px-3 py-2">
               {NOTIFY_ROLES.map((role) => (
                 <label key={role} className="flex items-center gap-1.5 text-sm">
-                  <input type="checkbox" checked={notifyRoles.includes(role)} onChange={() => toggle(notifyRoles, setNotifyRoles, role)} />
+                  <Checkbox checked={notifyRoles.includes(role)} onChange={() => toggle(notifyRoles, setNotifyRoles, role)} />
                   {ROLE_META[role].label}
                 </label>
               ))}
