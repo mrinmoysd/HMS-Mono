@@ -1,6 +1,7 @@
 'use client';
 
-import { ChevronDown } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -103,37 +104,175 @@ export function TextArea({
   );
 }
 
+/**
+ * Select — a listbox, not a native `<select>`.
+ *
+ * A native select renders its option list as OS chrome: the popup ignores the
+ * palette, the density tokens and the dark theme entirely, and no CSS can reach
+ * it. That is why every dropdown in the app looked unstyled the moment it was
+ * opened, however carefully the closed control was themed.
+ *
+ * The props are unchanged, so all 162 call sites keep working untouched. In
+ * particular `onChange` still receives an object with `target.value` — every
+ * caller reads exactly that — so the synthetic event below is enough. A hidden
+ * input carries `name`/`value` for anything that reads the DOM.
+ *
+ * Trade-off worth knowing: this gives up the native picker on touch devices.
+ * For a desktop admin console that is the right side of the trade, and the
+ * listbox is still usable by touch, but it is a deliberate choice not an
+ * oversight.
+ */
 export function Select({
   options,
   placeholder,
   invalid,
   className,
+  disabled,
+  value,
+  onChange,
+  name,
+  id,
   ...props
 }: React.SelectHTMLAttributes<HTMLSelectElement> & {
   options: { value: string; label: string }[];
   placeholder?: string;
   invalid?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  const current = String(value ?? '');
+  const selectedIndex = options.findIndex((o) => o.value === current);
+  const selected = selectedIndex >= 0 ? options[selectedIndex] : undefined;
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  // Open on the current selection so keyboard users start where they left off.
+  useEffect(() => {
+    if (open) setActive(selectedIndex >= 0 ? selectedIndex : 0);
+  }, [open, selectedIndex]);
+
+  useEffect(() => {
+    if (!open) return;
+    listRef.current?.querySelectorAll('li')[active]?.scrollIntoView({ block: 'nearest' });
+  }, [open, active]);
+
+  function pick(optionValue: string) {
+    setOpen(false);
+    // Callers all do `onChange={(e) => set(e.target.value)}`; give them exactly
+    // that shape rather than pretending to be a full DOM event.
+    onChange?.({
+      target: { value: optionValue, name: name ?? '' },
+      currentTarget: { value: optionValue, name: name ?? '' },
+    } as unknown as React.ChangeEvent<HTMLSelectElement>);
+  }
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (disabled) return;
+    if (!open) {
+      if (['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+        e.preventDefault();
+        setOpen(true);
+      }
+      return;
+    }
+    if (e.key === 'Escape') { e.preventDefault(); setOpen(false); return; }
+    if (e.key === 'Tab') { setOpen(false); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActive((i) => Math.min(i + 1, options.length - 1)); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setActive((i) => Math.max(i - 1, 0)); }
+    if (e.key === 'Home') { e.preventDefault(); setActive(0); }
+    if (e.key === 'End') { e.preventDefault(); setActive(options.length - 1); }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      const o = options[active];
+      if (o) pick(o.value);
+    }
+  }
+
   return (
-    <div className="relative">
-      <select
-        {...props}
+    <div ref={rootRef} className="relative">
+      <input type="hidden" name={name} value={current} />
+      <button
+        type="button"
+        id={id}
+        aria-label={props['aria-label']}
+        title={props.title}
+        autoFocus={props.autoFocus}
+        tabIndex={props.tabIndex}
+        role="combobox"
+        aria-expanded={open}
+        aria-haspopup="listbox"
         aria-invalid={invalid || undefined}
+        disabled={disabled}
+        onClick={() => !disabled && setOpen((v) => !v)}
+        onKeyDown={onKeyDown}
         className={cn(
           baseInput,
-          'py-control cursor-pointer appearance-none pr-9',
+          'py-control flex cursor-pointer items-center justify-between gap-2 pr-3 text-left',
           invalid && invalidInput,
           className,
         )}
       >
-        {placeholder && <option value="">{placeholder}</option>}
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" />
+        <span className={cn('min-w-0 truncate', !selected && 'text-fg-subtle')}>
+          {selected ? selected.label : placeholder ?? 'Select…'}
+        </span>
+        <ChevronDown className={cn('h-4 w-4 shrink-0 text-fg-subtle transition', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <ul
+          ref={listRef}
+          role="listbox"
+          className="absolute left-0 right-0 z-dropdown mt-1 max-h-60 overflow-y-auto rounded-md border border-line bg-surface-2 py-1 shadow-lg"
+        >
+          {placeholder && (
+            <li>
+              <button
+                type="button"
+                role="option"
+                aria-selected={current === ''}
+                onClick={() => pick('')}
+                className={cn(
+                  'flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-fg-muted transition hover:bg-primary-soft',
+                )}
+              >
+                {placeholder}
+              </button>
+            </li>
+          )}
+          {options.length === 0 && (
+            <li className="px-3 py-6 text-center text-sm text-fg-muted">No options</li>
+          )}
+          {options.map((o, i) => (
+            <li key={o.value}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={o.value === current}
+                onClick={() => pick(o.value)}
+                onMouseEnter={() => setActive(i)}
+                className={cn(
+                  'flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition',
+                  i === active && 'bg-primary-soft',
+                  o.value === current && 'font-medium text-primary',
+                )}
+              >
+                <span className="min-w-0 truncate">{o.label}</span>
+                {o.value === current && <Check className="h-4 w-4 shrink-0 text-primary" />}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
