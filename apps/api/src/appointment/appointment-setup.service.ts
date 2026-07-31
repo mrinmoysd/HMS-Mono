@@ -138,9 +138,18 @@ export class AppointmentSetupService {
     if (!config?.consultationDurationMinutes || !shift?.startTime || !shift?.endTime) return [];
 
     const start = toMinutes(shift.startTime);
-    const end = toMinutes(shift.endTime);
+    const rawEnd = toMinutes(shift.endTime);
     const step = config.consultationDurationMinutes;
-    if (start == null || end == null || step <= 0 || end <= start) return [];
+    if (start == null || rawEnd == null || step <= 0) return [];
+
+    // A shift that ends earlier in the day than it starts runs through midnight
+    // — "Night Shift 21:00–00:30" is 3.5 hours, not a negative span. Without
+    // this the loop below produced nothing and the form said "Configure slots
+    // in Setup", which is doubly wrong: the setup was complete, and the message
+    // sends people to fix a screen that has nothing wrong with it.
+    // `rawEnd === start` stays a zero-length shift rather than being read as 24h.
+    const end = rawEnd < start ? rawEnd + 24 * 60 : rawEnd;
+    if (end <= start) return [];
 
     // Slots already booked by this doctor on this date.
     const day = new Date(date);
