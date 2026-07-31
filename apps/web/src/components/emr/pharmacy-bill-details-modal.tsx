@@ -6,6 +6,11 @@ import { useInvoice } from '@/lib/hooks/use-clinical';
 import { Modal } from '@/components/ui/modal';
 import { printPharmacyBill } from '@/lib/print';
 
+/** "12.50%" — the rate a money row represents, as the reference prints it. */
+function pct(part: number, whole: number): string {
+  return `${whole > 0 ? ((part / whole) * 100).toFixed(2) : '0.00'}%`;
+}
+
 /** Branded "Bill Details" preview for a Pharmacy sale invoice. */
 export function PharmacyBillDetailsModal({
   id, open, onClose, onEdit, onDelete, canEdit, canDelete,
@@ -67,6 +72,7 @@ export function PharmacyBillDetailsModal({
             <Row label="Phone" value={data.patientPhone ?? '—'} />
             <Row label="Doctor" value={data.consultantName ?? '—'} />
             <Row label="Case ID" value={data.caseNo ?? '—'} />
+            <Row label="Prescription" value={data.prescriptionNo ?? '—'} />
           </div>
 
           <div className="mt-4 overflow-x-auto rounded-md border border-border">
@@ -94,11 +100,19 @@ export function PharmacyBillDetailsModal({
             </table>
           </div>
 
+          {data.note && (
+            <p className="mt-4 text-sm">
+              <span className="text-fg-muted">Note</span>{' '}
+              <span className="font-medium">{data.note}</span>
+            </p>
+          )}
+
           <div className="mt-4 flex justify-end">
             <div className="w-full max-w-xs space-y-1 text-sm">
               <SummaryRow label="Total" value={data.subtotal.toFixed(2)} />
-              <SummaryRow label="Total Discount" value={data.discount.toFixed(2)} />
-              <SummaryRow label="Total Tax" value={data.tax.toFixed(2)} />
+              {/* The reference prints the rate alongside the amount. */}
+              <SummaryRow label="Total Discount" value={`${data.discount.toFixed(2)} (${pct(data.discount, data.subtotal)})`} />
+              <SummaryRow label="Total Tax" value={`${data.tax.toFixed(2)} (${pct(data.tax, data.subtotal)})`} />
               <SummaryRow label="Net Amount" value={data.netAmount.toFixed(2)} bold />
               <SummaryRow label="Total Paid" value={data.paid.toFixed(2)} />
               <SummaryRow label="Due" value={data.balance.toFixed(2)} />
