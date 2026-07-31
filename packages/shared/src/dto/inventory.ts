@@ -66,6 +66,8 @@ export interface ItemIssueDto {
   id: string;
   itemId: string;
   itemName: string;
+  /** Exposed so the edit form can prefill it — it is required on save. */
+  userType: string | null;
   categoryName: string | null;
   issueDate: string;
   returnDate: string | null;

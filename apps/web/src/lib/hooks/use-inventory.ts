@@ -62,6 +62,13 @@ export function useIssueItem() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (i: ItemIssueInput) => api.post('/inventory/issues', i), onSuccess: () => inval(qc) });
 }
+export function useUpdateIssue() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: ItemIssueInput }) => api.patch(`/inventory/issues/${id}`, input),
+    onSuccess: () => inval(qc),
+  });
+}
 export function useReturnItem() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (id: string) => api.post(`/inventory/issues/${id}/return`), onSuccess: () => inval(qc) });

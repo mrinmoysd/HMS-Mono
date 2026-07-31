@@ -148,6 +148,29 @@ export const pharmacyBillSchema = z.object({
 });
 export type PharmacyBillInput = z.infer<typeof pharmacyBillSchema>;
 
+/**
+ * Edit an existing Pharmacy bill.
+ *
+ * Header plus the bill-level discount — deliberately not the medicine lines.
+ * Selling a medicine decrements its stock, so re-saving lines would have to
+ * reconcile every quantity change against current stock, and getting that
+ * wrong silently corrupts the shelf count. Changing what was dispensed means
+ * deleting this bill (which returns the stock) and raising a new one.
+ */
+export const pharmacyBillUpdateSchema = z.object({
+  consultantId: z.string().uuid().optional().nullable(),
+  referenceDoctor: z.string().trim().optional().or(z.literal('')),
+  note: z.string().trim().optional().or(z.literal('')),
+  discountPct: z.coerce.number().min(0).max(100).optional(),
+});
+export type PharmacyBillUpdateInput = z.infer<typeof pharmacyBillUpdateSchema>;
+
+/** Header strip values for the Generate Bill form. A preview — not reserved. */
+export interface PharmacyNextBillNoDto {
+  billNo: string;
+  caseNo: string | null;
+}
+
 // ── Medicine Purchase (batch procurement) ─────────────────────
 export const medicinePurchaseItemSchema = z.object({
   categoryId: z.string().uuid().optional().nullable(),

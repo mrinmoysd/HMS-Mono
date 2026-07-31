@@ -4,10 +4,10 @@ import { PageHeader } from '@/components/ui/page-header';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useMemo, useState } from 'react';
-import { ChevronLeft, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { ChevronLeft, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import type { ItemIssueDto } from '@smart-hospital/shared';
-import { DataTable, type Column } from '@/components/ui/data-table';
+import { DataTable, type Column, type SortState } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
 import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput, TextArea, Select } from '@/components/ui/field';
@@ -15,7 +15,8 @@ import { ExportMenu } from '@/components/ui/export-menu';
 import { useAbility, useAuthStore } from '@/lib/auth-store';
 import { useCatalog } from '@/lib/hooks/use-masters';
 import { useStaff, useStaffRoles } from '@/lib/hooks/use-hr';
-import { useIssueList, useItems, useIssueItem, useReturnItem, useDeleteIssue } from '@/lib/hooks/use-inventory';
+import { useIssueList, useItems, useIssueItem, useUpdateIssue, useReturnItem, useDeleteIssue } from '@/lib/hooks/use-inventory';
+import { toLocalDateInput } from '@/lib/datetime';
 import { fmtDate } from './stock-view';
 
 export function IssueView({ onBack }: { onBack: () => void }) {
@@ -24,7 +25,13 @@ export function IssueView({ onBack }: { onBack: () => void }) {
   const canEdit = ability.can('inventory', 'edit');
   const canDelete = ability.can('inventory', 'delete');
 
-  const list = useIssueList();
+  // Was `useIssueList()` with `onPage`/`onSize` as no-ops: the table rendered
+  // pagination and a rows-per-page control that changed nothing, and the hook
+  // silently capped the list at its own default. All three are real now.
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState(25);
+  const [sort, setSort] = useState<SortState | undefined>();
+  const list = useIssueList({ page, size, sort: sort ? `${sort.key}:${sort.dir}` : undefined });
   const ret = useReturnItem();
   const del = useDeleteIssue();
   const toast = useToast();
@@ -33,6 +40,7 @@ export function IssueView({ onBack }: { onBack: () => void }) {
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const [returning, setReturning] = useState<ItemIssueDto | null>(null);
+  const [editing, setEditing] = useState<ItemIssueDto | null>(null);
 
   const rows = list.data?.data ?? [];
 
@@ -55,10 +63,10 @@ export function IssueView({ onBack }: { onBack: () => void }) {
   const cols: Column<ItemIssueDto>[] = [
     { key: 'itemName', header: 'Item', className: 'font-medium text-primary' },
     { key: 'categoryName', header: 'Item Category', render: (r) => r.categoryName ?? '—' },
-    { key: 'range', header: 'Issue - Return', render: (r) => `${fmtDate(r.issueDate)}${r.returnDate ? ` - ${fmtDate(r.returnDate)}` : ''}` },
-    { key: 'issuedTo', header: 'Issue To', render: (r) => r.issuedTo ?? '—' },
+    { key: 'date', sortable: true, header: 'Issue - Return', render: (r) => `${fmtDate(r.issueDate)}${r.returnDate ? ` - ${fmtDate(r.returnDate)}` : ''}` },
+    { key: 'issuedTo', sortable: true, header: 'Issue To', render: (r) => r.issuedTo ?? '—' },
     { key: 'issuedByName', header: 'Issued By', render: (r) => r.issuedByName ?? '—' },
-    { key: 'qty', header: 'Quantity', className: 'tabular' },
+    { key: 'qty', sortable: true, header: 'Quantity', className: 'tabular' },
     { key: 'note', header: 'Note', render: (r) => r.note ?? '' },
     {
       key: 'status', header: 'Status', render: (r) => r.status === 'returned'
@@ -81,15 +89,31 @@ export function IssueView({ onBack }: { onBack: () => void }) {
         loading={list.isLoading}
         search={search}
         onSearch={setSearch}
-        onPage={() => {}}
-        onSize={() => {}}
+        meta={list.data?.meta}
+        onPage={setPage}
+        onSize={(v) => { setSize(v); setPage(1); }}
+        sort={sort}
+        onSort={(k) => {
+          setSort((c) => (c?.key !== k ? { key: k, dir: 'asc' } : c.dir === 'asc' ? { key: k, dir: 'desc' } : undefined));
+          setPage(1);
+        }}
         toolbar={<ExportMenu table={() => ({ title: 'Issue Item List', filename: 'issue-items', headers: ['Item', 'Item Category', 'Issue - Return', 'Issue To', 'Issued By', 'Quantity', 'Note', 'Status'], rows: rows.map((r) => [r.itemName, r.categoryName ?? '', `${fmtDate(r.issueDate)}${r.returnDate ? ` - ${fmtDate(r.returnDate)}` : ''}`, r.issuedTo ?? '', r.issuedByName ?? '', r.qty, r.note ?? '', r.status === 'returned' ? 'Returned' : 'Issued']) })} />}
-        rowActions={canDelete ? (r) => (
-          <button onClick={() => remove(r)} aria-label="Delete" title="Delete" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"><Trash2 className="h-4 w-4" /></button>
-        ) : undefined}
+        rowActions={(r) => (
+          <>
+            {/* Returned issues are not editable: the DTO reports their quantity
+                as 0 once returned, and re-issuing is a new issue, not an edit. */}
+            {canEdit && r.status !== 'returned' && (
+              <button onClick={() => setEditing(r)} aria-label="Edit" title="Edit" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary"><Pencil className="h-4 w-4" /></button>
+            )}
+            {canDelete && (
+              <button onClick={() => remove(r)} aria-label="Delete" title="Delete" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"><Trash2 className="h-4 w-4" /></button>
+            )}
+          </>
+        )}
       />
 
       {open && <IssueModal onClose={() => setOpen(false)} />}
+      {editing && <IssueModal issue={editing} onClose={() => setEditing(null)} />}
       {returning && (
         <ConfirmReturn row={returning} saving={ret.isPending} onClose={() => setReturning(null)}
           onConfirm={async () => { await ret.mutateAsync(returning.id); setReturning(null); }} />
@@ -98,42 +122,70 @@ export function IssueView({ onBack }: { onBack: () => void }) {
   );
 }
 
-function IssueModal({ onClose }: { onClose: () => void }) {
+/** Add or edit an issue. One form for both so the two cannot drift apart. */
+function IssueModal({ issue: editing, onClose }: { issue?: ItemIssueDto; onClose: () => void }) {
   const roles = useStaffRoles();
   const cats = useCatalog('item-category', { size: 100 });
   const items = useItems();
   const issue = useIssueItem();
+  const update = useUpdateIssue();
   const me = useAuthStore((s) => s.user);
 
-  const [userType, setUserType] = useState('');
+  const [userType, setUserType] = useState(editing?.userType ?? '');
   const staff = useStaff(userType || undefined, { size: 200 });
-  const [issuedTo, setIssuedTo] = useState('');
-  const [issueDate, setIssueDate] = useState(new Date().toISOString().slice(0, 10));
-  const [returnDate, setReturnDate] = useState('');
-  const [note, setNote] = useState('');
+  const [issuedTo, setIssuedTo] = useState(editing?.issuedTo ?? '');
+  // Local calendar date: toISOString().slice(0,10) reads the UTC day and rolls
+  // a date early anywhere east of UTC.
+  const [issueDate, setIssueDate] = useState(
+    editing ? toLocalDateInput(new Date(editing.issueDate)) : toLocalDateInput(new Date()),
+  );
+  const [returnDate, setReturnDate] = useState(
+    editing?.returnDate ? toLocalDateInput(new Date(editing.returnDate)) : '',
+  );
+  const [note, setNote] = useState(editing?.note ?? '');
   const [categoryId, setCategoryId] = useState('');
-  const [itemId, setItemId] = useState('');
-  const [qty, setQty] = useState('');
+  const [itemId, setItemId] = useState(editing?.itemId ?? '');
+  const [qty, setQty] = useState(editing ? String(editing.qty) : '');
   const [error, setError] = useState('');
 
   const itemOptions = useMemo(() => {
     const all = items.data?.data ?? [];
     return (categoryId ? all.filter((i) => i.categoryId === categoryId) : all).map((i) => ({ value: i.id, label: i.name }));
   }, [items.data, categoryId]);
-  const available = items.data?.data.find((i) => i.id === itemId)?.availableQuantity ?? 0;
+  const availableNow = items.data?.data.find((i) => i.id === itemId)?.availableQuantity ?? 0;
+  // When editing, this issue's own quantity is already deducted from the
+  // available figure, so it has to be added back before comparing — otherwise
+  // re-saving an unchanged issue would fail its own validation.
+  const available = editing && editing.itemId === itemId ? availableNow + editing.qty : availableNow;
 
   async function save() {
     setError('');
     if (!userType || !issuedTo || !issueDate || !itemId || !qty) { setError('User Type, Issue To, Issue Date, Item and Quantity are required.'); return; }
     if (Number(qty) > available) { setError(`Insufficient stock — available ${available}.`); return; }
+    const payload = {
+      itemId, userType, issuedTo, qty: Number(qty) || 0,
+      date: new Date(issueDate),
+      returnDate: returnDate ? new Date(returnDate) : null,
+      note,
+    };
     try {
-      await issue.mutateAsync({ itemId, userType, issuedTo, qty: Number(qty) || 0, date: new Date(issueDate), returnDate: returnDate ? new Date(returnDate) : null, note });
+      if (editing) await update.mutateAsync({ id: editing.id, input: payload });
+      else await issue.mutateAsync(payload);
       onClose();
-    } catch { setError('Insufficient stock for this item.'); }
+    } catch (e) {
+      setError(e instanceof Error && e.message ? e.message : 'Insufficient stock for this item.');
+    }
   }
 
   return (
-    <FormDrawer open title="Add Issue Item" onClose={onClose} onSubmit={save} submitting={issue.isPending} wide>
+    <FormDrawer
+      open
+      title={editing ? `Edit Issue — ${editing.itemName}` : 'Add Issue Item'}
+      onClose={onClose}
+      onSubmit={save}
+      submitting={issue.isPending || update.isPending}
+      wide
+    >
       <div className="space-y-5">
         {error && <p role="alert" className="rounded-sm bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
         <div>

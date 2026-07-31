@@ -17,6 +17,18 @@ import { AuditService } from '../common/audit/audit.service';
 import { paginate, toPrismaPage } from '../common/pagination';
 import type { RequestUser } from '../common/types/request-user';
 
+/**
+ * Columns each list may be ordered by. Without a whitelist `toPrismaPage`
+ * ignores `sort`, which is why these lists never sorted. `availableQuantity` is
+ * computed in TS from stocks and issues, so it is not orderable in SQL and is
+ * deliberately absent — the column stays unsortable rather than offering a
+ * control that does nothing.
+ */
+const ITEM_SORTABLE = ['name', 'unit', 'createdAt'] as const;
+const STOCK_SORTABLE = ['qty', 'purchasePrice', 'date', 'createdAt'] as const;
+const ISSUE_SORTABLE = ['qty', 'date', 'returnDate', 'status', 'issuedTo', 'userType', 'createdAt'] as const;
+const SUPPLIER_SORTABLE = ['name', 'contactPerson', 'phone', 'email', 'createdAt'] as const;
+
 @Injectable()
 export class InventoryService {
   constructor(
@@ -34,6 +46,7 @@ export class InventoryService {
     return new Map(users.map((u) => [u.id, { name: u.name, staffNo: u.staffProfile?.staffNo ?? null }]));
   }
 
+
   /** Available = stocked − (issued that isn't returned). */
   private available(item: { stocks: { qty: number }[]; issues: { qty: number; status: string }[] }): number {
     const stocked = item.stocks.reduce((s, x) => s + x.qty, 0);
@@ -43,7 +56,7 @@ export class InventoryService {
 
   // ── Items ────────────────────────────────────────────────────
   async listItems(branchId: string, query: ListQuery): Promise<Paginated<InventoryItemDto>> {
-    const { skip, take, orderBy } = toPrismaPage(query);
+    const { skip, take, orderBy } = toPrismaPage(query, ITEM_SORTABLE);
     const where: Prisma.InventoryItemWhereInput = {
       branchId,
       deletedAt: null,
@@ -103,14 +116,18 @@ export class InventoryService {
 
   // ── Item stock (purchases) ───────────────────────────────────
   async listStock(branchId: string, query: ListQuery): Promise<Paginated<ItemStockDto>> {
-    const { skip, take } = toPrismaPage(query);
+    const { skip, take, orderBy } = toPrismaPage(query, STOCK_SORTABLE);
     const where: Prisma.ItemStockWhereInput = {
       branchId,
       deletedAt: null,
       ...(query.search ? { item: { name: { contains: query.search, mode: 'insensitive' } } } : {}),
     };
     const [rows, total] = await this.prisma.$transaction([
-      this.prisma.itemStock.findMany({ where, skip, take, orderBy: { date: 'desc' }, include: { item: { include: { } } } }),
+      // Default stays newest-purchased-first; an explicit ?sort wins over it.
+      this.prisma.itemStock.findMany({
+        where, skip, take, include: { item: { include: {} } },
+        orderBy: query.sort ? orderBy : { date: 'desc' },
+      }),
       this.prisma.itemStock.count({ where }),
     ]);
     const catIds = [...new Set(rows.map((r) => r.item.categoryId).filter((x): x is string => !!x))];
@@ -204,6 +221,43 @@ export class InventoryService {
     return { ok: true };
   }
 
+  /**
+   * Edit an issue. Quantity is included because availability is derived
+   * (stocked − non-returned issues) rather than stored, so changing it simply
+   * re-derives — no counter to keep in step. The new quantity is still checked
+   * against what is available *excluding this issue*, so an edit cannot
+   * over-issue any more than a create can.
+   */
+  async updateIssue(user: RequestUser, branchId: string, id: string, input: ItemIssueInput): Promise<{ ok: true }> {
+    const existing = await this.prisma.itemIssue.findFirst({ where: { id, branchId, deletedAt: null } });
+    if (!existing) throw new NotFoundException('Issue not found');
+
+    const item = await this.prisma.inventoryItem.findFirst({
+      where: { id: input.itemId, branchId, deletedAt: null },
+      include: { stocks: { where: { deletedAt: null } }, issues: { where: { deletedAt: null, id: { not: id } } } },
+    });
+    if (!item) throw new NotFoundException('Item not found');
+    const available = this.available(item);
+    if (available < input.qty) {
+      throw new BadRequestException(`Insufficient stock for ${item.name} (have ${available}, need ${input.qty})`);
+    }
+
+    await this.prisma.itemIssue.update({
+      where: { id },
+      data: {
+        itemId: input.itemId,
+        userType: input.userType || null,
+        issuedTo: input.issuedTo || null,
+        qty: input.qty,
+        note: input.note || null,
+        date: input.date,
+        returnDate: input.returnDate ?? null,
+      },
+    });
+    await this.audit.record({ branchId, userId: user.id, action: 'update', entity: 'item_issue', entityId: id });
+    return { ok: true };
+  }
+
   async removeIssue(user: RequestUser, branchId: string, id: string): Promise<void> {
     const existing = await this.prisma.itemIssue.findFirst({ where: { id, branchId, deletedAt: null } });
     if (!existing) throw new NotFoundException('Issue not found');
@@ -212,14 +266,18 @@ export class InventoryService {
   }
 
   async listIssues(branchId: string, query: ListQuery): Promise<Paginated<ItemIssueDto>> {
-    const { skip, take } = toPrismaPage(query);
+    const { skip, take, orderBy } = toPrismaPage(query, ISSUE_SORTABLE);
     const where: Prisma.ItemIssueWhereInput = {
       branchId,
       deletedAt: null,
       ...(query.search ? { item: { name: { contains: query.search, mode: 'insensitive' } } } : {}),
     };
     const [rows, total] = await this.prisma.$transaction([
-      this.prisma.itemIssue.findMany({ where, skip, take, orderBy: { date: 'desc' }, include: { item: true } }),
+      // Default stays newest-issued-first; an explicit ?sort wins over it.
+      this.prisma.itemIssue.findMany({
+        where, skip, take, include: { item: true },
+        orderBy: query.sort ? orderBy : { date: 'desc' },
+      }),
       this.prisma.itemIssue.count({ where }),
     ]);
     const catIds = [...new Set(rows.map((r) => r.item.categoryId).filter((x): x is string => !!x))];
@@ -234,6 +292,7 @@ export class InventoryService {
         categoryName: r.item.categoryId ? cMap.get(r.item.categoryId) ?? null : null,
         issueDate: r.date.toISOString(),
         returnDate: r.returnDate ? r.returnDate.toISOString() : null,
+        userType: r.userType,
         issuedTo: r.issuedTo,
         issuedByName: r.createdById ? nameMap.get(r.createdById)?.name ?? null : null,
         qty: r.status === 'returned' ? 0 : r.qty,
@@ -247,7 +306,7 @@ export class InventoryService {
 
   // ── Suppliers ────────────────────────────────────────────────
   async listSuppliers(branchId: string, query: ListQuery): Promise<Paginated<ItemSupplierDto>> {
-    const { skip, take, orderBy } = toPrismaPage(query);
+    const { skip, take, orderBy } = toPrismaPage(query, SUPPLIER_SORTABLE);
     const where: Prisma.ItemSupplierWhereInput = {
       branchId,
       deletedAt: null,

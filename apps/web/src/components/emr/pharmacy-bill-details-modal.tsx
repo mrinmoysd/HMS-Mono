@@ -1,12 +1,23 @@
 'use client';
 
-import { Printer } from 'lucide-react';
+import { Pencil, Printer, Trash2 } from 'lucide-react';
+import type { InvoiceDto } from '@smart-hospital/shared';
 import { useInvoice } from '@/lib/hooks/use-clinical';
 import { Modal } from '@/components/ui/modal';
 import { printPharmacyBill } from '@/lib/print';
 
 /** Branded "Bill Details" preview for a Pharmacy sale invoice. */
-export function PharmacyBillDetailsModal({ id, open, onClose }: { id: string | null; open: boolean; onClose: () => void }) {
+export function PharmacyBillDetailsModal({
+  id, open, onClose, onEdit, onDelete, canEdit, canDelete,
+}: {
+  id: string | null;
+  open: boolean;
+  onClose: () => void;
+  onEdit?: (bill: InvoiceDto) => void;
+  onDelete?: (bill: InvoiceDto) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}) {
   const { data, isLoading } = useInvoice(open ? id : null);
 
   if (!open) return null;
@@ -20,10 +31,22 @@ export function PharmacyBillDetailsModal({ id, open, onClose }: { id: string | n
       headerActions={
         <>
           {data && (
-              <button onClick={() => printPharmacyBill(data)} aria-label="Print" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary">
+            <>
+              <button onClick={() => printPharmacyBill(data)} aria-label="Print" title="Print" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary">
                 <Printer className="h-4 w-4" />
               </button>
-            )}
+              {canEdit && onEdit && (
+                <button onClick={() => onEdit(data)} aria-label="Edit" title="Edit" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary">
+                  <Pencil className="h-4 w-4" />
+                </button>
+              )}
+              {canDelete && onDelete && (
+                <button onClick={() => onDelete(data)} aria-label="Delete" title="Delete" className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </>
+          )}
         </>
       }
     >

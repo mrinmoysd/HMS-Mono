@@ -1,13 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Eye } from 'lucide-react';
+import { Plus, Eye, Trash2 } from 'lucide-react';
 import type { MedicinePurchaseDto } from '@smart-hospital/shared';
-import { DataTable, type Column } from '@/components/ui/data-table';
+import { DataTable, type Column, type SortState } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
 import { ExportMenu } from '@/components/ui/export-menu';
 import type { ExportTable } from '@/lib/export';
-import { useMedicinePurchases } from '@/lib/hooks/use-departments';
+import { useMedicinePurchases, useDeletePurchase } from '@/lib/hooks/use-departments';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useAbility } from '@/lib/auth-store';
 import { PurchaseMedicineForm } from './purchase-medicine-form';
 import { PurchaseDetailsModal } from './purchase-details-modal';
@@ -16,13 +18,21 @@ import { PurchaseDetailsModal } from './purchase-details-modal';
 export function MedicinePurchasePanel() {
   const ability = useAbility();
   const canAdd = ability.can('pharmacy', 'add');
+  const canDelete = ability.can('pharmacy', 'delete');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(25);
   const [open, setOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortState | undefined>();
 
-  const { data, isLoading, error } = useMedicinePurchases({ search, page, size });
+  const deletePurchase = useDeletePurchase();
+  const toast = useToast();
+  const confirm = useConfirm();
+
+  const { data, isLoading, error } = useMedicinePurchases({
+    search, page, size, sort: sort ? `${sort.key}:${sort.dir}` : undefined,
+  });
 
   function exportTable(): ExportTable {
     const rows = data?.data ?? [];
@@ -38,14 +48,14 @@ export function MedicinePurchasePanel() {
   }
 
   const columns: Column<MedicinePurchaseDto>[] = [
-    { key: 'purchaseNo', header: 'Pharmacy Purchase No', className: 'font-medium' },
-    { key: 'purchaseDate', header: 'Purchase Date', render: (p) => new Date(p.purchaseDate).toLocaleString() },
-    { key: 'billNo', header: 'Bill No', render: (p) => p.billNo ?? '—' },
+    { key: 'purchaseNo', sortable: true, header: 'Pharmacy Purchase No', className: 'font-medium' },
+    { key: 'purchaseDate', sortable: true, header: 'Purchase Date', render: (p) => new Date(p.purchaseDate).toLocaleString() },
+    { key: 'billNo', sortable: true, header: 'Bill No', render: (p) => p.billNo ?? '—' },
     { key: 'supplierName', header: 'Supplier Name', render: (p) => p.supplierName ?? '—' },
-    { key: 'total', header: 'Total ($)', className: 'tabular', render: (p) => p.total.toFixed(2) },
-    { key: 'discount', header: 'Discount ($)', className: 'tabular', render: (p) => p.discount.toFixed(2) },
-    { key: 'tax', header: 'Tax ($)', className: 'tabular', render: (p) => p.tax.toFixed(2) },
-    { key: 'netAmount', header: 'Net Amount ($)', className: 'tabular', render: (p) => p.netAmount.toFixed(2) },
+    { key: 'total', sortable: true, header: 'Total ($)', className: 'tabular', render: (p) => p.total.toFixed(2) },
+    { key: 'discount', sortable: true, header: 'Discount ($)', className: 'tabular', render: (p) => p.discount.toFixed(2) },
+    { key: 'tax', sortable: true, header: 'Tax ($)', className: 'tabular', render: (p) => p.tax.toFixed(2) },
+    { key: 'netAmount', sortable: true, header: 'Net Amount ($)', className: 'tabular', render: (p) => p.netAmount.toFixed(2) },
   ];
 
   return (
@@ -60,6 +70,11 @@ export function MedicinePurchasePanel() {
         onSearch={(v) => { setSearch(v); setPage(1); }}
         onPage={setPage}
         onSize={(s) => { setSize(s); setPage(1); }}
+        sort={sort}
+        onSort={(k) => {
+          setSort((c) => (c?.key !== k ? { key: k, dir: 'asc' } : c.dir === 'asc' ? { key: k, dir: 'desc' } : undefined));
+          setPage(1);
+        }}
         toolbar={
           <>
             <ExportMenu table={exportTable} />
@@ -71,9 +86,34 @@ export function MedicinePurchasePanel() {
           </>
         }
         rowActions={(p) => (
-          <button onClick={() => setDetailId(p.id)} aria-label="Details" title="Details" className="flex h-7 items-center gap-1 rounded-sm px-2 text-xs text-fg-muted hover:bg-primary/10 hover:text-primary">
-            <Eye className="h-4 w-4" /> Details
-          </button>
+          <>
+            <button onClick={() => setDetailId(p.id)} aria-label="Details" title="Details" className="flex h-7 items-center gap-1 rounded-sm px-2 text-xs text-fg-muted hover:bg-primary/10 hover:text-primary">
+              <Eye className="h-4 w-4" /> Details
+            </button>
+            {canDelete && (
+              <button
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: `Delete purchase ${p.purchaseNo}?`,
+                    description: 'The batch quantities this purchase added are taken back off the shelf. Refused if any of it has already been dispensed.',
+                    confirmLabel: 'Delete purchase',
+                    tone: 'danger',
+                  });
+                  if (!ok) return;
+                  try {
+                    await deletePurchase.mutateAsync(p.id);
+                    toast.success(`${p.purchaseNo} deleted — stock adjusted`);
+                  } catch (e) {
+                    toast.error('Could not delete purchase', { description: (e as Error).message });
+                  }
+                }}
+                aria-label="Delete" title="Delete"
+                className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+          </>
         )}
       />
 

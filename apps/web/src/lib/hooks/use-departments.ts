@@ -41,6 +41,8 @@ import type {
   Modality,
   Paginated,
   PharmacyBillInput,
+  PharmacyBillUpdateInput,
+  PharmacyNextBillNoDto,
   PharmaSupplierDto,
   PharmaSupplierInput,
   PreviousReportRow,
@@ -146,6 +148,50 @@ export function useUpdateBatchTpaSchedule() {
     onSuccess: (_d, { purchaseItemId }) => qc.invalidateQueries({ queryKey: ['batch-tpa', purchaseItemId] }),
   });
 }
+export function useUpdatePharmacyBill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: PharmacyBillUpdateInput }) =>
+      api.patch<InvoiceDto>(`/pharmacy/bills/${id}`, input),
+    onSuccess: (inv) => {
+      qc.invalidateQueries({ queryKey: ['invoices'] });
+      qc.invalidateQueries({ queryKey: ['invoice', inv.id] });
+    },
+  });
+}
+export function useDeletePharmacyBill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/pharmacy/bills/${id}`),
+    // Medicines too: voiding a bill puts the dispensed stock back on the shelf.
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['invoices'] });
+      qc.invalidateQueries({ queryKey: ['medicines'] });
+    },
+  });
+}
+export function useDeletePurchase() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/pharmacy/purchases/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['medicine-purchases'] });
+      qc.invalidateQueries({ queryKey: ['medicines'] });
+    },
+  });
+}
+export function usePharmacyNextBillNo(enabled: boolean, patientId?: string) {
+  return useQuery({
+    queryKey: ['pharmacy-next-bill-no', patientId ?? null],
+    queryFn: () =>
+      api.get<PharmacyNextBillNoDto>(
+        `/pharmacy/bills/next-no${patientId ? `?patientId=${encodeURIComponent(patientId)}` : ''}`,
+      ),
+    enabled,
+    staleTime: 0,
+  });
+}
+
 export function useGeneratePharmacyBill() {
   const qc = useQueryClient();
   return useMutation({

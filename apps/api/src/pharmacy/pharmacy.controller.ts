@@ -10,6 +10,7 @@ import {
   medicinePurchaseSchema,
   medicineSchema,
   pharmacyBillSchema,
+  pharmacyBillUpdateSchema,
   pharmaSupplierSchema,
   type BulkDeleteInput,
   type ListQuery,
@@ -20,6 +21,7 @@ import {
   type MedicineInput,
   type MedicinePurchaseInput,
   type PharmacyBillInput,
+  type PharmacyBillUpdateInput,
   type PharmaSupplierInput,
 } from '@smart-hospital/shared';
 import { PharmacyService } from './pharmacy.service';
@@ -111,6 +113,31 @@ export class PharmacyController {
     return this.pharmacy.generateBill(user, branchId, body);
   }
 
+  /** Declared before any `bills/:id` route so the literal segment wins. */
+  @Get('bills/next-no')
+  @RequirePermission('pharmacy', 'add')
+  nextBillNo(@BranchId() branchId: string, @Query('patientId') patientId?: string) {
+    return this.pharmacy.nextBillNo(branchId, patientId);
+  }
+
+  @Patch('bills/:id')
+  @RequirePermission('pharmacy', 'edit')
+  updateBill(
+    @CurrentUser() user: RequestUser,
+    @BranchId() branchId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(pharmacyBillUpdateSchema)) body: PharmacyBillUpdateInput,
+  ) {
+    return this.pharmacy.updateBill(user, branchId, id, body);
+  }
+
+  @Delete('bills/:id')
+  @HttpCode(204)
+  @RequirePermission('pharmacy', 'delete')
+  deleteBill(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
+    return this.pharmacy.deleteBill(user, branchId, id);
+  }
+
   // Medicine Purchase (batch procurement)
   @Get('purchases')
   @RequirePermission('pharmacy', 'view')
@@ -132,6 +159,13 @@ export class PharmacyController {
   @RequirePermission('pharmacy', 'view')
   purchaseDetail(@BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.pharmacy.purchaseDetail(branchId, id);
+  }
+
+  @Delete('purchases/:id')
+  @HttpCode(204)
+  @RequirePermission('pharmacy', 'delete')
+  deletePurchase(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
+    return this.pharmacy.deletePurchase(user, branchId, id);
   }
 
   // Per-batch TPA rate schedule

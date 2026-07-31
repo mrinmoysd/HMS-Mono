@@ -6,7 +6,7 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useMemo, useState } from 'react';
 import { ChevronLeft, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { InventoryItemDto } from '@smart-hospital/shared';
-import { DataTable, type Column } from '@/components/ui/data-table';
+import { DataTable, type Column, type SortState } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
 import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput, TextArea, Select } from '@/components/ui/field';
@@ -23,7 +23,12 @@ export function ItemView({ onBack }: { onBack: () => void }) {
   const canEdit = ability.can('inventory', 'edit');
   const canDelete = ability.can('inventory', 'delete');
 
-  const list = useItems();
+  // Was `useItems()` with `onPage`/`onSize` as no-ops — both controls rendered
+  // and changed nothing. Real paging, page size and sort now reach the API.
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState(25);
+  const [sort, setSort] = useState<SortState | undefined>();
+  const list = useItems({ page, size, sort: sort ? `${sort.key}:${sort.dir}` : undefined });
   const cats = useCatalog('item-category', { size: 100 });
   const create = useCreateItem();
   const update = useUpdateItem();
@@ -74,9 +79,9 @@ export function ItemView({ onBack }: { onBack: () => void }) {
   }
 
   const cols: Column<InventoryItemDto>[] = [
-    { key: 'name', header: 'Item', className: 'font-medium text-primary' },
+    { key: 'name', sortable: true, header: 'Item', className: 'font-medium text-primary' },
     { key: 'categoryName', header: 'Category', render: (i) => i.categoryName ?? '—' },
-    { key: 'unit', header: 'Unit', render: (i) => i.unit ?? '—' },
+    { key: 'unit', sortable: true, header: 'Unit', render: (i) => i.unit ?? '—' },
     { key: 'availableQuantity', header: 'Available Quantity', className: 'tabular', render: (i) => i.availableQuantity },
     { key: 'description', header: 'Description', render: (i) => <span className="line-clamp-3 text-fg-muted">{i.description || '—'}</span> },
   ];
@@ -95,8 +100,14 @@ export function ItemView({ onBack }: { onBack: () => void }) {
         loading={list.isLoading}
         search={search}
         onSearch={setSearch}
-        onPage={() => {}}
-        onSize={() => {}}
+        meta={list.data?.meta}
+        onPage={setPage}
+        onSize={(v) => { setSize(v); setPage(1); }}
+        sort={sort}
+        onSort={(k) => {
+          setSort((c) => (c?.key !== k ? { key: k, dir: 'asc' } : c.dir === 'asc' ? { key: k, dir: 'desc' } : undefined));
+          setPage(1);
+        }}
         toolbar={<ExportMenu table={() => ({ title: 'Item List', filename: 'items', headers: ['Item', 'Category', 'Unit', 'Available Quantity', 'Description'], rows: rows.map((i) => [i.name, i.categoryName ?? '', i.unit ?? '', i.availableQuantity, i.description ?? '']) })} />}
         rowActions={(canEdit || canDelete) ? (i) => (
           <div className="flex gap-1">

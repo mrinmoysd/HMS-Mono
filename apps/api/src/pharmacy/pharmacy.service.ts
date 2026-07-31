@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { computeInvoiceTotals } from '@smart-hospital/shared';
 import type {
   InvoiceDto,
   ListQuery,
@@ -17,6 +18,8 @@ import type {
   MedicinePurchaseInput,
   Paginated,
   PharmacyBillInput,
+  PharmacyBillUpdateInput,
+  PharmacyNextBillNoDto,
   PharmaSupplierDto,
   PharmaSupplierInput,
 } from '@smart-hospital/shared';
@@ -36,6 +39,16 @@ const medicineInclude = {
 
 type MedicineRow = Prisma.MedicineGetPayload<{ include: typeof medicineInclude }>;
 
+/**
+ * Columns each list may be ordered by. Without a whitelist `toPrismaPage`
+ * ignores `sort` entirely — which is why every pharmacy list silently refused
+ * to sort. Only DTO-backed scalar columns belong here.
+ */
+const MEDICINE_SORTABLE = ['name', 'composition', 'stock', 'salePrice', 'purchasePrice', 'minLevel', 'reorderLevel', 'vat', 'createdAt'] as const;
+const PURCHASE_SORTABLE = ['purchaseNo', 'billNo', 'purchaseDate', 'total', 'discount', 'tax', 'netAmount', 'createdAt'] as const;
+const SUPPLIER_SORTABLE = ['name', 'contactPerson', 'phone', 'email', 'createdAt'] as const;
+const DOSAGE_SORTABLE = ['name', 'createdAt'] as const;
+
 @Injectable()
 export class PharmacyService {
   constructor(
@@ -47,7 +60,7 @@ export class PharmacyService {
 
   // ── Medicines ────────────────────────────────────────────────
   async listMedicines(branchId: string, query: ListQuery): Promise<Paginated<MedicineDto>> {
-    const { skip, take, orderBy } = toPrismaPage(query);
+    const { skip, take, orderBy } = toPrismaPage(query, MEDICINE_SORTABLE);
     const where: Prisma.MedicineWhereInput = {
       branchId,
       deletedAt: null,
@@ -257,7 +270,7 @@ export class PharmacyService {
 
   // ── Medicine Purchase (batch procurement) ───────────────────
   async listPurchases(branchId: string, query: ListQuery): Promise<Paginated<MedicinePurchaseDto>> {
-    const { skip, take, orderBy } = toPrismaPage(query);
+    const { skip, take, orderBy } = toPrismaPage(query, PURCHASE_SORTABLE);
     const where: Prisma.MedicinePurchaseWhereInput = {
       branchId,
       deletedAt: null,
@@ -337,6 +350,145 @@ export class PharmacyService {
     });
     await this.audit.record({ branchId, userId: user.id, action: 'create', entity: 'medicine_purchase', entityId: purchase.id });
     return toPurchaseDetailDto(purchase);
+  }
+
+  /** Bill No + Case ID the Generate Bill form shows before saving. Preview only. */
+  async nextBillNo(branchId: string, patientId?: string): Promise<PharmacyNextBillNoDto> {
+    const billNo = await this.sequence.peek(branchId, 'pharmacy_bill');
+    if (!patientId) return { billNo, caseNo: null };
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: patientId, branchId, deletedAt: null },
+      select: { cases: { take: 1, orderBy: { createdAt: 'asc' }, select: { caseNo: true } } },
+    });
+    return { billNo, caseNo: patient?.cases[0]?.caseNo ?? null };
+  }
+
+  /**
+   * Edit a bill's header and its bill-level discount.
+   *
+   * Lines are out of scope — see pharmacyBillUpdateSchema. The discount is
+   * applied by re-running the shared totals function over the stored items with
+   * the bill-level percentage substituted, so the arithmetic matches how the
+   * bill was created rather than being a second implementation that can drift.
+   */
+  async updateBill(
+    user: RequestUser,
+    branchId: string,
+    id: string,
+    input: PharmacyBillUpdateInput,
+  ): Promise<InvoiceDto> {
+    const existing = await this.prisma.invoice.findFirst({
+      where: { id, branchId, module: 'pharmacy', deletedAt: null },
+      include: { items: true },
+    });
+    if (!existing) throw new NotFoundException('Bill not found');
+
+    const data: Prisma.InvoiceUpdateInput = {
+      consultantId: input.consultantId ?? null,
+      referenceDoctor: input.referenceDoctor || null,
+      note: input.note || null,
+    };
+
+    if (input.discountPct !== undefined) {
+      const totals = computeInvoiceTotals(
+        existing.items.map((it) => ({
+          name: it.name,
+          standardCharge: Number(it.standardCharge),
+          appliedCharge: Number(it.appliedCharge),
+          qty: it.qty,
+          discountPct: input.discountPct as number,
+          taxPct: Number(it.taxPct),
+        })),
+      );
+      const paid = Number(existing.paid);
+      data.subtotal = totals.subtotal;
+      data.discount = totals.discount;
+      data.tax = totals.tax;
+      data.netAmount = totals.netAmount;
+      data.balance = Math.round((totals.netAmount - paid + Number.EPSILON) * 100) / 100;
+      data.status = paid <= 0 ? 'unpaid' : paid >= totals.netAmount ? 'paid' : 'partial';
+    }
+
+    await this.prisma.invoice.update({ where: { id }, data });
+    await this.audit.record({ branchId, userId: user.id, action: 'update', entity: 'invoice', entityId: id });
+    return this.invoices.get(branchId, id);
+  }
+
+  /**
+   * Void a bill and put the dispensed medicines back on the shelf.
+   *
+   * Returning the stock is the point. `generateBill` decrements
+   * `medicine.stock` per line, so soft-deleting the invoice alone would leave
+   * the shelf permanently short by the voided quantity — a silent, compounding
+   * discrepancy that only shows up at stock-take. Each line is credited back to
+   * the medicine it came from; lines whose medicine has since been deleted are
+   * skipped rather than failing the whole void.
+   */
+  async deleteBill(user: RequestUser, branchId: string, id: string): Promise<void> {
+    const existing = await this.prisma.invoice.findFirst({
+      where: { id, branchId, module: 'pharmacy', deletedAt: null },
+      include: { items: true },
+    });
+    if (!existing) throw new NotFoundException('Bill not found');
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of existing.items) {
+        if (!item.chargeId) continue;
+        await tx.medicine.updateMany({
+          where: { id: item.chargeId, branchId, deletedAt: null },
+          data: { stock: { increment: item.qty } },
+        });
+      }
+      await tx.invoice.update({ where: { id }, data: { deletedAt: new Date() } });
+    });
+    await this.audit.record({
+      branchId, userId: user.id, action: 'delete', entity: 'invoice',
+      entityId: id, before: { billNo: existing.billNo, restocked: existing.items.length },
+    });
+  }
+
+  /**
+   * Void a purchase and take the batch back off the shelf.
+   *
+   * The mirror of deleteBill: `createPurchase` increments stock per line, so a
+   * delete has to decrement it. Refused when that would drive any medicine
+   * negative — that means the batch has already been dispensed, and silently
+   * clamping to zero would hide a real discrepancy rather than surface it.
+   */
+  async deletePurchase(user: RequestUser, branchId: string, id: string): Promise<void> {
+    const purchase = await this.prisma.medicinePurchase.findFirst({
+      where: { id, branchId, deletedAt: null },
+      include: { items: true },
+    });
+    if (!purchase) throw new NotFoundException('Purchase not found');
+
+    const medicines = await this.prisma.medicine.findMany({
+      where: { id: { in: purchase.items.map((i) => i.medicineId) }, branchId, deletedAt: null },
+      select: { id: true, name: true, stock: true },
+    });
+    const stockById = new Map(medicines.map((m) => [m.id, m]));
+    for (const item of purchase.items) {
+      const med = stockById.get(item.medicineId);
+      if (med && med.stock < item.quantity) {
+        throw new BadRequestException(
+          `Cannot delete: ${med.name} has only ${med.stock} in stock but this purchase added ${item.quantity}. Some of it has already been dispensed.`,
+        );
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of purchase.items) {
+        await tx.medicine.updateMany({
+          where: { id: item.medicineId, branchId, deletedAt: null },
+          data: { stock: { decrement: item.quantity } },
+        });
+      }
+      await tx.medicinePurchase.update({ where: { id }, data: { deletedAt: new Date() } });
+    });
+    await this.audit.record({
+      branchId, userId: user.id, action: 'delete', entity: 'medicine_purchase',
+      entityId: id, before: { purchaseNo: purchase.purchaseNo },
+    });
   }
 
   async purchaseDetail(branchId: string, id: string): Promise<MedicinePurchaseDetailDto> {
@@ -439,7 +591,7 @@ export class PharmacyService {
 
   // ── Suppliers ────────────────────────────────────────────────
   async listSuppliers(branchId: string, query: ListQuery): Promise<Paginated<PharmaSupplierDto>> {
-    const { skip, take, orderBy } = toPrismaPage(query);
+    const { skip, take, orderBy } = toPrismaPage(query, SUPPLIER_SORTABLE);
     const where: Prisma.PharmaSupplierWhereInput = {
       branchId,
       deletedAt: null,
@@ -500,7 +652,7 @@ export class PharmacyService {
 
   // ── Medicine Dosage (category + dosage value + unit quick-pick) ──
   async listDosages(branchId: string, query: ListQuery): Promise<Paginated<MedicineDosageDto>> {
-    const { skip, take, orderBy } = toPrismaPage(query);
+    const { skip, take, orderBy } = toPrismaPage(query, DOSAGE_SORTABLE);
     const where: Prisma.MedicineDosageWhereInput = {
       branchId,
       deletedAt: null,

@@ -7,6 +7,8 @@ import { Field, TextInput, Select } from '@/components/ui/field';
 import { PatientSelect } from '@/components/patient-select';
 import { ChargeLineEditor, type ChargeLine } from '@/components/charge-line-editor';
 import { ApiRequestError } from '@/lib/api';
+import { toLocalDateInput } from '@/lib/datetime';
+import { usePharmacyNextBillNo } from '@/lib/hooks/use-departments';
 
 export interface CatalogItem {
   id: string;
@@ -43,6 +45,9 @@ export function DeptBillForm({ open, title, catalog, onClose, onSubmit, submitti
   const [payMode, setPayMode] = useState('cash');
   const [extra, setExtra] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+
+  // Header strip preview. Gated on `open` so a closed drawer issues no request.
+  const { data: nextBill } = usePharmacyNextBillNo(open, patientId || undefined);
 
   // Present catalog items to ChargeLineEditor as ChargeDto-shaped options.
   const charges: ChargeDto[] = catalog.map((c) => ({
@@ -88,6 +93,21 @@ export function DeptBillForm({ open, title, catalog, onClose, onSubmit, submitti
   return (
     <FormDrawer open={open} title={title} onClose={onClose} onSubmit={submit} submitting={submitting} submitLabel="Generate Bill">
       {error && <p role="alert" className="mb-4 rounded-sm bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
+
+      <div className="mb-4 grid grid-cols-3 gap-4 rounded-sm border border-border bg-surface-2 px-4 py-3 text-sm">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-fg-muted">Bill No</p>
+          <p className="font-medium tabular-nums">{nextBill?.billNo ?? '—'}</p>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wide text-fg-muted">Case ID</p>
+          <p className="font-medium tabular-nums">{patientId ? nextBill?.caseNo ?? '—' : '—'}</p>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wide text-fg-muted">Date</p>
+          <p className="font-medium tabular-nums">{toLocalDateInput(new Date())}</p>
+        </div>
+      </div>
       <div className="space-y-4">
         <Field label="Patient" required>
           <PatientSelect value={patientId} selectedLabel={patientLabel}

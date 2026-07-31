@@ -85,6 +85,17 @@ export class InventoryController {
   returnItem(@CurrentUser() u: RequestUser, @BranchId() b: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.inventory.returnItem(u, b, id);
   }
+  @Patch('issues/:id')
+  @RequirePermission('inventory', 'edit')
+  updateIssue(
+    @CurrentUser() user: RequestUser,
+    @BranchId() branchId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(itemIssueSchema)) body: ItemIssueInput,
+  ) {
+    return this.inventory.updateIssue(user, branchId, id, body);
+  }
+
   @Delete('issues/:id')
   @HttpCode(204)
   @RequirePermission('inventory', 'delete')
