@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { baseInput, invalidInput } from './input-chrome';
+import { DateInput } from './date-input';
 
 /**
  * Form field primitives. 93 files import these, so every existing prop keeps
@@ -10,13 +12,6 @@ import { cn } from '@/lib/utils';
  * optional. See docs/UI_SYSTEM_PLAN.md §5.2.
  */
 
-/** Shared control chrome. Height comes from the density token, not a literal. */
-const baseInput =
-  'w-full rounded-sm border border-line bg-surface-1 px-3 text-sm text-fg outline-none transition ' +
-  'focus:border-primary focus:ring-2 focus:ring-primary/20 ' +
-  'disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-fg-muted';
-
-const invalidInput = 'border-danger focus:border-danger focus:ring-danger/20';
 
 export function FieldLabel({
   label,
@@ -73,6 +68,14 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 export function TextInput({ invalid, leftIcon: Icon, className, ...props }: InputProps) {
+  // A native date input's calendar is browser chrome and cannot be styled, so
+  // `type="date"` is served by our own DateInput. Routing it here rather than at
+  // the call sites means all 55 date fields are themed without being edited.
+  if (props.type === 'date') {
+    const { type: _type, ...date } = props;
+    return <DateInput {...date} invalid={invalid} className={className} />;
+  }
+
   const input = (
     <input
       {...props}
