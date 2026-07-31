@@ -25,8 +25,10 @@ import type { RequestUser } from '../common/types/request-user';
  * control that does nothing.
  */
 const ITEM_SORTABLE = ['name', 'unit', 'createdAt'] as const;
-const STOCK_SORTABLE = ['qty', 'purchasePrice', 'date', 'createdAt'] as const;
-const ISSUE_SORTABLE = ['qty', 'date', 'returnDate', 'status', 'issuedTo', 'userType', 'createdAt'] as const;
+// NB: ItemStock has no `createdAt` column — ordering by it would throw.
+const STOCK_SORTABLE = ['qty', 'purchasePrice', 'date'] as const;
+// NB: ItemIssue has no `createdAt` column either.
+const ISSUE_SORTABLE = ['qty', 'date', 'returnDate', 'status', 'issuedTo', 'userType'] as const;
 const SUPPLIER_SORTABLE = ['name', 'contactPerson', 'phone', 'email', 'createdAt'] as const;
 
 @Injectable()
@@ -116,18 +118,16 @@ export class InventoryService {
 
   // ── Item stock (purchases) ───────────────────────────────────
   async listStock(branchId: string, query: ListQuery): Promise<Paginated<ItemStockDto>> {
-    const { skip, take, orderBy } = toPrismaPage(query, STOCK_SORTABLE);
+    const { skip, take, orderBy } = toPrismaPage(query, STOCK_SORTABLE, { date: 'desc' });
     const where: Prisma.ItemStockWhereInput = {
       branchId,
       deletedAt: null,
       ...(query.search ? { item: { name: { contains: query.search, mode: 'insensitive' } } } : {}),
     };
     const [rows, total] = await this.prisma.$transaction([
-      // Default stays newest-purchased-first; an explicit ?sort wins over it.
-      this.prisma.itemStock.findMany({
-        where, skip, take, include: { item: { include: {} } },
-        orderBy: query.sort ? orderBy : { date: 'desc' },
-      }),
+      // toPrismaPage already falls back to date-desc for an absent or
+      // non-whitelisted sort, so orderBy is safe to use directly.
+      this.prisma.itemStock.findMany({ where, skip, take, include: { item: { include: {} } }, orderBy }),
       this.prisma.itemStock.count({ where }),
     ]);
     const catIds = [...new Set(rows.map((r) => r.item.categoryId).filter((x): x is string => !!x))];
@@ -266,18 +266,14 @@ export class InventoryService {
   }
 
   async listIssues(branchId: string, query: ListQuery): Promise<Paginated<ItemIssueDto>> {
-    const { skip, take, orderBy } = toPrismaPage(query, ISSUE_SORTABLE);
+    const { skip, take, orderBy } = toPrismaPage(query, ISSUE_SORTABLE, { date: 'desc' });
     const where: Prisma.ItemIssueWhereInput = {
       branchId,
       deletedAt: null,
       ...(query.search ? { item: { name: { contains: query.search, mode: 'insensitive' } } } : {}),
     };
     const [rows, total] = await this.prisma.$transaction([
-      // Default stays newest-issued-first; an explicit ?sort wins over it.
-      this.prisma.itemIssue.findMany({
-        where, skip, take, include: { item: true },
-        orderBy: query.sort ? orderBy : { date: 'desc' },
-      }),
+      this.prisma.itemIssue.findMany({ where, skip, take, include: { item: true }, orderBy }),
       this.prisma.itemIssue.count({ where }),
     ]);
     const catIds = [...new Set(rows.map((r) => r.item.categoryId).filter((x): x is string => !!x))];

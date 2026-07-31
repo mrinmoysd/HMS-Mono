@@ -18,10 +18,17 @@ import type { ListMeta, ListQuery, Paginated } from '@smart-hospital/shared';
  * Passing an unknown or non-whitelisted field now falls back to the default
  * ordering, which is the behaviour a list endpoint should have: ignore the hint
  * it cannot honour rather than fail the request.
+ *
+ * `defaultOrderBy` is that fallback. It defaults to `createdAt: desc`, but not
+ * every model has a `createdAt` — ItemIssue and ItemStock order by `date`
+ * instead — and falling back to a column that does not exist turns a rejected
+ * sort into a 500, which is the exact failure the whitelist exists to prevent.
+ * Callers whose model lacks `createdAt` must pass their own.
  */
 export function toPrismaPage(
   query: ListQuery,
   sortable?: readonly string[],
+  defaultOrderBy: Record<string, 'asc' | 'desc'> = { createdAt: 'desc' },
 ): {
   skip: number;
   take: number;
@@ -29,7 +36,7 @@ export function toPrismaPage(
 } {
   const skip = (query.page - 1) * query.size;
   const take = query.size;
-  let orderBy: Record<string, 'asc' | 'desc'> = { createdAt: 'desc' };
+  let orderBy: Record<string, 'asc' | 'desc'> = defaultOrderBy;
   if (query.sort && sortable?.length) {
     const [field, dir] = query.sort.split(':');
     if (field && sortable.includes(field)) {
