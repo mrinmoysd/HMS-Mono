@@ -68,6 +68,36 @@ export const opdVisitUpdateSchema = z.object({
 export type OpdVisitUpdateInput = z.infer<typeof opdVisitUpdateSchema>;
 
 /**
+ * A checkup within an OPD visit (blueprint §7.3 tab 2, prefix CHKID).
+ *
+ * The visit is the episode; the checkup is the patient actually being seen.
+ * A follow-up on the same visit is a second checkup, not a second visit —
+ * which is what "Total Recheckup" counts on the OPD Patient View.
+ */
+export const opdCheckupSchema = z.object({
+  appointmentDate: z.coerce.date(),
+  consultantId: z.string().uuid({ message: 'Consultant is required' }),
+  reference: z.string().trim().optional().or(z.literal('')),
+  symptoms: z.string().trim().optional().or(z.literal('')),
+  findings: z.string().trim().optional().or(z.literal('')),
+  note: z.string().trim().optional().or(z.literal('')),
+});
+export type OpdCheckupInput = z.infer<typeof opdCheckupSchema>;
+
+export interface OpdCheckupDto {
+  id: string;
+  checkupNo: string;
+  visitId: string;
+  appointmentDate: string;
+  consultantId: string;
+  consultantName: string;
+  reference: string | null;
+  symptoms: string | null;
+  findings: string | null;
+  note: string | null;
+}
+
+/**
  * Move Patient to IPD (Visits-tab action, V4). Server prefills patient/symptoms from the OPD
  * visit; this carries only what the modal actually asks the user to confirm/adjust. Casualty
  * and Old Patient have no IpdAdmission columns, so the service stashes them in customFields.

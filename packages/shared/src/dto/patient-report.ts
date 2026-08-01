@@ -24,6 +24,11 @@ export interface PatientReportVisit {
   doctorName: string;
   symptoms: string | null;
   findings: string | null;
+  /**
+   * OPD Checkup IDs on this visit, comma-joined (blueprint §5.3 §1). Null for
+   * IPD rows, which have no checkup sub-entity.
+   */
+  checkupNos: string | null;
 }
 
 export interface PatientReportBill {

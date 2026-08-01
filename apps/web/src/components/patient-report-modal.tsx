@@ -33,17 +33,29 @@ export function PatientReportModal({ patientId, open, onClose }: { patientId: st
   function printReport() {
     if (!data) return;
     const h = data.header;
-    const visitSection = (title: string, rows: PatientReportVisit[]): PrintSection => ({
+    const visitSection = (
+      title: string,
+      rows: PatientReportVisit[],
+      showCheckups = false,
+    ): PrintSection => ({
       heading: title,
       table: {
-        headers: ['No', 'Case ID', 'Date', 'Doctor', 'Symptoms', 'Findings'],
+        headers: [
+          'No', 'Case ID', 'Date',
+          ...(showCheckups ? ['OPD Checkup ID'] : []),
+          'Doctor', 'Symptoms', 'Findings',
+        ],
         rows: rows.length
-          ? rows.map((v) => [v.no, v.caseNo ?? '', new Date(v.date).toLocaleDateString(), v.doctorName, v.symptoms ?? '', v.findings ?? ''])
-          : [['No records', '', '', '', '', '']],
+          ? rows.map((v) => [
+              v.no, v.caseNo ?? '', new Date(v.date).toLocaleDateString(),
+              ...(showCheckups ? [v.checkupNos ?? ''] : []),
+              v.doctorName, v.symptoms ?? '', v.findings ?? '',
+            ])
+          : [Array(showCheckups ? 7 : 6).fill('').map((_, i) => (i === 0 ? 'No records' : ''))],
       },
     });
     const sections: PrintSection[] = [
-      visitSection('OPD Details', data.opd),
+      visitSection('OPD Details', data.opd, true),
       visitSection('IPD Details', data.ipd),
       ...data.bills.map((g): PrintSection => ({
         heading: MODULE_LABEL[g.module] ?? g.module,
@@ -103,7 +115,7 @@ export function PatientReportModal({ patientId, open, onClose }: { patientId: st
             <Barcode value={data.header.patientNo} height={40} />
           </div>
 
-          <VisitTable title="OPD Details" rows={data.opd} noLabel="OPD No" />
+          <VisitTable title="OPD Details" rows={data.opd} noLabel="OPD No" showCheckups />
           <VisitTable title="IPD Details" rows={data.ipd} noLabel="IPD No" />
 
           {data.bills.map((g) => (
@@ -145,7 +157,23 @@ export function PatientReportModal({ patientId, open, onClose }: { patientId: st
   );
 }
 
-function VisitTable({ title, rows, noLabel }: { title: string; rows: PatientReportVisit[]; noLabel: string }) {
+/**
+ * `showCheckups` adds the blueprint's "OPD Checkup ID" column (§5.3 §1).
+ * OPD only — IPD admissions have no checkup sub-entity, so the column would
+ * be a row of dashes there.
+ */
+function VisitTable({
+  title,
+  rows,
+  noLabel,
+  showCheckups = false,
+}: {
+  title: string;
+  rows: PatientReportVisit[];
+  noLabel: string;
+  showCheckups?: boolean;
+}) {
+  const cols = showCheckups ? 7 : 6;
   return (
     <div>
       <h3 className="mb-2 text-sm font-semibold">{title}</h3>
@@ -154,14 +182,16 @@ function VisitTable({ title, rows, noLabel }: { title: string; rows: PatientRepo
           <thead>
             <tr className="border-b border-border bg-bg text-left text-xs uppercase text-fg-muted">
               <th className="px-3 py-2 font-semibold">{noLabel}</th><th className="px-3 py-2 font-semibold">Case ID</th><th className="px-3 py-2 font-semibold">Date</th>
+              {showCheckups && <th className="px-3 py-2 font-semibold">OPD Checkup ID</th>}
               <th className="px-3 py-2 font-semibold">Doctor</th><th className="px-3 py-2 font-semibold">Symptoms</th><th className="px-3 py-2 font-semibold">Findings</th>
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && <tr><td colSpan={6} className="px-3 py-6 text-center text-fg-muted">No records</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={cols} className="px-3 py-6 text-center text-fg-muted">No records</td></tr>}
             {rows.map((v) => (
               <tr key={v.no} className="border-b border-border/60 last:border-0 align-top">
                 <td className="px-3 py-2 font-medium text-primary">{v.no}</td><td className="px-3 py-2">{v.caseNo ?? '—'}</td><td className="px-3 py-2 whitespace-nowrap">{new Date(v.date).toLocaleDateString()}</td>
+                {showCheckups && <td className="px-3 py-2 text-fg-muted">{v.checkupNos ?? '—'}</td>}
                 <td className="px-3 py-2 whitespace-nowrap">{v.doctorName}</td><td className="px-3 py-2 text-fg-muted">{v.symptoms ?? '—'}</td><td className="px-3 py-2 text-fg-muted">{v.findings ?? '—'}</td>
               </tr>
             ))}

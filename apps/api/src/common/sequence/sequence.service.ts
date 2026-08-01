@@ -12,6 +12,7 @@ const DEFAULT_PREFIXES: Record<string, string> = {
   case: 'CASE',
   appointment: 'APPT',
   opd: 'OPD',
+  opd_checkup: 'CHKID',
   ipd: 'IPD',
   invoice: 'INV',
   pharmacy_bill: 'PHARMAB',

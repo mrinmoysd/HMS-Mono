@@ -8,6 +8,8 @@ import type {
   IpdAdmissionDto,
   ListQuery,
   MoveToIpdInput,
+  OpdCheckupDto,
+  OpdCheckupInput,
   OpdVisitDetailDto,
   OpdVisitDto,
   OpdVisitInput,
@@ -176,5 +178,41 @@ export function useDeletePayment() {
       qc.invalidateQueries({ queryKey: ['invoices'] });
       qc.invalidateQueries({ queryKey: ['invoice', v.id] });
     },
+  });
+}
+
+// ── OPD checkups (CHKID) ─────────────────────────────────────
+// A visit's consultations. Keyed by visit so adding one only refetches that
+// visit's tab, not every OPD query on the page.
+export function useOpdCheckups(visitId: string) {
+  return useQuery({
+    queryKey: ['opd-checkups', visitId],
+    queryFn: () => api.get<OpdCheckupDto[]>(`/opd/${visitId}/checkups`),
+    enabled: !!visitId,
+  });
+}
+
+export function useCreateOpdCheckup(visitId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: OpdCheckupInput) => api.post<OpdCheckupDto>(`/opd/${visitId}/checkups`, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['opd-checkups', visitId] }),
+  });
+}
+
+export function useUpdateOpdCheckup(visitId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: OpdCheckupInput }) =>
+      api.patch<OpdCheckupDto>(`/opd/checkups/${id}`, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['opd-checkups', visitId] }),
+  });
+}
+
+export function useDeleteOpdCheckup(visitId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/opd/checkups/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['opd-checkups', visitId] }),
   });
 }

@@ -4,9 +4,11 @@ import {
   OPD_TABS,
   listQuerySchema,
   moveToIpdSchema,
+  opdCheckupSchema,
   opdVisitSchema,
   opdVisitUpdateSchema,
   type ListQuery,
+  type OpdCheckupInput,
   type MoveToIpdInput,
   type OpdTab,
   type OpdVisitInput,
@@ -69,6 +71,46 @@ export class OpdController {
   @RequirePermission('opd', 'delete')
   remove(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id') id: string) {
     return this.opd.remove(user, branchId, id);
+  }
+
+  // Checkups within a visit (blueprint §7.3 tab 2). Read is gated on 'opd'
+  // view so the Visits tab renders for anyone who can open the visit.
+  @Get(':id/checkups')
+  @RequirePermission('opd', 'view')
+  listCheckups(@BranchId() branchId: string, @Param('id') id: string) {
+    return this.opd.listCheckups(branchId, id);
+  }
+
+  @Post(':id/checkups')
+  @RequirePermission('opd', 'add')
+  createCheckup(
+    @CurrentUser() user: RequestUser,
+    @BranchId() branchId: string,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(opdCheckupSchema)) body: OpdCheckupInput,
+  ) {
+    return this.opd.createCheckup(user, branchId, id, body);
+  }
+
+  @Patch('checkups/:checkupId')
+  @RequirePermission('opd', 'edit')
+  updateCheckup(
+    @CurrentUser() user: RequestUser,
+    @BranchId() branchId: string,
+    @Param('checkupId') checkupId: string,
+    @Body(new ZodValidationPipe(opdCheckupSchema)) body: OpdCheckupInput,
+  ) {
+    return this.opd.updateCheckup(user, branchId, checkupId, body);
+  }
+
+  @Delete('checkups/:checkupId')
+  @RequirePermission('opd', 'delete')
+  removeCheckup(
+    @CurrentUser() user: RequestUser,
+    @BranchId() branchId: string,
+    @Param('checkupId') checkupId: string,
+  ) {
+    return this.opd.removeCheckup(user, branchId, checkupId);
   }
 
   @Post(':id/move-to-ipd')

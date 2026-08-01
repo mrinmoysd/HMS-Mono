@@ -19,12 +19,13 @@ import { CurrentVitals } from '@/components/emr/current-vitals';
 import { VitalsTab } from '@/components/emr/vitals-tab';
 import { TimelineTab } from '@/components/emr/timeline-tab';
 import { EncounterVisitTable } from '@/components/emr/visit-table';
+import { CheckupsTab } from '@/components/emr/checkups-tab';
 import { useEncounterBilling } from '@/lib/hooks/use-encounter-billing';
 import { usePatientProfile } from '@/lib/hooks/use-emr';
 import { useAbility } from '@/lib/auth-store';
 
 type Tab =
-  | 'overview' | 'vitals' | 'lab' | 'prescription' | 'medication'
+  | 'overview' | 'visits' | 'vitals' | 'lab' | 'prescription' | 'medication'
   | 'operations' | 'liveconsult' | 'charges' | 'payments' | 'timeline' | 'treatment';
 
 export default function OpdDetailPage() {
@@ -69,6 +70,7 @@ export default function OpdDetailPage() {
       <Tabs
         tabs={[
           { value: 'overview', label: 'Overview' },
+          { value: 'visits', label: 'Visits' },
           { value: 'vitals', label: 'Vitals' },
           { value: 'lab', label: 'Lab Investigation' },
           { value: 'prescription', label: 'Prescription' },
@@ -118,6 +120,9 @@ export default function OpdDetailPage() {
             </div>
           </div>
         </div>
+      )}
+      {tab === 'visits' && (
+        <CheckupsTab visitId={id} opdNo={h.encounterNo} canEdit={canEditClinical} />
       )}
       {tab === 'vitals' && <VitalsTab patientId={h.patientId} canEdit={canEditClinical} />}
       {tab === 'lab' && <LabTab scope={scope} canEdit={canEditClinical} patientName={h.patientName} />}

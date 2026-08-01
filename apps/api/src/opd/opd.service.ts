@@ -9,6 +9,8 @@ import type {
   OpdVisitDto,
   OpdVisitInput,
   OpdVisitUpdateInput,
+  OpdCheckupDto,
+  OpdCheckupInput,
   Paginated,
 } from '@smart-hospital/shared';
 import { PrismaService } from '../prisma/prisma.service';
@@ -205,6 +207,89 @@ export class OpdService {
     await this.audit.record({ branchId, userId: user.id, action: 'delete', entity: 'opd', entityId: id });
   }
 
+  // ── Checkups (CHKID) ─────────────────────────────────────────
+  //
+  // A visit holds one or more checkups. Everything here is scoped by visit
+  // *and* branch so a guessed id from another branch resolves to nothing.
+
+  private async requireVisit(branchId: string, visitId: string) {
+    const visit = await this.prisma.opdVisit.findFirst({
+      where: { id: visitId, branchId, deletedAt: null },
+    });
+    if (!visit) throw new NotFoundException('Visit not found');
+    return visit;
+  }
+
+  async listCheckups(branchId: string, visitId: string): Promise<OpdCheckupDto[]> {
+    await this.requireVisit(branchId, visitId);
+    const rows = await this.prisma.opdCheckup.findMany({
+      where: { visitId, branchId, deletedAt: null },
+      orderBy: { appointmentDate: 'asc' },
+      include: { consultant: { select: { name: true } } },
+    });
+    return rows.map(toCheckupDto);
+  }
+
+  async createCheckup(
+    user: RequestUser,
+    branchId: string,
+    visitId: string,
+    input: OpdCheckupInput,
+  ): Promise<OpdCheckupDto> {
+    await this.requireVisit(branchId, visitId);
+    const row = await this.prisma.$transaction(async (tx) => {
+      const checkupNo = await this.sequence.next(branchId, 'opd_checkup', tx);
+      return tx.opdCheckup.create({
+        data: {
+          branchId,
+          visitId,
+          checkupNo,
+          appointmentDate: input.appointmentDate,
+          consultantId: input.consultantId,
+          reference: input.reference || null,
+          symptoms: input.symptoms || null,
+          findings: input.findings || null,
+          note: input.note || null,
+          createdById: user.id,
+        },
+        include: { consultant: { select: { name: true } } },
+      });
+    });
+    await this.audit.record({ branchId, userId: user.id, action: 'create', entity: 'opd_checkup', entityId: row.id });
+    return toCheckupDto(row);
+  }
+
+  async updateCheckup(
+    user: RequestUser,
+    branchId: string,
+    id: string,
+    input: OpdCheckupInput,
+  ): Promise<OpdCheckupDto> {
+    const existing = await this.prisma.opdCheckup.findFirst({ where: { id, branchId, deletedAt: null } });
+    if (!existing) throw new NotFoundException('Checkup not found');
+    const row = await this.prisma.opdCheckup.update({
+      where: { id },
+      data: {
+        appointmentDate: input.appointmentDate,
+        consultantId: input.consultantId,
+        reference: input.reference || null,
+        symptoms: input.symptoms || null,
+        findings: input.findings || null,
+        note: input.note || null,
+      },
+      include: { consultant: { select: { name: true } } },
+    });
+    await this.audit.record({ branchId, userId: user.id, action: 'update', entity: 'opd_checkup', entityId: id });
+    return toCheckupDto(row);
+  }
+
+  async removeCheckup(user: RequestUser, branchId: string, id: string): Promise<void> {
+    const existing = await this.prisma.opdCheckup.findFirst({ where: { id, branchId, deletedAt: null } });
+    if (!existing) throw new NotFoundException('Checkup not found');
+    await this.prisma.opdCheckup.update({ where: { id }, data: { deletedAt: new Date() } });
+    await this.audit.record({ branchId, userId: user.id, action: 'delete', entity: 'opd_checkup', entityId: id });
+  }
+
   /** Move Patient to IPD: prefill an admission from this visit, then reuse the IPD admit engine. */
   async moveToIpd(
     user: RequestUser,
@@ -307,5 +392,31 @@ function toDetailDto(v: DetailRow): OpdVisitDetailDto {
     netAmount: v.invoice ? Number(v.invoice.netAmount) : 0,
     paid: v.invoice ? Number(v.invoice.paid) : 0,
     balance: v.invoice ? Number(v.invoice.balance) : 0,
+  };
+}
+
+function toCheckupDto(c: {
+  id: string;
+  checkupNo: string;
+  visitId: string;
+  appointmentDate: Date;
+  consultantId: string;
+  consultant: { name: string };
+  reference: string | null;
+  symptoms: string | null;
+  findings: string | null;
+  note: string | null;
+}): OpdCheckupDto {
+  return {
+    id: c.id,
+    checkupNo: c.checkupNo,
+    visitId: c.visitId,
+    appointmentDate: c.appointmentDate.toISOString(),
+    consultantId: c.consultantId,
+    consultantName: c.consultant.name,
+    reference: c.reference,
+    symptoms: c.symptoms,
+    findings: c.findings,
+    note: c.note,
   };
 }

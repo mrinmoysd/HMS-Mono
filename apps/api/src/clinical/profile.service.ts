@@ -152,6 +152,19 @@ export class ProfileService {
     }
     const findingsFor = (id: string) => findingsByEncounter.get(id)?.join('; ') ?? null;
 
+    // Checkup numbers per visit for the report's "OPD Checkup ID" column.
+    const checkups = await this.prisma.opdCheckup.findMany({
+      where: { visitId: { in: opdVisits.map((o) => o.id) }, deletedAt: null },
+      orderBy: { appointmentDate: 'asc' },
+      select: { visitId: true, checkupNo: true },
+    });
+    const checkupsByVisit = new Map<string, string[]>();
+    for (const c of checkups) {
+      const list = checkupsByVisit.get(c.visitId) ?? [];
+      list.push(c.checkupNo);
+      checkupsByVisit.set(c.visitId, list);
+    }
+
     const opd: PatientReportVisit[] = opdVisits.map((o) => ({
       no: o.opdNo,
       caseNo: o.case?.caseNo ?? null,
@@ -159,6 +172,7 @@ export class ProfileService {
       doctorName: o.consultant.name,
       symptoms: o.symptoms,
       findings: findingsFor(o.id),
+      checkupNos: checkupsByVisit.get(o.id)?.join(', ') ?? null,
     }));
     const ipd: PatientReportVisit[] = ipdAdmissions.map((a) => ({
       no: a.ipdNo,
@@ -167,6 +181,8 @@ export class ProfileService {
       doctorName: a.consultant.name,
       symptoms: a.symptoms,
       findings: findingsFor(a.id),
+      // IPD has no checkup sub-entity — the column is OPD-only.
+      checkupNos: null,
     }));
 
     const bills: PatientReportModuleGroup[] = [];

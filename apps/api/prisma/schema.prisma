@@ -104,6 +104,7 @@ model User {
   auditLogs           AuditLog[]
   doctorAppointments     Appointment[]  @relation("DoctorAppointments")
   consultantOpdVisits    OpdVisit[]     @relation("ConsultantOpdVisits")
+  consultantOpdCheckups  OpdCheckup[]   @relation("ConsultantOpdCheckups")
   consultantIpdAdmissions IpdAdmission[] @relation("ConsultantIpdAdmissions")
   staffProfile           Staff?         @relation("StaffProfile")
   patientProfile         Patient?       @relation("PatientLogin")
@@ -597,10 +598,40 @@ model OpdVisit {
   case       PatientCase? @relation(fields: [caseId], references: [id])
   consultant User         @relation("ConsultantOpdVisits", fields: [consultantId], references: [id])
   invoice    Invoice?     @relation("OpdInvoice", fields: [invoiceId], references: [id])
+  checkups   OpdCheckup[]
 
   @@unique([branchId, opdNo])
   @@index([branchId, appointmentDate, deletedAt])
   @@map("opd_visit")
+}
+
+/// A consultation within an OPD visit (blueprint §7.3 tab 2, prefix CHKID).
+///
+/// The visit is the episode; the checkup is the patient actually being seen.
+/// A follow-up on the same visit is a second checkup rather than a second
+/// visit, which is what "Total Recheckup" counts on the OPD Patient View.
+model OpdCheckup {
+  id              String   @id @default(uuid()) @db.Uuid
+  branchId        String   @db.Uuid
+  visitId         String   @db.Uuid
+  checkupNo       String
+  appointmentDate DateTime
+  consultantId    String   @db.Uuid
+  reference       String?
+  symptoms        String?
+  findings        String?
+  note            String?
+  createdById     String?  @db.Uuid
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  visit      OpdVisit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  consultant User     @relation("ConsultantOpdCheckups", fields: [consultantId], references: [id])
+
+  @@unique([branchId, checkupNo])
+  @@index([visitId, deletedAt])
+  @@map("opd_checkup")
 }
 
 // ─────────────────────────────────────────────────────────────
