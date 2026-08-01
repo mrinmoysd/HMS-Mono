@@ -2,10 +2,12 @@
 
 import { PageHeader } from '@/components/ui/page-header';
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
-import { vitalTypeSchema, findingSchema, symptomTypeSchema } from '@smart-hospital/shared';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { vitalTypeSchema, findingSchema, symptomTypeSchema, icdCodeSchema, type IcdCodeDto } from '@smart-hospital/shared';
 import { Tabs } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
+import { Button, IconButton } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
+import { useConfirmDelete } from '@/components/ui/confirm-dialog';
 import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput, TextArea, Select } from '@/components/ui/field';
 import { useCatalog, useCreateCatalogItem } from '@/lib/hooks/use-masters';
@@ -16,11 +18,15 @@ import {
   useCreateFindingMaster,
   useSymptomTypeMasters,
   useCreateSymptomTypeMaster,
+  useIcdCodes,
+  useCreateIcdCode,
+  useUpdateIcdCode,
+  useDeleteIcdCode,
 } from '@/lib/hooks/use-emr';
 import { useAbility } from '@/lib/auth-store';
 import { SimpleCatalogPanel } from '@/components/setup/simple-catalog-panel';
 
-type Section = 'vitals' | 'findings' | 'symptoms' | 'operation-category';
+type Section = 'vitals' | 'findings' | 'symptoms' | 'icd-group' | 'icd-code' | 'operation-category';
 
 export default function ClinicalMastersPage() {
   const ability = useAbility();
@@ -41,6 +47,8 @@ export default function ClinicalMastersPage() {
           { value: 'vitals', label: 'Vital Types' },
           { value: 'findings', label: 'Findings' },
           { value: 'symptoms', label: 'Symptoms' },
+          { value: 'icd-group', label: 'ICD-10 Groups' },
+          { value: 'icd-code', label: 'ICD Code' },
           { value: 'operation-category', label: 'Operation Category' },
         ]}
         value={section}
@@ -50,6 +58,8 @@ export default function ClinicalMastersPage() {
       {section === 'vitals' && <VitalTypes canManage={canManage} />}
       {section === 'findings' && <Findings canManage={canManage} />}
       {section === 'symptoms' && <Symptoms canManage={canManage} />}
+      {section === 'icd-group' && <SimpleCatalogPanel catalog="icd-group" label="ICD-10 Group" />}
+      {section === 'icd-code' && <IcdCodes canManage={canManage} />}
       {section === 'operation-category' && <SimpleCatalogPanel catalog="operation-category" label="Operation Category" />}
     </div>
   );
@@ -288,6 +298,132 @@ function Symptoms({ canManage }: { canManage: boolean }) {
                 setNewHead('');
               }}>Add</Button>
             </div>
+          </Field>
+        </div>
+      </FormDrawer>
+    </div>
+  );
+}
+
+// ── ICD-10 codes ──────────────────────────────────────────────
+/**
+ * Setup ▸ ICD-10 ▸ ICD Code. Groups live on their own tab as a plain name
+ * catalog; this panel owns the codes that hang off them and feeds the
+ * Diagnosis cascade in the OPD and IPD forms.
+ */
+function IcdCodes({ canManage }: { canManage: boolean }) {
+  const { data: codes = [] } = useIcdCodes();
+  const { data: groups } = useCatalog('icd-group', { size: 200 });
+  const create = useCreateIcdCode();
+  const update = useUpdateIcdCode();
+  const del = useDeleteIcdCode();
+  const confirmDelete = useConfirmDelete();
+  const toast = useToast();
+
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<IcdCodeDto | null>(null);
+  const [code, setCode] = useState('');
+  const [description, setDescription] = useState('');
+  const [groupId, setGroupId] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  function startAdd() {
+    setEditing(null);
+    setCode(''); setDescription(''); setGroupId('');
+    setError(null);
+    setOpen(true);
+  }
+  function startEdit(c: IcdCodeDto) {
+    setEditing(c);
+    setCode(c.code);
+    setDescription(c.description ?? '');
+    setGroupId(c.groupId ?? '');
+    setError(null);
+    setOpen(true);
+  }
+
+  async function save() {
+    setError(null);
+    const parsed = icdCodeSchema.safeParse({ code, description, groupId: groupId || undefined });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? 'Invalid');
+      return;
+    }
+    try {
+      if (editing) await update.mutateAsync({ id: editing.id, input: parsed.data });
+      else await create.mutateAsync(parsed.data);
+      setOpen(false);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  async function onDelete(c: IcdCodeDto) {
+    if (!(await confirmDelete(`ICD code ${c.code}`))) return;
+    try {
+      await del.mutateAsync(c.id);
+      toast.success(`${c.code} removed`);
+    } catch (e) {
+      toast.error('Could not remove code', { description: (e as Error).message });
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <Toolbar title="ICD Code" canManage={canManage} onAdd={startAdd} />
+      <Panel>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-muted">
+              <th className="px-3 py-2.5 font-semibold">ICD Code</th>
+              <th className="px-3 py-2.5 font-semibold">Description</th>
+              <th className="px-3 py-2.5 font-semibold">Group</th>
+              <th className="w-24 px-3 py-2.5 font-semibold">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {codes.length === 0 && <tr><td colSpan={4} className="px-3 py-10 text-center text-fg-muted">No ICD codes</td></tr>}
+            {codes.map((c) => (
+              <tr key={c.id} className="border-b border-border/60 last:border-0">
+                <td className="px-3 py-2.5 font-medium">{c.code}</td>
+                <td className="px-3 py-2.5 text-fg-muted">{c.description ?? '—'}</td>
+                <td className="px-3 py-2.5">{c.groupName ?? '—'}</td>
+                <td className="px-3 py-2.5">
+                  {canManage && (
+                    <div className="flex gap-1">
+                      <IconButton label="Edit code" size="sm" onClick={() => startEdit(c)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </IconButton>
+                      <IconButton label="Delete code" tone="danger" size="sm" onClick={() => onDelete(c)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </IconButton>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Panel>
+
+      <FormDrawer
+        open={open}
+        title={editing ? `Edit ${editing.code}` : 'Add ICD Code'}
+        onClose={() => setOpen(false)}
+        onSubmit={save}
+        submitting={create.isPending || update.isPending}
+      >
+        {error && <p role="alert" className="mb-4 rounded-sm bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
+        <div className="space-y-4">
+          <Field label="ICD Code" required><TextInput value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. I10" /></Field>
+          <Field label="Description"><TextArea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} /></Field>
+          <Field label="Group">
+            <Select
+              value={groupId}
+              onChange={(e) => setGroupId(e.target.value)}
+              placeholder="Select…"
+              options={(groups?.data ?? []).map((g) => ({ value: g.id, label: g.name }))}
+            />
           </Field>
         </div>
       </FormDrawer>

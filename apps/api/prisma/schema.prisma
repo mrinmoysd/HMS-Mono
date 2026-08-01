@@ -2088,6 +2088,41 @@ model FindingRecord {
   @@map("finding_record")
 }
 
+/// ICD-10 group — the top level of the diagnosis catalog (Setup ▸ ICD-10).
+/// A plain name catalog, same shape as FindingCategory and SymptomHead.
+model IcdGroup {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  codes IcdCode[]
+
+  @@index([branchId, deletedAt])
+  @@map("icd_group")
+}
+
+/// An ICD-10 code within a group. OPD and IPD store the chosen code and
+/// description as text on the encounter, so historic rows keep reading
+/// correctly even if a code is later renamed or retired here.
+model IcdCode {
+  id          String   @id @default(uuid()) @db.Uuid
+  branchId    String   @db.Uuid
+  groupId     String?  @db.Uuid
+  code        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  group IcdGroup? @relation(fields: [groupId], references: [id])
+
+  @@index([branchId, deletedAt])
+  @@map("icd_code")
+}
+
 model SymptomHead {
   id        String   @id @default(uuid()) @db.Uuid
   branchId  String   @db.Uuid

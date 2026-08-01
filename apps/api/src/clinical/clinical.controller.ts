@@ -5,6 +5,7 @@ import {
   addSymptomRecordSchema,
   addVitalsSchema,
   findingSchema,
+  icdCodeSchema,
   symptomTypeSchema,
   timelineEntrySchema,
   updateTimelineSchema,
@@ -14,6 +15,7 @@ import {
   type AddSymptomRecordInput,
   type AddVitalsInput,
   type FindingInput,
+  type IcdCodeInput,
   type SymptomTypeInput,
   type TimelineEntryInput,
   type UpdateTimelineInput,
@@ -87,6 +89,35 @@ export class ClinicalController {
   @RequirePermission('setup', 'add')
   createSymptomTypeMaster(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(symptomTypeSchema)) body: SymptomTypeInput) {
     return this.clinical.createSymptomType(u, b, body);
+  }
+
+  // ICD-10 code catalog (Setup master). Groups come from the generic
+  // name-catalog under 'icd-group'.
+  @Get('icd-codes')
+  @RequirePermission('patient', 'view')
+  listIcdCodes(@BranchId() b: string) {
+    return this.clinical.listIcdCodes(b);
+  }
+  @Post('icd-codes')
+  @RequirePermission('setup', 'add')
+  createIcdCode(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(icdCodeSchema)) body: IcdCodeInput) {
+    return this.clinical.createIcdCode(u, b, body);
+  }
+  @Patch('icd-codes/:id')
+  @RequirePermission('setup', 'edit')
+  updateIcdCode(
+    @CurrentUser() u: RequestUser,
+    @BranchId() b: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(icdCodeSchema)) body: IcdCodeInput,
+  ) {
+    return this.clinical.updateIcdCode(u, b, id, body);
+  }
+  @Delete('icd-codes/:id')
+  @RequirePermission('setup', 'delete')
+  @HttpCode(204)
+  async removeIcdCode(@CurrentUser() u: RequestUser, @BranchId() b: string, @Param('id', ParseUUIDPipe) id: string) {
+    await this.clinical.removeIcdCode(u, b, id);
   }
 
   // Vitals

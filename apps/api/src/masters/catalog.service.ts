@@ -20,6 +20,7 @@ const CATALOG_MODEL: Record<NameCatalogKey, string> = {
   specialization: 'specialization',
   'finding-category': 'findingCategory',
   'symptom-head': 'symptomHead',
+  'icd-group': 'icdGroup',
   'front-office-purpose': 'frontOfficePurpose',
   'complaint-type': 'complaintType',
   'content-type': 'contentType',

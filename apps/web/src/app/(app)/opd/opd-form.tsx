@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Field, TextInput, TextArea, Select } from '@/components/ui/field';
 import { PatientSelect } from '@/components/patient-select';
 import { ChargeLineEditor, type ChargeLine } from '@/components/charge-line-editor';
+import { SymptomsBlock } from '@/components/emr/symptoms-block';
 import { useDoctors, useCreateOpdVisit } from '@/lib/hooks/use-clinical';
 import { useCharges } from '@/lib/hooks/use-masters';
 import { ApiRequestError } from '@/lib/api';
@@ -162,34 +163,19 @@ export function OpdForm({
         </Field>
 
         <p className="border-t border-border pt-3 text-xs font-semibold uppercase tracking-wide text-fg-muted">Symptoms</p>
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Symptoms Type">
-            <TextInput value={symptomType} onChange={(e) => setSymptomType(e.target.value)} placeholder="e.g. Fever" />
-          </Field>
-          <Field label="Symptoms Title">
-            <TextInput value={symptoms} onChange={(e) => setSymptoms(e.target.value)} />
-          </Field>
-          <Field label="ICD-10 Group">
-            <TextInput value={icd10Group} onChange={(e) => setIcd10Group(e.target.value)} />
-          </Field>
-          <Field label="ICD-10 Diagnosis">
-            <TextInput value={icd10Diagnosis} onChange={(e) => setIcd10Diagnosis(e.target.value)} />
-          </Field>
-        </div>
-        <Field label="Symptoms Description">
-          <TextArea value={symptomDescription} onChange={(e) => setSymptomDescription(e.target.value)} />
-        </Field>
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Any Known Allergies">
-            <TextInput value={knownAllergies} onChange={(e) => setKnownAllergies(e.target.value)} />
-          </Field>
-          <Field label="Previous Medical Issue">
-            <TextInput value={previousMedicalIssue} onChange={(e) => setPreviousMedicalIssue(e.target.value)} />
-          </Field>
-        </div>
-        <Field label="Note">
-          <TextArea value={note} onChange={(e) => setNote(e.target.value)} />
-        </Field>
+        <SymptomsBlock
+          value={{ symptomType, symptoms, symptomDescription, icd10Group, icd10Diagnosis, knownAllergies, previousMedicalIssue, note }}
+          onChange={(p) => {
+            if (p.symptomType !== undefined) setSymptomType(p.symptomType);
+            if (p.symptoms !== undefined) setSymptoms(p.symptoms);
+            if (p.symptomDescription !== undefined) setSymptomDescription(p.symptomDescription);
+            if (p.icd10Group !== undefined) setIcd10Group(p.icd10Group);
+            if (p.icd10Diagnosis !== undefined) setIcd10Diagnosis(p.icd10Diagnosis);
+            if (p.knownAllergies !== undefined) setKnownAllergies(p.knownAllergies);
+            if (p.previousMedicalIssue !== undefined) setPreviousMedicalIssue(p.previousMedicalIssue);
+            if (p.note !== undefined) setNote(p.note);
+          }}
+        />
 
         <p className="border-t border-border pt-3 text-xs font-semibold uppercase tracking-wide text-fg-muted">Visit Details</p>
         <div className="grid grid-cols-2 gap-4">

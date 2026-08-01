@@ -10,6 +10,8 @@ import type {
   FindingRecordDto,
   SymptomRecordDto,
   SymptomTypeDto,
+  IcdCodeDto,
+  IcdCodeInput,
   SymptomTypeInput,
   TimelineEntryDto,
   TimelineEntryInput,
@@ -186,6 +188,63 @@ export class ClinicalService {
     return { id: r.id, title: r.title, description: r.description, headId: r.headId, headName: r.head?.name ?? null };
   }
 
+  // ── ICD-10 codes (Setup master) ──────────────────────────────
+  //
+  // Groups live in the generic name-catalog ('icd-group'); only the codes
+  // need their own endpoints, because they carry a description and a parent.
+  async listIcdCodes(branchId: string): Promise<IcdCodeDto[]> {
+    const rows = await this.prisma.icdCode.findMany({
+      where: { branchId, deletedAt: null },
+      orderBy: { code: 'asc' },
+      include: { group: true },
+    });
+    return rows.map(toIcdDto);
+  }
+
+  async createIcdCode(user: RequestUser, branchId: string, input: IcdCodeInput): Promise<IcdCodeDto> {
+    const r = await this.prisma.icdCode.create({
+      data: {
+        branchId,
+        groupId: input.groupId ?? null,
+        code: input.code,
+        description: input.description || null,
+      },
+      include: { group: true },
+    });
+    await this.audit.record({ branchId, userId: user.id, action: 'create', entity: 'icd_code', entityId: r.id });
+    return toIcdDto(r);
+  }
+
+  async updateIcdCode(
+    user: RequestUser,
+    branchId: string,
+    id: string,
+    input: IcdCodeInput,
+  ): Promise<IcdCodeDto> {
+    const existing = await this.prisma.icdCode.findFirst({ where: { id, branchId, deletedAt: null } });
+    if (!existing) throw new NotFoundException('ICD code not found');
+    const r = await this.prisma.icdCode.update({
+      where: { id },
+      data: {
+        groupId: input.groupId ?? null,
+        code: input.code,
+        description: input.description || null,
+      },
+      include: { group: true },
+    });
+    await this.audit.record({ branchId, userId: user.id, action: 'update', entity: 'icd_code', entityId: id });
+    return toIcdDto(r);
+  }
+
+  async removeIcdCode(user: RequestUser, branchId: string, id: string): Promise<void> {
+    const existing = await this.prisma.icdCode.findFirst({ where: { id, branchId, deletedAt: null } });
+    if (!existing) throw new NotFoundException('ICD code not found');
+    // Soft delete: encounters store the code as text, so retiring one here
+    // never rewrites a diagnosis already recorded against a patient.
+    await this.prisma.icdCode.update({ where: { id }, data: { deletedAt: new Date() } });
+    await this.audit.record({ branchId, userId: user.id, action: 'delete', entity: 'icd_code', entityId: id });
+  }
+
   // ── Symptoms ─────────────────────────────────────────────────
   async listSymptomRecords(branchId: string, patientId: string): Promise<SymptomRecordDto[]> {
     const rows = await this.prisma.symptomRecord.findMany({
@@ -270,4 +329,20 @@ export class ClinicalService {
 
 function toTimeline(t: { id: string; title: string; date: Date; description: string | null; fileUrl: string | null; visibleToPatient: boolean }): TimelineEntryDto {
   return { id: t.id, title: t.title, date: t.date.toISOString(), description: t.description, fileUrl: t.fileUrl, visibleToPatient: t.visibleToPatient };
+}
+
+function toIcdDto(r: {
+  id: string;
+  code: string;
+  description: string | null;
+  groupId: string | null;
+  group: { name: string } | null;
+}): IcdCodeDto {
+  return {
+    id: r.id,
+    code: r.code,
+    description: r.description,
+    groupId: r.groupId,
+    groupName: r.group?.name ?? null,
+  };
 }

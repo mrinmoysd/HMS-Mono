@@ -11,6 +11,8 @@ import type {
   PatientReportDto,
   SymptomTypeDto,
   SymptomTypeInput,
+  IcdCodeDto,
+  IcdCodeInput,
   TimelineEntryDto,
   TimelineEntryInput,
   UpdateTimelineInput,
@@ -69,6 +71,33 @@ export function useCreateSymptomTypeMaster() {
   return useMutation({
     mutationFn: (input: SymptomTypeInput) => api.post<SymptomTypeDto>('/symptom-types', input),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['symptom-type-masters'] }),
+  });
+}
+
+/** ICD-10 codes (Setup ▸ Clinical ▸ ICD Code, and the diagnosis cascade). */
+export function useIcdCodes() {
+  return useQuery({ queryKey: ['icd-codes'], queryFn: () => api.get<IcdCodeDto[]>('/icd-codes') });
+}
+export function useCreateIcdCode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: IcdCodeInput) => api.post<IcdCodeDto>('/icd-codes', input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['icd-codes'] }),
+  });
+}
+export function useUpdateIcdCode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: IcdCodeInput }) =>
+      api.patch<IcdCodeDto>(`/icd-codes/${id}`, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['icd-codes'] }),
+  });
+}
+export function useDeleteIcdCode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/icd-codes/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['icd-codes'] }),
   });
 }
 

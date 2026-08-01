@@ -107,6 +107,25 @@ export interface SymptomTypeDto {
   headName: string | null;
 }
 
+/**
+ * ICD-10 code (Setup ▸ ICD-10 ▸ ICD Code). The group is a plain name catalog
+ * ('icd-group'), so only the code itself needs its own schema.
+ */
+export const icdCodeSchema = z.object({
+  groupId: z.string().uuid().optional().nullable(),
+  code: z.string().trim().min(1, 'Code is required'),
+  description: z.string().trim().optional().or(z.literal('')),
+});
+export type IcdCodeInput = z.infer<typeof icdCodeSchema>;
+
+export interface IcdCodeDto {
+  id: string;
+  code: string;
+  description: string | null;
+  groupId: string | null;
+  groupName: string | null;
+}
+
 export const addSymptomRecordSchema = z.object({
   patientId: z.string().uuid(),
   encounterType: z.enum(['opd', 'ipd']).optional(),

@@ -99,6 +99,7 @@ export const NAME_CATALOGS = [
   'specialization',
   'finding-category',
   'symptom-head',
+  'icd-group',
   'front-office-purpose',
   'complaint-type',
   'content-type',
