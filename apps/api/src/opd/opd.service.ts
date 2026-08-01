@@ -376,6 +376,7 @@ function toDetailDto(v: DetailRow): OpdVisitDetailDto {
     reference: v.reference,
     tpaName: v.patient.tpa?.name ?? null,
     tpaIdNo: v.patient.tpaIdNo,
+    tpaValidity: v.patient.tpaValidity ? v.patient.tpaValidity.toISOString() : null,
     consultantId: v.consultantId,
     consultantName: v.consultant.name,
     isAntenatal: v.isAntenatal,

@@ -157,6 +157,7 @@ export interface OpdVisitDetailDto {
   reference: string | null;
   tpaName: string | null;
   tpaIdNo: string | null;
+  tpaValidity: string | null;
   consultantId: string;
   consultantName: string;
   isAntenatal: boolean;
