@@ -126,21 +126,8 @@ export class IpdService {
       if (bed.status === 'allotted') throw new BadRequestException('Bed is already allotted');
       await tx.bed.update({ where: { id: bed.id }, data: { status: 'allotted' } });
 
-      // Optional initial charges billed via the shared invoice engine.
-      if (input.items.length > 0) {
-        await this.invoices.create(
-          {
-            branchId,
-            patientId: input.patientId,
-            caseId,
-            module: 'ipd',
-            items: input.items,
-            createdById: user.id,
-            initialPayment: input.payment && input.payment.amount > 0 ? input.payment : null,
-          },
-          tx,
-        );
-      }
+      // Deliberately no invoice here (blueprint rule #5). Admission allocates
+      // a bed; the money starts on the Charges tab once treatment does.
 
       const ipdNo = await this.sequence.next(branchId, 'ipd', tx);
       return tx.ipdAdmission.create({

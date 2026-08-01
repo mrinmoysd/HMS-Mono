@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { invoiceItemSchema } from './billing';
+
 
 export const IPD_TABS = ['admitted', 'discharged'] as const;
 export type IpdTab = (typeof IPD_TABS)[number];
@@ -27,14 +27,11 @@ export const ipdAdmissionSchema = z.object({
   knownAllergies: z.string().trim().optional().or(z.literal('')),
   previousMedicalIssue: z.string().trim().optional().or(z.literal('')),
   note: z.string().trim().optional().or(z.literal('')),
-  // Optional initial charges billed on admission via the shared invoice engine.
-  items: z.array(invoiceItemSchema).default([]),
-  payment: z
-    .object({
-      amount: z.coerce.number().min(0).default(0),
-      mode: z.enum(['cash', 'card', 'upi', 'tpa', 'cheque']).default('cash'),
-    })
-    .optional(),
+  // No charges or payment here — an admission writes an ipd_admission and a
+  // bed_history row, not a bill (blueprint rule #5). IPD charges accrue
+  // afterwards on the profile's Charges tab, over a stay that runs for days.
+  // OPD's New Visit is the one that bills on save; the two are deliberately
+  // different transaction shapes.
   customFields: z.record(z.unknown()).optional(),
 });
 export type IpdAdmissionInput = z.infer<typeof ipdAdmissionSchema>;

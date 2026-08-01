@@ -323,7 +323,6 @@ export class OpdService {
       knownAllergies: visit.knownAllergies || '',
       previousMedicalIssue: visit.previousMedicalIssue || '',
       note: visit.note || '',
-      items: [],
       customFields: { movedFromOpdId: id },
     }, { caseId: visit.caseId ?? undefined });
 

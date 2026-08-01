@@ -7,6 +7,7 @@ import { FormDrawer } from '@/components/ui/form-drawer';
 import { Button } from '@/components/ui/button';
 import { Field, TextInput, TextArea, Select } from '@/components/ui/field';
 import { PatientSelect } from '@/components/patient-select';
+import { PatientInfoCard } from '@/components/emr/patient-info-card';
 import { ChargeLineEditor, type ChargeLine } from '@/components/charge-line-editor';
 import { SymptomsBlock } from '@/components/emr/symptoms-block';
 import { useDoctors, useCreateOpdVisit } from '@/lib/hooks/use-clinical';
@@ -40,7 +41,8 @@ export function OpdForm({
     }
   }, [open, initialPatientId, initialPatientLabel]);
   const [consultantId, setConsultantId] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(localNow());
+  const [caseNo, setCaseNo] = useState('');
   const [symptomType, setSymptomType] = useState('');
   const [symptoms, setSymptoms] = useState('');
   const [symptomDescription, setSymptomDescription] = useState('');
@@ -69,6 +71,7 @@ export function OpdForm({
     setPatientId('');
     setPatientLabel('');
     setConsultantId('');
+    setCaseNo('');
     setSymptomType('');
     setSymptoms('');
     setSymptomDescription('');
@@ -95,6 +98,7 @@ export function OpdForm({
       patientId,
       consultantId,
       appointmentDate: date,
+      caseNo,
       symptomType,
       symptoms,
       symptomDescription,
@@ -162,6 +166,8 @@ export function OpdForm({
           />
         </Field>
 
+        {patientId && <PatientInfoCard patientId={patientId} />}
+
         <p className="border-t border-border pt-3 text-xs font-semibold uppercase tracking-wide text-fg-muted">Symptoms</p>
         <SymptomsBlock
           value={{ symptomType, symptoms, symptomDescription, icd10Group, icd10Diagnosis, knownAllergies, previousMedicalIssue, note }}
@@ -188,7 +194,16 @@ export function OpdForm({
             />
           </Field>
           <Field label="Appointment Date" required error={errors.appointmentDate}>
-            <TextInput type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <TextInput type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} />
+          </Field>
+          {/* Blank mints a new case; typing an existing number continues that
+              episode. The API refuses a case belonging to another patient. */}
+          <Field label="Case" error={errors.caseNo}>
+            <TextInput
+              value={caseNo}
+              onChange={(e) => setCaseNo(e.target.value)}
+              placeholder="Blank = new case"
+            />
           </Field>
           <Field label="Reference">
             <TextInput value={reference} onChange={(e) => setReference(e.target.value)} />
@@ -224,4 +239,14 @@ export function OpdForm({
       </div>
     </FormDrawer>
   );
+}
+
+/**
+ * `yyyy-mm-ddThh:mm` for now, in local time. Never toISOString — that is UTC
+ * and lands the visit on the wrong day either side of midnight.
+ */
+function localNow(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }

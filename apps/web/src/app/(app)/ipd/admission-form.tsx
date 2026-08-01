@@ -6,10 +6,9 @@ import { ipdAdmissionSchema } from '@smart-hospital/shared';
 import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput, TextArea, Select } from '@/components/ui/field';
 import { PatientSelect } from '@/components/patient-select';
-import { ChargeLineEditor, type ChargeLine } from '@/components/charge-line-editor';
+import { PatientInfoCard } from '@/components/emr/patient-info-card';
 import { SymptomsBlock } from '@/components/emr/symptoms-block';
 import { useDoctors } from '@/lib/hooks/use-clinical';
-import { useCharges } from '@/lib/hooks/use-masters';
 import { useBedGroups, useAvailableBeds, useCreateAdmission } from '@/lib/hooks/use-ipd';
 import { ApiRequestError } from '@/lib/api';
 
@@ -26,7 +25,6 @@ export function AdmissionForm({
 }) {
   const { data: doctors = [] } = useDoctors();
   const { data: groups } = useBedGroups();
-  const { data: charges } = useCharges({ size: 100, module: 'ipd' });
   const create = useCreateAdmission();
 
   const [patientId, setPatientId] = useState(initialPatientId);
@@ -40,7 +38,8 @@ export function AdmissionForm({
     }
   }, [open, initialPatientId, initialPatientLabel]);
   const [consultantId, setConsultantId] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(localNow());
+  const [caseNo, setCaseNo] = useState('');
   const [bedGroupId, setBedGroupId] = useState('');
   const [bedId, setBedId] = useState('');
   const [creditLimit, setCreditLimit] = useState('20000');
@@ -58,7 +57,6 @@ export function AdmissionForm({
   const [applyTpa, setApplyTpa] = useState(false);
   const [isAntenatal, setIsAntenatal] = useState(false);
   const [liveConsult, setLiveConsult] = useState(false);
-  const [lines, setLines] = useState<ChargeLine[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -68,6 +66,7 @@ export function AdmissionForm({
     setPatientId('');
     setPatientLabel('');
     setConsultantId('');
+    setCaseNo('');
     setBedGroupId('');
     setBedId('');
     setCreditLimit('20000');
@@ -85,7 +84,6 @@ export function AdmissionForm({
     setApplyTpa(false);
     setIsAntenatal(false);
     setLiveConsult(false);
-    setLines([]);
     setErrors({});
     setApiError(null);
   }
@@ -96,6 +94,7 @@ export function AdmissionForm({
       patientId,
       consultantId,
       admissionDate: date,
+      caseNo,
       bedId,
       creditLimit,
       symptomType,
@@ -112,7 +111,6 @@ export function AdmissionForm({
       applyTpa,
       isAntenatal,
       liveConsult,
-      items: lines.filter((l) => l.name),
     });
     if (!parsed.success) {
       const fe: Record<string, string> = {};
@@ -155,6 +153,8 @@ export function AdmissionForm({
           />
         </Field>
 
+        {patientId && <PatientInfoCard patientId={patientId} />}
+
         <p className="border-t border-border pt-3 text-xs font-semibold uppercase tracking-wide text-fg-muted">Symptoms</p>
         {/* The reference's IPD Symptoms block has no allergies field and calls
             the group "ICD-10 Groups" where OPD says "ICD Group" (§8.2). */}
@@ -184,7 +184,15 @@ export function AdmissionForm({
             />
           </Field>
           <Field label="Admission Date" required error={errors.admissionDate}>
-            <TextInput type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <TextInput type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} />
+          </Field>
+          {/* Blank mints a new case; a number continues that episode. */}
+          <Field label="Case" error={errors.caseNo}>
+            <TextInput
+              value={caseNo}
+              onChange={(e) => setCaseNo(e.target.value)}
+              placeholder="Blank = new case"
+            />
           </Field>
           <Field label="Bed Group">
             <Select
@@ -223,11 +231,21 @@ export function AdmissionForm({
           <Checkbox label="Live Consultation" checked={liveConsult} onChange={(e) => setLiveConsult(e.target.checked)} />
         </div>
 
-        <div>
-          <p className="mb-1 text-sm font-medium">Initial Charges (optional)</p>
-          <ChargeLineEditor lines={lines} onChange={setLines} charges={charges?.data} />
-        </div>
+        {/* No charges block here on purpose (blueprint rule #5): an admission
+            writes an ipd_admission and a bed_history row, not a bill. IPD
+            charges accrue afterwards on the profile's Charges tab, where they
+            can be added over a stay that runs for days. */}
       </div>
     </FormDrawer>
   );
+}
+
+/**
+ * `yyyy-mm-ddThh:mm` for now, in local time. Never toISOString — that is UTC
+ * and lands the admission on the wrong day either side of midnight.
+ */
+function localNow(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }

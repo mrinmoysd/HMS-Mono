@@ -95,8 +95,12 @@ export interface PatientDto {
   address: string | null;
   remarks: string | null;
   tpaId: string | null;
+  /** Resolved TPA name — the card shows the insurer, not a UUID. */
+  tpaName: string | null;
   tpaIdNo: string | null;
   tpaValidity: string | null;
+  nationalId: string | null;
+  allergies: string | null;
   isDisabled: boolean;
   isDeceased: boolean;
   createdAt: string;

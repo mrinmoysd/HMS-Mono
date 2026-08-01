@@ -47,14 +47,17 @@ export class PatientService {
     };
 
     const [rows, total] = await this.prisma.$transaction([
-      this.prisma.patient.findMany({ where, skip, take, orderBy }),
+      this.prisma.patient.findMany({ where, skip, take, orderBy, include: { tpa: { select: { name: true } } } }),
       this.prisma.patient.count({ where }),
     ]);
     return paginate(rows.map(toDto), total, query);
   }
 
   async get(branchId: string, id: string): Promise<PatientDto> {
-    const p = await this.prisma.patient.findFirst({ where: { id, branchId, deletedAt: null } });
+    const p = await this.prisma.patient.findFirst({
+      where: { id, branchId, deletedAt: null },
+      include: { tpa: { select: { name: true } } },
+    });
     if (!p) throw new NotFoundException('Patient not found');
     return toDto(p);
   }
@@ -206,8 +209,11 @@ function toDto(p: {
   address: string | null;
   remarks: string | null;
   tpaId: string | null;
+  tpa?: { name: string } | null;
   tpaIdNo: string | null;
   tpaValidity: Date | null;
+  nationalId: string | null;
+  allergies: string | null;
   isDisabled: boolean;
   isDeceased: boolean;
   createdAt: Date;
@@ -228,8 +234,11 @@ function toDto(p: {
     address: p.address,
     remarks: p.remarks,
     tpaId: p.tpaId,
+    tpaName: p.tpa?.name ?? null,
     tpaIdNo: p.tpaIdNo,
     tpaValidity: p.tpaValidity ? p.tpaValidity.toISOString() : null,
+    nationalId: p.nationalId,
+    allergies: p.allergies,
     isDisabled: p.isDisabled,
     isDeceased: p.isDeceased,
     createdAt: p.createdAt.toISOString(),

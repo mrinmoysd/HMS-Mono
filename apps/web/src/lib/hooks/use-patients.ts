@@ -31,6 +31,15 @@ export function usePatients(params: Partial<PatientListQuery>) {
   });
 }
 
+/** One patient, for the read-only info card on the OPD/IPD forms. */
+export function usePatient(id: string) {
+  return useQuery({
+    queryKey: ['patient', id],
+    queryFn: () => api.get<PatientDto>(`/patients/${id}`),
+    enabled: !!id,
+  });
+}
+
 /**
  * Every patient already registered under a phone number — the shared-number
  * checkpoint on create. Only runs once the canonical (digits-only) form is long
