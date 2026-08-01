@@ -10,6 +10,7 @@ import type {
   ChargeTypeDto,
   ChargeTypeInput,
   ListQuery,
+  ChargeListQuery,
   Paginated,
   TaxCategoryDto,
   TaxCategoryInput,
@@ -115,12 +116,19 @@ export class ChargeService {
   }
 
   // ── Charges ──────────────────────────────────────────────────
-  async list(branchId: string, query: ListQuery): Promise<Paginated<ChargeDto>> {
+  async list(branchId: string, query: ChargeListQuery): Promise<Paginated<ChargeDto>> {
     const { skip, take, orderBy } = toPrismaPage(query);
     const where: Prisma.ChargeWhereInput = {
       branchId,
       deletedAt: null,
       ...(query.search ? { name: { contains: query.search, mode: 'insensitive' } } : {}),
+      // The Charge Type visibility matrix (Setup ▸ Hospital Charges ▸ Charge
+      // Type). A charge is offerable in a module only if its type is ticked
+      // for that module. A charge with no type at all is not scoped by the
+      // matrix, so it stays out of module-scoped pickers rather than leaking
+      // into all of them.
+      ...(query.module ? { type: { modules: { has: query.module } } } : {}),
+      ...(query.categoryId ? { categoryId: query.categoryId } : {}),
     };
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.charge.findMany({

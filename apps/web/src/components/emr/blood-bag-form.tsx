@@ -14,7 +14,7 @@ const EMPTY = { bagNo: '', donateDate: new Date().toISOString().slice(0, 10), vo
 /** Add a whole-blood bag — "Bag Stock Details" (donor context) / "Blood Donor Details" (standalone) in the demo. */
 export function BloodBagForm({ open, donorId, onClose, onSaved }: { open: boolean; donorId?: string | null; onClose: () => void; onSaved?: (b: BloodBagDto) => void }) {
   const { data: donors } = useBloodDonors({ size: 300 });
-  const { data: charges } = useCharges({ size: 300 });
+  const { data: charges } = useCharges({ size: 300, module: 'blood-bank' });
   const create = useCreateBloodBag();
 
   const [selectedDonorId, setSelectedDonorId] = useState('');

@@ -16,7 +16,7 @@ import { ApiRequestError } from '@/lib/api';
 export function AmbulanceCallForm({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: vehicles } = useAmbulanceVehicles();
   const { data: categories } = useCatalog('charge-category', { size: 100 });
-  const { data: charges } = useCharges({ size: 300 });
+  const { data: charges } = useCharges({ size: 300, module: 'ambulance' });
   const create = useCreateCall();
 
   const [patientId, setPatientId] = useState('');

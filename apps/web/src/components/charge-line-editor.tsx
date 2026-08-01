@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { Select } from '@/components/ui/field';
 import { Plus, Trash2 } from 'lucide-react';
 import {
@@ -15,6 +16,11 @@ export type ChargeLine = InvoiceItemInput;
 interface Props {
   lines: ChargeLine[];
   onChange: (lines: ChargeLine[]) => void;
+  /**
+   * Already filtered to this module by the caller's `useCharges({ module })`.
+   * The Charge Category select below narrows that list further; it does not
+   * widen it, so a charge type hidden from this module stays hidden.
+   */
   charges?: ChargeDto[];
 }
 
@@ -33,6 +39,24 @@ const EMPTY_LINE: ChargeLine = {
  */
 export function ChargeLineEditor({ lines, onChange, charges }: Props) {
   const totals = computeInvoiceTotals(lines.filter((l) => l.name));
+
+  // Charge Category is a filter over the charges we were handed, per row.
+  // Derived from those charges rather than fetched separately, so a category
+  // whose charges are all hidden from this module never appears at all.
+  const [categoryByRow, setCategoryByRow] = useState<Record<number, string>>({});
+  const categories = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const c of charges ?? []) {
+      if (c.categoryId && c.categoryName) seen.set(c.categoryId, c.categoryName);
+    }
+    return [...seen].map(([value, label]) => ({ value, label }));
+  }, [charges]);
+
+  function chargesFor(row: number): ChargeDto[] {
+    const cat = categoryByRow[row];
+    if (!cat) return charges ?? [];
+    return (charges ?? []).filter((c) => c.categoryId === cat);
+  }
 
   function update(i: number, patch: Partial<ChargeLine>) {
     onChange(lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
@@ -65,6 +89,7 @@ export function ChargeLineEditor({ lines, onChange, charges }: Props) {
           <thead>
             <tr className="border-b border-border bg-bg text-left text-xs uppercase text-fg-muted">
               <th className="px-2 py-2 font-semibold">Charge</th>
+              <th className="w-20 px-2 py-2 font-semibold">Standard</th>
               <th className="w-20 px-2 py-2 font-semibold">Applied</th>
               <th className="w-14 px-2 py-2 font-semibold">Qty</th>
               <th className="w-16 px-2 py-2 font-semibold">Disc %</th>
@@ -79,11 +104,28 @@ export function ChargeLineEditor({ lines, onChange, charges }: Props) {
                 <td className="px-2 py-1.5">
                   {charges && charges.length > 0 ? (
                     <div className="space-y-1">
+                      {categories.length > 1 && (
+                        <Select
+                          value={categoryByRow[i] ?? ''}
+                          aria-label="Charge Category"
+                          onChange={(e) => {
+                            setCategoryByRow((m) => ({ ...m, [i]: e.target.value }));
+                            // The selected charge may not belong to the new
+                            // category, so clear it rather than leaving a
+                            // charge shown under a category it is not in.
+                            update(i, { chargeId: undefined });
+                          }}
+                          placeholder="All categories"
+                          options={categories}
+                          className="py-1"
+                        />
+                      )}
                       <Select
                         value={line.chargeId ?? ''}
+                        aria-label="Charge"
                         onChange={(e) => pickCharge(i, e.target.value)}
                         placeholder="Custom…"
-                        options={charges.map((c) => ({ value: c.id, label: c.name }))}
+                        options={chargesFor(i).map((c) => ({ value: c.id, label: c.name }))}
                         className="py-1"
                       />
                       <input
@@ -101,6 +143,13 @@ export function ChargeLineEditor({ lines, onChange, charges }: Props) {
                       className="w-full rounded-sm border border-border bg-surface px-2 py-1 text-sm"
                     />
                   )}
+                </td>
+                {/* Standard is what the master says; Applied is what is being
+                    charged. Showing only one hid the fact that a rate had been
+                    overridden. Read-only — to change the standard rate you edit
+                    the charge in Setup. */}
+                <td className="px-2 py-1.5 text-right tabular text-fg-muted">
+                  {line.standardCharge ? line.standardCharge.toFixed(2) : '—'}
                 </td>
                 <td className="px-2 py-1.5">
                   <input
@@ -149,7 +198,7 @@ export function ChargeLineEditor({ lines, onChange, charges }: Props) {
             ))}
             {lines.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-2 py-4 text-center text-fg-muted">
+                <td colSpan={8} className="px-2 py-4 text-center text-fg-muted">
                   No charges added
                 </td>
               </tr>

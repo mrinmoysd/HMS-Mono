@@ -25,7 +25,7 @@ export function AdmissionForm({
 }) {
   const { data: doctors = [] } = useDoctors();
   const { data: groups } = useBedGroups();
-  const { data: charges } = useCharges({ size: 100 });
+  const { data: charges } = useCharges({ size: 100, module: 'ipd' });
   const create = useCreateAdmission();
 
   const [patientId, setPatientId] = useState(initialPatientId);

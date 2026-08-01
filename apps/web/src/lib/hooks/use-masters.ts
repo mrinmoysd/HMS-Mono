@@ -10,6 +10,7 @@ import type {
   ChargeScheduleUpdateInput,
   ChargeTypeDto,
   ChargeTypeInput,
+  ChargeListQuery,
   ListQuery,
   Paginated,
   TaxCategoryDto,
@@ -25,11 +26,13 @@ export function useTpas() {
   });
 }
 
-function qs(p: Partial<ListQuery>): string {
+function qs(p: Partial<ChargeListQuery>): string {
   const sp = new URLSearchParams();
   if (p.search) sp.set('search', p.search);
   if (p.page) sp.set('page', String(p.page));
   if (p.size) sp.set('size', String(p.size));
+  if (p.module) sp.set('module', p.module);
+  if (p.categoryId) sp.set('categoryId', p.categoryId);
   return sp.toString();
 }
 
@@ -130,7 +133,15 @@ export function useDeleteChargeType() {
   });
 }
 
-export function useCharges(params: Partial<ListQuery> = {}) {
+/**
+ * Charges for a picker.
+ *
+ * Pass `module` on anything that bills — the Charge Type visibility matrix in
+ * Setup decides which charges belong on which module's form, and omitting it
+ * offers every charge in the branch. Leave it off only where showing all of
+ * them is the point: the Setup master list and the TPA report.
+ */
+export function useCharges(params: Partial<ChargeListQuery> = {}) {
   return useQuery({
     queryKey: ['charges', params],
     queryFn: () => api.get<Paginated<ChargeDto>>(`/charges?${qs(params)}`),

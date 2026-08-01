@@ -17,6 +17,8 @@ import {
   chargeScheduleUpdateSchema,
   chargeTypeSchema,
   listQuerySchema,
+  chargeListQuerySchema,
+  type ChargeListQuery,
   taxCategorySchema,
   type ChargeInput,
   type ChargeScheduleUpdateInput,
@@ -118,7 +120,10 @@ export class ChargeController {
   // Charges
   @Get('charges')
   @RequirePermission('setup', 'view')
-  list(@BranchId() branchId: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
+  list(
+    @BranchId() branchId: string,
+    @Query(new ZodValidationPipe(chargeListQuerySchema)) q: ChargeListQuery,
+  ) {
     return this.charges.list(branchId, q);
   }
 

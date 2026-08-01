@@ -20,7 +20,7 @@ type IssueKind = 'blood' | 'component';
 /** Generic Issue Blood / Issue Component form — the two flows in the demo are structurally identical, differing only in which bag pool (whole-blood vs component) is offered. */
 export function BloodIssueForm({ open, kind, title, initialBloodGroup, onClose }: { open: boolean; kind: IssueKind; title: string; initialBloodGroup?: string; onClose: () => void }) {
   const { data: doctors = [] } = useDoctors();
-  const { data: charges } = useCharges({ size: 300 });
+  const { data: charges } = useCharges({ size: 300, module: 'blood-bank' });
   const issue = useIssueBlood();
 
   const [patientId, setPatientId] = useState('');

@@ -21,7 +21,9 @@ interface Props {
 export function DiagnosticTestForm({ open, modality, test, onClose }: Props) {
   const { data: categories } = useDiagnosticCategories(modality, { size: 100 });
   const { data: chargeCategories } = useCatalog('charge-category', { size: 100 });
-  const { data: charges } = useCharges({ size: 300 });
+  // The Charge Type matrix has separate Pathology and Radiology columns, so
+  // the modality this form was opened for decides which charges are offered.
+  const { data: charges } = useCharges({ size: 300, module: modality });
   const create = useCreateDiagnosticTest(modality);
   const update = useUpdateDiagnosticTest(modality);
 

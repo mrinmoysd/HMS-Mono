@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { listQuerySchema } from './common';
 
 /** Simple name-only catalog (charge category/type, unit type, and many others). */
 export const nameCatalogSchema = z.object({
@@ -36,6 +37,20 @@ export interface ChargeTypeDto {
   modules: ChargeModule[];
   createdAt: string;
 }
+
+/**
+ * Listing charges for a module's picker.
+ *
+ * `module` is the whole point of the Charge Type visibility matrix: a charge
+ * type ticked for Ambulance and nothing else must not be offerable on an OPD
+ * bill. Without this filter the matrix is data nobody reads, and every screen
+ * shows every charge in the branch.
+ */
+export const chargeListQuerySchema = listQuerySchema.extend({
+  module: z.enum(CHARGE_MODULES).optional(),
+  categoryId: z.string().uuid().optional(),
+});
+export type ChargeListQuery = z.infer<typeof chargeListQuerySchema>;
 
 export const chargeSchema = z.object({
   name: z.string().trim().min(1, 'Name is required'),

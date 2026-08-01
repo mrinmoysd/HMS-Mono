@@ -243,7 +243,7 @@ function DoctorShiftPanel({ canManage }: { canManage: boolean }) {
 function SlotsPanel({ canManage }: { canManage: boolean }) {
   const { data: doctors = [] } = useDoctors();
   const { data: shifts = [] } = useShifts();
-  const { data: chargeData } = useCharges({ size: 100 });
+  const { data: chargeData } = useCharges({ size: 100, module: 'appointment' });
   const save = useSaveSlotConfig();
 
   const [doctorId, setDoctorId] = useState('');

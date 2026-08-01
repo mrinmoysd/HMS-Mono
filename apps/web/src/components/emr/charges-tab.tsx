@@ -24,7 +24,7 @@ export function ChargesTab({
   data: EncounterBillingDto;
   canEdit: boolean;
 }) {
-  const { data: chargeData } = useCharges({ size: 100 });
+  const { data: chargeData } = useCharges({ size: 100, module: type });
   const add = useAddCharges(type, id);
   const [open, setOpen] = useState(false);
   const [lines, setLines] = useState<ChargeLine[]>([{ ...EMPTY_LINE }]);

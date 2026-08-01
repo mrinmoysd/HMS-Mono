@@ -25,7 +25,7 @@ export function OpdForm({
   initialPatientLabel?: string;
 }) {
   const { data: doctors = [] } = useDoctors();
-  const { data: chargeData } = useCharges({ size: 100 });
+  const { data: chargeData } = useCharges({ size: 100, module: 'opd' });
   const create = useCreateOpdVisit();
 
   const [patientId, setPatientId] = useState(initialPatientId);
