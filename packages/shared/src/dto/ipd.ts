@@ -9,6 +9,8 @@ export const ipdAdmissionSchema = z.object({
   patientId: z.string().uuid({ message: 'Patient is required' }),
   consultantId: z.string().uuid({ message: 'Consultant is required' }),
   admissionDate: z.coerce.date(),
+  /** See opdVisitSchema.caseNo — blank mints a new case for this admission. */
+  caseNo: z.string().trim().optional().or(z.literal('')),
   bedId: z.string().uuid({ message: 'Bed is required' }),
   creditLimit: z.coerce.number().min(0).default(20000),
   isAntenatal: z.boolean().default(false),

@@ -16,6 +16,7 @@ import { AuditService } from '../common/audit/audit.service';
 import { SequenceService } from '../common/sequence/sequence.service';
 import { InvoiceService } from '../billing/invoice.service';
 import { paginate, toPrismaPage } from '../common/pagination';
+import { resolveCaseId } from '../common/case';
 import type { RequestUser } from '../common/types/request-user';
 
 const include = {
@@ -95,15 +96,30 @@ export class IpdService {
     return new Map(users.map((u) => [u.id, u.name]));
   }
 
-  async create(user: RequestUser, branchId: string, input: IpdAdmissionInput): Promise<IpdAdmissionDto> {
+  /**
+   * `opts.caseId` is for internal callers only — Move-to-IPD passes the OPD
+   * visit's case so the episode stays one case (blueprint rule #13). It is
+   * deliberately not on the request schema: clients name a case by its number
+   * via `input.caseNo`, so they cannot file an admission under another
+   * patient's case by guessing a UUID.
+   */
+  async create(
+    user: RequestUser,
+    branchId: string,
+    input: IpdAdmissionInput,
+    opts: { caseId?: string } = {},
+  ): Promise<IpdAdmissionDto> {
     const patient = await this.prisma.patient.findFirst({
       where: { id: input.patientId, branchId, deletedAt: null },
-      include: { cases: { take: 1, orderBy: { createdAt: 'asc' } } },
     });
     if (!patient) throw new NotFoundException('Patient not found');
-    const caseId = patient.cases[0]?.id ?? null;
 
     const admission = await this.prisma.$transaction(async (tx) => {
+      const caseId = await resolveCaseId(tx, this.sequence, branchId, input.patientId, {
+        caseNo: input.caseNo,
+        caseId: opts.caseId,
+      });
+
       // Allocate the bed atomically — reject if already taken.
       const bed = await tx.bed.findFirst({ where: { id: input.bedId, branchId, deletedAt: null } });
       if (!bed) throw new NotFoundException('Bed not found');

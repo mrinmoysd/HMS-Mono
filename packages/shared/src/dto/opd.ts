@@ -12,6 +12,12 @@ export const opdVisitSchema = z.object({
   patientId: z.string().uuid({ message: 'Patient is required' }),
   consultantId: z.string().uuid({ message: 'Consultant is required' }),
   appointmentDate: z.coerce.date(),
+  /**
+   * Existing case number to file this visit under. Blank mints a new one —
+   * a case belongs to an encounter, not to a patient, so a second visit is a
+   * second case unless the user deliberately continues the first.
+   */
+  caseNo: z.string().trim().optional().or(z.literal('')),
   symptomType: z.string().trim().optional().or(z.literal('')),
   symptoms: z.string().trim().optional().or(z.literal('')),
   symptomDescription: z.string().trim().optional().or(z.literal('')),

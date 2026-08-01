@@ -17,6 +17,7 @@ import { SequenceService } from '../common/sequence/sequence.service';
 import { InvoiceService } from '../billing/invoice.service';
 import { IpdService } from '../ipd/ipd.service';
 import { paginate, toPrismaPage } from '../common/pagination';
+import { resolveCaseId } from '../common/case';
 import { startOfToday, endOfToday } from '../common/dates';
 import type { RequestUser } from '../common/types/request-user';
 
@@ -94,12 +95,16 @@ export class OpdService {
   async create(user: RequestUser, branchId: string, input: OpdVisitInput): Promise<OpdVisitDto> {
     const patient = await this.prisma.patient.findFirst({
       where: { id: input.patientId, branchId, deletedAt: null },
-      include: { cases: { take: 1, orderBy: { createdAt: 'asc' } } },
     });
     if (!patient) throw new NotFoundException('Patient not found');
-    const caseId = patient.cases[0]?.id ?? null;
 
     const visit = await this.prisma.$transaction(async (tx) => {
+      // The visit mints its own case (or continues the one the user named).
+      // Inside the transaction so a failed bill does not leave an orphan case.
+      const caseId = await resolveCaseId(tx, this.sequence, branchId, input.patientId, {
+        caseNo: input.caseNo,
+      });
+
       // Generate the OPD bill through the shared invoice engine.
       const invoice = await this.invoices.create(
         {
@@ -210,6 +215,9 @@ export class OpdService {
     const visit = await this.prisma.opdVisit.findFirst({ where: { id, branchId, deletedAt: null } });
     if (!visit) throw new NotFoundException('Visit not found');
 
+    // Reuse the visit's case — rule #13. An outpatient becoming an inpatient
+    // is one episode; minting a second case here would split this patient's
+    // billing history in half, and nothing downstream could put it back.
     const admission = await this.ipd.create(user, branchId, {
       patientId: visit.patientId,
       consultantId: input.consultantId,
@@ -232,7 +240,7 @@ export class OpdService {
       note: visit.note || '',
       items: [],
       customFields: { movedFromOpdId: id },
-    });
+    }, { caseId: visit.caseId ?? undefined });
 
     await this.audit.record({ branchId, userId: user.id, action: 'move_to_ipd', entity: 'opd', entityId: id, after: { ipdAdmissionId: admission.id } });
     return admission;

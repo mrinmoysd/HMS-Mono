@@ -70,8 +70,8 @@ export class PortalService {
           email: input.email || null,
         },
       });
-      const caseNo = await this.sequence.next(branch.id, 'case', tx);
-      await tx.patientCase.create({ data: { branchId: branch.id, patientId: patient.id, caseNo, type: 'general' } });
+      // No Case here either — see patient.service.create. Self-registering
+      // from the portal is not an encounter, so it opens no case.
     });
 
     await this.audit.record({ branchId: branch.id, action: 'portal_register', entity: 'patient' });

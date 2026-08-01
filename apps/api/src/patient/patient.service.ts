@@ -81,11 +81,11 @@ export class PatientService {
           createdById: user.id,
         } as Prisma.PatientUncheckedCreateInput,
       });
-      // Open the patient's first Case (the Case ID that links future encounters).
-      const caseNo = await this.sequence.next(branchId, 'case', tx);
-      await tx.patientCase.create({
-        data: { branchId, patientId: created.id, caseNo, type: 'general' },
-      });
+      // No Case is opened here. A case belongs to an encounter, not to a
+      // person: it is minted by the first OPD visit or IPD admission and is
+      // what every downstream bill joins on. Opening one at registration gave
+      // every patient a single case for life, so two visits shared one case
+      // and their billing could never be told apart.
       return created;
     });
 
