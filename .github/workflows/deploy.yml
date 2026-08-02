@@ -27,9 +27,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # This step runs before setup-node, so it uses the runner's *default*
+      # Node — which GitHub now forces to 24 as part of the Node 20
+      # deprecation. pnpm 9.12.0's npm-based self-installer dies there
+      # ("self-installer exits with code 1"), which broke the build with no
+      # change on our side. `standalone` fetches a self-contained pnpm binary
+      # instead, so the runner's Node version stops mattering.
       - uses: pnpm/action-setup@v4
         with:
           version: 9.12.0
+          standalone: true
 
       - uses: actions/setup-node@v4
         with:
