@@ -290,6 +290,44 @@ a link to the visit.
 
 ---
 
+## Blueprint sweep — DONE
+
+Walked Patient → Appointment → OPD → IPD in the browser after every phase
+landed, plus a full `turbo typecheck`, a production `next build`, and the
+invariant queries below run straight against the database. Both server logs
+were clean for the whole walk; no console errors.
+
+| Invariant | Result |
+| --- | --- |
+| rule #2 — every encounter has a case | 0 without |
+| rule #2 — no case shared across patients | 0 |
+| rule #5 — no invoice minted at admission | 0 |
+| rule #7 — OPD/IPD blocked for the deceased | both 400 |
+| rule #8 — no open occupancy on a discharged admission | 0 |
+| rule #8 — no admission without bed history | 0 |
+| rule #8 — no bed allotted without a live admission | 0 |
+| rule #13 — Move-to-IPD shares its OPD case | 0 divergent |
+| N1 — no consumed appointment without a visit link | 0 |
+| N1 — no `opdVisitId` pointing at a missing visit | 0 |
+
+Two rows in the dev database *look* like violations and are not: both predate
+the guard that now prevents them (an admission created for a patient whose
+death had just been recorded, and a bed occupancy that ends before it starts
+from a backdated discharge). Re-probing both endpoints confirms each is now
+rejected. They are test residue, and they are the argument for clearing the
+fixtures before this database is used for anything else.
+
+**Deliberately not fixed, still open:**
+
+- **#307 — OPD Patient View is not a per-patient rollup.** "Total Recheckup"
+  therefore has nowhere to live; the checkup IDs surface only in the Patient
+  Details report. Known since O1 and unchanged.
+- The queue's Convert-to-OPD button renders but no doctor/shift/date in the
+  seeded data returns rows through the picker, so it was never clicked against
+  a real row. The endpoint and the identical list-side button are both verified.
+
+---
+
 ## What is already right
 
 Worth stating so it doesn't get re-litigated:
