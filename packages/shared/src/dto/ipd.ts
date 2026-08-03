@@ -58,6 +58,27 @@ export const ipdAdmissionUpdateSchema = z.object({
 });
 export type IpdAdmissionUpdateInput = z.infer<typeof ipdAdmissionUpdateSchema>;
 
+/** The Discharge Card the reference collects on discharge (blueprint §8.5). */
+export const DISCHARGE_STATUSES = ['normal', 'referral', 'death'] as const;
+export type DischargeStatus = (typeof DISCHARGE_STATUSES)[number];
+
+export const dischargeSchema = z.object({
+  /**
+   * Backdating is normal — the paperwork is often done after the patient has
+   * already gone home, so this is captured rather than stamped as `now()`.
+   */
+  dischargeDate: z.coerce.date(),
+  dischargeStatus: z.enum(DISCHARGE_STATUSES, {
+    errorMap: () => ({ message: 'Discharge status is required' }),
+  }),
+  note: z.string().trim().optional().or(z.literal('')),
+  operation: z.string().trim().optional().or(z.literal('')),
+  diagnosis: z.string().trim().optional().or(z.literal('')),
+  investigation: z.string().trim().optional().or(z.literal('')),
+  treatmentHome: z.string().trim().optional().or(z.literal('')),
+});
+export type DischargeInput = z.infer<typeof dischargeSchema>;
+
 export interface IpdAdmissionDto {
   id: string;
   ipdNo: string;
@@ -105,6 +126,12 @@ export interface IpdAdmissionDetailDto {
   admissionDate: string;
   dischargeDate: string | null;
   status: string;
+  dischargeStatus: string | null;
+  dischargeNote: string | null;
+  dischargeOperation: string | null;
+  dischargeDiagnosis: string | null;
+  dischargeInvestigation: string | null;
+  treatmentHome: string | null;
   casualty: boolean;
   reference: string | null;
   tpaName: string | null;

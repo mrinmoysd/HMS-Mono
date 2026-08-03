@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma } from '@prisma/client';
 import type {
   BedHistoryRow,
+  DischargeInput,
   IpdAdmissionDetailDto,
   IpdAdmissionDto,
   IpdAdmissionInput,
@@ -214,19 +215,52 @@ export class IpdService {
   }
 
   /** Discharge: free the bed and mark the admission discharged (one transaction). */
-  async discharge(user: RequestUser, branchId: string, id: string): Promise<IpdAdmissionDto> {
+  async discharge(
+    user: RequestUser,
+    branchId: string,
+    id: string,
+    input: DischargeInput,
+  ): Promise<IpdAdmissionDto> {
     const admission = await this.prisma.$transaction(async (tx) => {
       const existing = await tx.ipdAdmission.findFirst({ where: { id, branchId, deletedAt: null } });
       if (!existing) throw new NotFoundException('Admission not found');
       if (existing.status === 'discharged') throw new BadRequestException('Already discharged');
       await tx.bed.update({ where: { id: existing.bedId }, data: { status: 'available' } });
+
+      // Blueprint §8.5 step 5 / rule #7: a death discharge marks the patient
+      // deceased. That flag is what stops the Patient list offering to start a
+      // new OPD/IPD/lab record for them, so it has to happen here — nobody is
+      // going to remember to go and tick it by hand afterwards.
+      if (input.dischargeStatus === 'death') {
+        await tx.patient.update({
+          where: { id: existing.patientId },
+          data: { isDeceased: true },
+        });
+      }
+
       return tx.ipdAdmission.update({
         where: { id },
-        data: { status: 'discharged', dischargeDate: new Date() },
+        data: {
+          status: 'discharged',
+          dischargeDate: input.dischargeDate,
+          dischargeStatus: input.dischargeStatus,
+          dischargeNote: input.note || null,
+          dischargeOperation: input.operation || null,
+          dischargeDiagnosis: input.diagnosis || null,
+          dischargeInvestigation: input.investigation || null,
+          treatmentHome: input.treatmentHome || null,
+        },
         include,
       });
     });
-    await this.audit.record({ branchId, userId: user.id, action: 'discharge', entity: 'ipd', entityId: id });
+    await this.audit.record({
+      branchId,
+      userId: user.id,
+      action: 'discharge',
+      entity: 'ipd',
+      entityId: id,
+      after: { dischargeStatus: input.dischargeStatus },
+    });
     const names = await this.names([admission.createdById]);
     return this.toDto(branchId, admission, names);
   }
@@ -340,6 +374,12 @@ export class IpdService {
       admissionDate: a.admissionDate.toISOString(),
       dischargeDate: a.dischargeDate ? a.dischargeDate.toISOString() : null,
       status: a.status,
+      dischargeStatus: a.dischargeStatus,
+      dischargeNote: a.dischargeNote,
+      dischargeOperation: a.dischargeOperation,
+      dischargeDiagnosis: a.dischargeDiagnosis,
+      dischargeInvestigation: a.dischargeInvestigation,
+      treatmentHome: a.treatmentHome,
       casualty: a.casualty,
       reference: a.reference,
       tpaName: a.patient.tpa?.name ?? null,

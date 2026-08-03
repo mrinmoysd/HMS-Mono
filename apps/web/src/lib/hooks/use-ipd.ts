@@ -7,6 +7,7 @@ import type {
   BedGroupInput,
   BedInput,
   BedStatusSummary,
+  DischargeInput,
   IpdAdmissionDetailDto,
   IpdAdmissionDto,
   IpdAdmissionInput,
@@ -135,11 +136,17 @@ export function useCreateAdmission() {
 export function useDischarge() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.post<IpdAdmissionDto>(`/ipd/${id}/discharge`, {}),
+    mutationFn: ({ id, input }: { id: string; input: DischargeInput }) =>
+      api.post<IpdAdmissionDto>(`/ipd/${id}/discharge`, input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['ipd'] });
+      qc.invalidateQueries({ queryKey: ['ipd-detail'] });
       qc.invalidateQueries({ queryKey: ['bed-status'] });
       qc.invalidateQueries({ queryKey: ['beds-available'] });
+      // A `death` discharge flips patient.isDeceased, which the patient list
+      // and the 360 header both render.
+      qc.invalidateQueries({ queryKey: ['patients'] });
+      qc.invalidateQueries({ queryKey: ['patient-profile'] });
     },
   });
 }

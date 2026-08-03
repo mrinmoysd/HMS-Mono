@@ -2,10 +2,12 @@ import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, P
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   IPD_TABS,
+  dischargeSchema,
   ipdAdmissionSchema,
   ipdAdmissionUpdateSchema,
   listQuerySchema,
   transferBedSchema,
+  type DischargeInput,
   type IpdAdmissionInput,
   type IpdAdmissionUpdateInput,
   type IpdTab,
@@ -84,8 +86,9 @@ export class IpdController {
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
     @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(dischargeSchema)) body: DischargeInput,
   ) {
-    return this.ipd.discharge(user, branchId, id);
+    return this.ipd.discharge(user, branchId, id, body);
   }
 
   @Get(':id/bed-history')

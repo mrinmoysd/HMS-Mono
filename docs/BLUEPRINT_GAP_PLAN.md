@@ -175,10 +175,12 @@ Same three apply to the IPD admission form (§8.2), which additionally:
 
 ---
 
-## Phase I1 — Discharge
+## Phase I1 — Discharge — DONE
 
 **Blueprint:** §8.5, state machine §9.3, rule #7.
-**Status:** a confirm dialog, not a form.
+**Status:** ~~a confirm dialog, not a form~~ — done. `dischargeSchema` collects
+the seven fields, `death` sets `patient.isDeceased` in the discharge
+transaction, and the card prints from what was captured.
 
 `ipd/page.tsx:78` and `ipd/[id]/page.tsx:73` both call `discharge.mutateAsync(id)`
 behind a yes/no prompt. `ipd.service.ts:222` stamps `dischargeDate: new Date()`.

@@ -729,6 +729,15 @@ model IpdAdmission {
   liveConsult   Boolean   @default(false)
   dischargeDate DateTime?
   status        String    @default("admitted") // admitted | discharged
+  /// Discharge Card (blueprint §8.5). `dischargeStatus` drives the
+  /// side-effect that matters: 'death' marks the patient deceased, which is
+  /// what suppresses new encounters for them in the Patient list.
+  dischargeStatus String?  // death | referral | normal
+  dischargeNote   String?
+  dischargeOperation     String?
+  dischargeDiagnosis     String?
+  dischargeInvestigation String?
+  treatmentHome          String?
   customFields  Json      @default("{}")
   createdById   String?   @db.Uuid
   createdAt     DateTime  @default(now())

@@ -4,21 +4,21 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, LogOut, Printer, Receipt } from 'lucide-react';
-import type { IpdAdmissionDto, IpdTab } from '@smart-hospital/shared';
+import { useQueryClient } from '@tanstack/react-query';
+import type { IpdAdmissionDetailDto, IpdAdmissionDto, IpdTab } from '@smart-hospital/shared';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Tabs } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { useToast } from '@/components/ui/toast';
-import { useConfirm } from '@/components/ui/confirm-dialog';
-import { StatusPill } from '@/components/ui/status-pill';
 import { ExportMenu } from '@/components/ui/export-menu';
 import type { ExportTable } from '@/lib/export';
 import { AdmissionForm } from './admission-form';
-import { useIpdAdmissions, useDischarge } from '@/lib/hooks/use-ipd';
+import { DischargeModalById } from '@/components/emr/discharge-modal';
+import { printDischargeCard } from '@/lib/print';
+import { api } from '@/lib/api';
+import { useIpdAdmissions } from '@/lib/hooks/use-ipd';
 import { useAbility } from '@/lib/auth-store';
-
-const HOSPITAL = 'Smart Hospital & Research Center';
 
 const TABS: { value: IpdTab; label: string }[] = [
   { value: 'admitted', label: 'Admitted' },
@@ -36,6 +36,7 @@ export default function IpdPage() {
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(25);
   const [open, setOpen] = useState(false);
+  const [dischargingId, setDischargingId] = useState<string | null>(null);
 
   // Quick-create from the patient list: ?new=1&patientId=…&patientName=…
   const presetPatientId = params.get('patientId') ?? '';
@@ -45,9 +46,8 @@ export default function IpdPage() {
   }, [params, canAdd]);
 
   const { data, isLoading, error } = useIpdAdmissions(tab, { search, page, size });
-  const discharge = useDischarge();
+  const qc = useQueryClient();
   const toast = useToast();
-  const confirm = useConfirm();
 
   function exportTable(): ExportTable {
     const rows = data?.data ?? [];
@@ -75,46 +75,17 @@ export default function IpdPage() {
     };
   }
 
-  async function onDischarge(a: IpdAdmissionDto) {
-    const ok = await confirm({
-      title: `Discharge ${a.patientName}?`,
-      description: `Admission ${a.ipdNo} will be closed and bed ${a.bedLabel} freed.`,
-      confirmLabel: 'Discharge',
-      tone: 'warning',
-    });
-    if (!ok) return;
+  /** The card is printed from the captured discharge fields, which only the detail carries. */
+  async function onPrintCard(a: IpdAdmissionDto) {
     try {
-      await discharge.mutateAsync(a.id);
-      toast.success(`${a.patientName} discharged · bed ${a.bedLabel} freed`);
+      const detail = await qc.fetchQuery({
+        queryKey: ['ipd-detail', a.id],
+        queryFn: () => api.get<IpdAdmissionDetailDto>(`/ipd/${a.id}`),
+      });
+      printDischargeCard(detail);
     } catch (e) {
-      toast.error('Could not discharge patient', { description: (e as Error).message });
+      toast.error('Could not load the discharge card', { description: (e as Error).message });
     }
-  }
-
-  function printDischargeCard(a: IpdAdmissionDto) {
-    const w = window.open('', '_blank');
-    if (!w) return;
-    w.document.write(`<html><head><title>Discharge Card — ${a.ipdNo}</title></head>
-    <body style="font-family:Inter,system-ui,sans-serif;padding:32px">
-      <div style="border:2px solid #1E63E9;border-radius:10px;padding:28px;max-width:640px">
-        <h2 style="color:#1E63E9;margin:0 0 4px">${HOSPITAL}</h2>
-        <p style="color:#64748B;margin:0 0 20px">Discharge Card</p>
-        <table style="width:100%;font-size:14px;line-height:2">
-          <tr><td style="color:#64748B">IPD No</td><td><b>${a.ipdNo}</b></td>
-              <td style="color:#64748B">Case ID</td><td><b>${a.caseNo ?? '—'}</b></td></tr>
-          <tr><td style="color:#64748B">Patient</td><td><b>${a.patientName}</b></td>
-              <td style="color:#64748B">Consultant</td><td>${a.consultantName}</td></tr>
-          <tr><td style="color:#64748B">Bed</td><td>${a.bedLabel}</td>
-              <td style="color:#64748B">Admitted</td><td>${new Date(a.admissionDate).toLocaleDateString()}</td></tr>
-          <tr><td style="color:#64748B">Discharged</td><td>${a.dischargeDate ? new Date(a.dischargeDate).toLocaleDateString() : '—'}</td>
-              <td style="color:#64748B">Balance</td><td>${a.balance.toFixed(2)}</td></tr>
-        </table>
-        <div style="margin-top:48px;text-align:right;color:#64748B;font-size:13px">Authorised Signatory</div>
-      </div>
-    </body></html>`);
-    w.document.close();
-    w.focus();
-    w.print();
   }
 
   const admittedColumns: Column<IpdAdmissionDto>[] = [
@@ -183,7 +154,7 @@ export default function IpdPage() {
             </Link>
             {tab === 'admitted' && canEdit && (
               <button
-                onClick={() => onDischarge(a)}
+                onClick={() => setDischargingId(a.id)}
                 aria-label="Discharge"
                 className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-danger hover:bg-danger/10"
               >
@@ -191,7 +162,7 @@ export default function IpdPage() {
               </button>
             )}
             <button
-              onClick={() => printDischargeCard(a)}
+              onClick={() => onPrintCard(a)}
               aria-label="Print card"
               className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-border/50"
             >
@@ -200,6 +171,14 @@ export default function IpdPage() {
           </>
         )}
       />
+
+      {dischargingId && (
+        <DischargeModalById
+          admissionId={dischargingId}
+          onClose={() => setDischargingId(null)}
+          onDone={() => toast.success('Patient discharged · bed freed')}
+        />
+      )}
 
       <AdmissionForm
         open={open}

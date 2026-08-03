@@ -4,7 +4,7 @@
  * and a signature footer — then opens the browser print dialog (also "Save as PDF").
  */
 
-import type { AmbulanceCallDto, BirthRecordDto, BloodIssueDto, DeathRecordDto, EncounterBillingDto, InvoiceDto, OpdVisitDetailDto, OpdVisitDto, PrescriptionDto } from '@smart-hospital/shared';
+import type { AmbulanceCallDto, BirthRecordDto, BloodIssueDto, DeathRecordDto, EncounterBillingDto, InvoiceDto, IpdAdmissionDetailDto, OpdVisitDetailDto, OpdVisitDto, PrescriptionDto } from '@smart-hospital/shared';
 import { formatAge } from './utils';
 
 const HOSPITAL = 'Smart Hospital & Research Center';
@@ -429,6 +429,60 @@ export function printDeathRecord(d: DeathRecordDto): void {
       ['Collected By', d.createdByName ?? '—'],
     ],
     sections: d.cause ? [{ heading: 'Death Report', text: d.cause }] : [],
+    footer: 'Authorised Signatory',
+  });
+}
+
+const DISCHARGE_STATUS_LABEL: Record<string, string> = {
+  normal: 'Normal',
+  referral: 'Referral',
+  death: 'Death',
+};
+
+/**
+ * Discharge Card, printed from what was captured on discharge (blueprint §8.5).
+ * An admission that is still `admitted` has none of those fields yet, so this
+ * prints the identity/billing half only rather than a card full of dashes.
+ */
+export function printDischargeCard(a: IpdAdmissionDetailDto): void {
+  const clinical: [string, string][] = [
+    ['Operation', a.dischargeOperation ?? ''],
+    ['Diagnosis', a.dischargeDiagnosis ?? ''],
+    ['Investigation', a.dischargeInvestigation ?? ''],
+    ['Treatment / Home Remedy', a.treatmentHome ?? ''],
+  ].filter(([, v]) => v.trim() !== '') as [string, string][];
+
+  printDocument({
+    documentTitle: `Discharge Card — ${a.ipdNo}`,
+    heading: 'Discharge Card',
+    meta: [
+      ['IPD No', a.ipdNo],
+      ['Case ID', a.caseNo ?? '—'],
+      ['Patient Name', a.patientName],
+      ['Gender', a.gender ?? '—'],
+      ['Age', formatAge(a.age)],
+      ['Blood Group', a.bloodGroup ?? '—'],
+      ['Phone', a.phone ?? '—'],
+      ['Address', a.address ?? '—'],
+      ['Consultant', a.consultantName],
+      ['Bed', a.bedLabel],
+      ['Admission Date', new Date(a.admissionDate).toLocaleString()],
+      ['Discharge Date', a.dischargeDate ? new Date(a.dischargeDate).toLocaleString() : '—'],
+      ['Discharge Status', a.dischargeStatus ? DISCHARGE_STATUS_LABEL[a.dischargeStatus] ?? a.dischargeStatus : '—'],
+    ],
+    sections: [
+      ...(clinical.length ? [{ heading: 'Clinical Summary', rows: clinical }] : []),
+      ...(a.dischargeNote ? [{ heading: 'Note', text: a.dischargeNote }] : []),
+      {
+        heading: 'Account',
+        rows: [
+          ['Net Amount', a.billedAmount.toFixed(2)],
+          ['Tax', a.taxAmount.toFixed(2)],
+          ['Paid', a.paidAmount.toFixed(2)],
+          ['Balance', a.balance.toFixed(2)],
+        ] as [string, string][],
+      },
+    ],
     footer: 'Authorised Signatory',
   });
 }

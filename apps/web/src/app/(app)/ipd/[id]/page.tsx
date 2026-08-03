@@ -3,15 +3,15 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Printer, Pencil, Trash2, LogOut, List } from 'lucide-react';
+import { Printer, Pencil, Trash2, LogOut, List, FileText } from 'lucide-react';
 import { Tabs } from '@/components/ui/tabs';
 import { Modal } from '@/components/ui/modal';
-import { useConfirm, useConfirmDelete } from '@/components/ui/confirm-dialog';
+import { useConfirmDelete } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
 import { StatusPill } from '@/components/ui/status-pill';
 import { formatAge } from '@/lib/utils';
-import { printEncounterBill } from '@/lib/print';
+import { printDischargeCard, printEncounterBill } from '@/lib/print';
 import { ChargesTab } from '@/components/emr/charges-tab';
 import { PaymentsTab } from '@/components/emr/payments-tab';
 import { BillingSummaryBars } from '@/components/emr/billing-summary-bars';
@@ -28,8 +28,9 @@ import { TimelineTab } from '@/components/emr/timeline-tab';
 import { VitalsTab } from '@/components/emr/vitals-tab';
 import { IpdTreatmentHistoryPanel } from '@/components/emr/ipd-treatment-history-panel';
 import { IpdAdmissionEditForm } from '@/components/emr/ipd-admission-edit-form';
+import { DischargeModal } from '@/components/emr/discharge-modal';
 import { useEncounterBilling } from '@/lib/hooks/use-encounter-billing';
-import { useIpdAdmissionDetail, useDischarge, useDeleteIpdAdmission } from '@/lib/hooks/use-ipd';
+import { useIpdAdmissionDetail, useDeleteIpdAdmission } from '@/lib/hooks/use-ipd';
 import { usePatientProfile } from '@/lib/hooks/use-emr';
 import { useAbility } from '@/lib/auth-store';
 
@@ -58,34 +59,16 @@ export default function IpdDetailPage() {
   const { data, isLoading } = useEncounterBilling('ipd', id);
   const { data: admission } = useIpdAdmissionDetail(id);
   const { data: profile } = usePatientProfile(data?.header.patientId ?? '');
-  const discharge = useDischarge();
   const del = useDeleteIpdAdmission();
-  const confirm = useConfirm();
   const confirmDelete = useConfirmDelete();
   const toast = useToast();
   const [tab, setTab] = useState<Tab>('overview');
   const [editing, setEditing] = useState(false);
+  const [discharging, setDischarging] = useState(false);
 
   if (isLoading || !data) return <div className="p-8 text-sm text-fg-muted">Loading IPD admission…</div>;
   const h = data.header;
   const scope = { patientId: h.patientId, encounterType: 'ipd' as const, encounterId: id };
-
-  async function onDischarge() {
-    if (!admission) return;
-    const ok = await confirm({
-      title: `Discharge ${admission.patientName}?`,
-      description: `Admission ${admission.ipdNo} is closed and bed ${admission.bedLabel} is freed for reuse.`,
-      confirmLabel: 'Discharge',
-      tone: 'warning',
-    });
-    if (!ok) return;
-    try {
-      await discharge.mutateAsync(id);
-      toast.success(`${admission.patientName} discharged`);
-    } catch (e) {
-      toast.error('Could not discharge', { description: (e as Error).message });
-    }
-  }
 
   async function onDelete() {
     if (!admission) return;
@@ -132,7 +115,7 @@ export default function IpdDetailPage() {
               </button>
             )}
             {canEditIpd && admission?.status === 'admitted' && (
-              <button onClick={onDischarge} aria-label="Discharge" title="Discharge" className="flex h-9 w-9 items-center justify-center rounded-sm text-fg-muted hover:bg-warning/10 hover:text-warning">
+              <button onClick={() => setDischarging(true)} aria-label="Discharge" title="Discharge" className="flex h-9 w-9 items-center justify-center rounded-sm text-fg-muted hover:bg-warning/10 hover:text-warning">
                 <LogOut className="h-4 w-4" />
               </button>
             )}
@@ -142,6 +125,11 @@ export default function IpdDetailPage() {
               </button>
             )}
             <Button size="sm" variant="secondary" onClick={() => printEncounterBill(data, 'IPD')}><Printer className="h-4 w-4" /> Print Bill</Button>
+            {admission?.status === 'discharged' && (
+              <Button size="sm" variant="secondary" onClick={() => printDischargeCard(admission)}>
+                <FileText className="h-4 w-4" /> Discharge Card
+              </Button>
+            )}
             {data.credit && <CreditDonut credit={data.credit} />}
           </div>
         </div>
@@ -206,6 +194,15 @@ export default function IpdDetailPage() {
         <Modal open onClose={() => setEditing(false)} title="Edit Admission" size="lg">
           <IpdAdmissionEditForm admission={admission} onDone={() => setEditing(false)} onCancel={() => setEditing(false)} />
         </Modal>
+      )}
+
+      {discharging && admission && (
+        <DischargeModal
+          admission={admission}
+          open
+          onClose={() => setDischarging(false)}
+          onDone={() => toast.success(`${admission.patientName} discharged · bed ${admission.bedLabel} freed`)}
+        />
       )}
     </div>
   );
