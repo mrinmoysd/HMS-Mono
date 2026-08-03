@@ -14,7 +14,6 @@ import { formatAge } from '@/lib/utils';
 import { printDischargeCard, printEncounterBill } from '@/lib/print';
 import { ChargesTab } from '@/components/emr/charges-tab';
 import { PaymentsTab } from '@/components/emr/payments-tab';
-import { BillingSummaryBars } from '@/components/emr/billing-summary-bars';
 import { CreditDonut } from '@/components/emr/credit-donut';
 import { LabTab } from '@/components/emr/lab-tab';
 import { PrescriptionTab } from '@/components/emr/prescription-tab';
@@ -24,13 +23,16 @@ import { LiveConsultTab } from '@/components/emr/live-consult-tab';
 import { NurseNotesTab } from '@/components/emr/nurse-notes-tab';
 import { ConsultantRegisterTab } from '@/components/emr/consultant-register-tab';
 import { BedHistoryTab } from '@/components/emr/bed-history-tab';
+import { DetailPageShell, type RailItem } from '@/components/emr/detail-page-shell';
+import { EncounterOverview } from '@/components/emr/encounter-overview';
+import { PatientReportModal } from '@/components/patient-report-modal';
 import { TimelineTab } from '@/components/emr/timeline-tab';
 import { VitalsTab } from '@/components/emr/vitals-tab';
 import { IpdTreatmentHistoryPanel } from '@/components/emr/ipd-treatment-history-panel';
 import { IpdAdmissionEditForm } from '@/components/emr/ipd-admission-edit-form';
 import { DischargeModal } from '@/components/emr/discharge-modal';
 import { useEncounterBilling } from '@/lib/hooks/use-encounter-billing';
-import { useIpdAdmissionDetail, useDeleteIpdAdmission } from '@/lib/hooks/use-ipd';
+import { useIpdAdmissions, useIpdAdmissionDetail, useDeleteIpdAdmission } from '@/lib/hooks/use-ipd';
 import { usePatientProfile } from '@/lib/hooks/use-emr';
 import { useAbility } from '@/lib/auth-store';
 
@@ -59,16 +61,26 @@ export default function IpdDetailPage() {
   const { data, isLoading } = useEncounterBilling('ipd', id);
   const { data: admission } = useIpdAdmissionDetail(id);
   const { data: profile } = usePatientProfile(data?.header.patientId ?? '');
+  // The ward populates the left rail — the switcher, not a list.
+  const { data: ward, isLoading: railLoading } = useIpdAdmissions('admitted', { page: 1, size: 100 });
   const del = useDeleteIpdAdmission();
   const confirmDelete = useConfirmDelete();
   const toast = useToast();
   const [tab, setTab] = useState<Tab>('overview');
   const [editing, setEditing] = useState(false);
   const [discharging, setDischarging] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   if (isLoading || !data) return <div className="p-8 text-sm text-fg-muted">Loading IPD admission…</div>;
   const h = data.header;
   const scope = { patientId: h.patientId, encounterType: 'ipd' as const, encounterId: id };
+
+  const rail: RailItem[] = (ward?.data ?? []).map((a) => ({
+    id: a.id,
+    encounterNo: a.ipdNo,
+    patientName: a.patientName,
+    subtitle: a.bedLabel,
+  }));
 
   async function onDelete() {
     if (!admission) return;
@@ -83,7 +95,23 @@ export default function IpdDetailPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <DetailPageShell
+      railTitle="Admitted"
+      items={rail}
+      loading={railLoading}
+      activeId={id}
+      hrefFor={(i) => `/ipd/${i.id}`}
+      searchPlaceholder="Search IPD / Bed / Name"
+      breadcrumb={
+        <>
+          <Link href="/ipd" className="hover:underline">IPD</Link>
+          {' / '}
+          <span className="text-fg">{h.caseNo ?? '—'}</span>
+          {' · '}
+          <Link href={`/patient/${h.patientId}`} className="text-primary hover:underline">{h.patientName}</Link>
+        </>
+      }
+    >
       <div className="rounded-md border border-border bg-surface p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-4">
@@ -98,7 +126,7 @@ export default function IpdDetailPage() {
                 {admission && <StatusPill status={admission.status === 'admitted' ? 'approved' : admission.status} />}
               </div>
               <p className="mt-1 text-sm text-fg-muted">
-                {h.encounterNo} · {admission?.gender ?? '—'} · {admission ? formatAge(admission.age) : '—'} · {h.bedLabel ?? '—'}
+                {h.caseNo ?? '—'} · {h.encounterNo} · {admission?.gender ?? '—'} · {admission ? formatAge(admission.age) : '—'} · {h.bedLabel ?? '—'}
               </p>
               <p className="text-sm text-fg-muted">
                 {h.consultantName} · LOS {admission ? lengthOfStay(admission.admissionDate, admission.dischargeDate) : '—'}
@@ -106,9 +134,9 @@ export default function IpdDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/ipd" aria-label="Back to list" title="Back to list" className="flex h-9 w-9 items-center justify-center rounded-sm text-fg-muted hover:bg-border/50">
+            <button onClick={() => setShowReport(true)} aria-label="Patient details" title="Patient details" className="flex h-9 w-9 items-center justify-center rounded-sm text-fg-muted hover:bg-border/50">
               <List className="h-4 w-4" />
-            </Link>
+            </button>
             {canEditIpd && (
               <button onClick={() => setEditing(true)} aria-label="Edit" title="Edit" className="flex h-9 w-9 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary">
                 <Pencil className="h-4 w-4" />
@@ -130,7 +158,17 @@ export default function IpdDetailPage() {
                 <FileText className="h-4 w-4" /> Discharge Card
               </Button>
             )}
-            {data.credit && <CreditDonut credit={data.credit} />}
+            {data.credit && (
+              <div className="flex gap-3">
+                <Chip label="Credit Limit" value={data.credit.limit} />
+                <Chip label="Used" value={data.credit.used} />
+                <Chip
+                  label="Balance"
+                  value={data.credit.balance}
+                  accent={data.credit.balance < 0 ? 'text-danger' : 'text-success'}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -156,25 +194,47 @@ export default function IpdDetailPage() {
         onChange={(t) => setTab(t as Tab)}
       />
 
+      {/* Consultant Register and Bed History used to be duplicated here as
+          panels while also having their own tabs. The Overview's job is the
+          identity grid and the money (blueprint §8.3 tab 1) — the tabs own
+          the detail. */}
       {tab === 'overview' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="rounded-md border border-border bg-surface p-5">
-              <p className="mb-3 text-sm font-semibold">Billing Summary (by department)</p>
-              <BillingSummaryBars rows={data.billingSummary} />
-            </div>
-            {data.credit && (
+        <EncounterOverview
+          encounterModule="ipd"
+          barcodeValue={h.encounterNo}
+          billingSummary={data.billingSummary}
+          aside={
+            data.credit ? (
               <div className="rounded-md border border-border bg-surface p-5">
                 <p className="mb-3 text-sm font-semibold">Credit Limit</p>
                 <CreditDonut credit={data.credit} />
               </div>
-            )}
-          </div>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="rounded-md border border-border bg-surface p-5"><ConsultantRegisterTab scope={scope} canEdit={canEditClinical} /></div>
-            <div className="rounded-md border border-border bg-surface p-5"><BedHistoryTab admissionId={id} canEdit={canEdit && admission?.status === 'admitted'} /></div>
-          </div>
-        </div>
+            ) : undefined
+          }
+          fields={[
+            { label: 'Patient', value: h.patientName },
+            { label: 'Case ID', value: h.caseNo },
+            { label: 'IPD No', value: h.encounterNo },
+            { label: 'Gender', value: admission?.gender },
+            { label: 'Age', value: admission ? formatAge(admission.age) : null },
+            { label: 'Phone', value: admission?.phone },
+            { label: 'Guardian Name', value: admission?.guardianName },
+            { label: 'Blood Group', value: admission?.bloodGroup },
+            { label: 'Consultant', value: h.consultantName },
+            {
+              label: 'Admission Date',
+              value: admission ? new Date(admission.admissionDate).toLocaleString() : null,
+            },
+            { label: 'Bed', value: admission?.bedLabel },
+            {
+              label: 'Discharge Date',
+              value: admission?.dischargeDate ? new Date(admission.dischargeDate).toLocaleString() : null,
+            },
+            { label: 'TPA', value: admission?.tpaName },
+            { label: 'TPA ID', value: admission?.tpaIdNo },
+            { label: 'Credit Limit', value: admission ? admission.creditLimit.toFixed(2) : null },
+          ]}
+        />
       )}
       {tab === 'nursenotes' && <NurseNotesTab scope={scope} canEdit={canEditClinical} />}
       {tab === 'lab' && <LabTab scope={scope} canEdit={canEditClinical} patientName={h.patientName} />}
@@ -204,6 +264,18 @@ export default function IpdDetailPage() {
           onDone={() => toast.success(`${admission.patientName} discharged · bed ${admission.bedLabel} freed`)}
         />
       )}
+
+      <PatientReportModal patientId={h.patientId} open={showReport} onClose={() => setShowReport(false)} />
+    </DetailPageShell>
+  );
+}
+
+/** Compact money read-out for the header. */
+function Chip({ label, value, accent }: { label: string; value: number; accent?: string }) {
+  return (
+    <div className="rounded-sm bg-surface-sunken px-3 py-1.5 text-right">
+      <p className="text-2xs uppercase tracking-wide text-fg-muted">{label}</p>
+      <p className={`tabular text-sm font-semibold ${accent ?? ''}`}>{value.toFixed(2)}</p>
     </div>
   );
 }

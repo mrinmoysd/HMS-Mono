@@ -228,16 +228,20 @@ ending before it began — now rejected.
 
 ---
 
-## Phase I3 — IPD detail page shell
+## Phase I3 — IPD detail page shell — DONE
 
 **Blueprint:** §8.3, §8.4.
 
-- Overview lacks the info grid (Case ID, IPD No, Admission Date, Bed, TPA,
-  Barcode, QR) and instead duplicates the Consultant Register and Bed History
-  panels that already have their own tabs — `ipd/[id]/page.tsx:171`.
-- No `≡` **Patient Details modal** in the header (§8.4).
-- No left-rail patient switcher.
-- Header omits Case ID. LOS is correct and live (line 41) — that one's fine.
+- ~~Overview lacks the info grid~~ — now `EncounterOverview`, the same component
+  OPD uses, with IPD's extra rows (Admission Date, Bed, Discharge Date, Credit
+  Limit) and the credit donut as its aside. The duplicated Consultant Register
+  and Bed History panels are gone; both already had their own tabs.
+- ~~No `≡` Patient Details modal~~ — the header's `≡` opens `PatientReportModal`,
+  the consolidated report the patient list already used. The breadcrumb took
+  over the "back to IPD" job the icon used to do.
+- ~~No left-rail patient switcher~~ — `DetailPageShell` with the admitted ward.
+- ~~Header omits Case ID~~ — it leads the identity line now. The header's credit
+  donut became three compact figures, since the donut lives on Overview.
 
 ---
 
