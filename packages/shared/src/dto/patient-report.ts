@@ -18,6 +18,8 @@ export interface PatientReportHeader {
 }
 
 export interface PatientReportVisit {
+  /** Encounter id — the report's rows link through to the visit/admission. */
+  id: string;
   no: string;
   caseNo: string | null;
   date: string;

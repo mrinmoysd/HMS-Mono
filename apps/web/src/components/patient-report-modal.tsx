@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { Printer, Loader2 } from 'lucide-react';
 import type { PatientReportDto, PatientReportVisit } from '@smart-hospital/shared';
 import { Button } from '@/components/ui/button';
@@ -115,8 +116,8 @@ export function PatientReportModal({ patientId, open, onClose }: { patientId: st
             <Barcode value={data.header.patientNo} height={40} />
           </div>
 
-          <VisitTable title="OPD Details" rows={data.opd} noLabel="OPD No" showCheckups />
-          <VisitTable title="IPD Details" rows={data.ipd} noLabel="IPD No" />
+          <VisitTable title="OPD Details" rows={data.opd} noLabel="OPD No" hrefBase="/opd" onNavigate={onClose} showCheckups />
+          <VisitTable title="IPD Details" rows={data.ipd} noLabel="IPD No" hrefBase="/ipd" onNavigate={onClose} />
 
           {data.bills.map((g) => (
             <div key={g.module}>
@@ -166,11 +167,17 @@ function VisitTable({
   title,
   rows,
   noLabel,
+  hrefBase,
+  onNavigate,
   showCheckups = false,
 }: {
   title: string;
   rows: PatientReportVisit[];
   noLabel: string;
+  /** '/opd' or '/ipd' — the blueprint's Patient Details → encounter edge. */
+  hrefBase: string;
+  /** Close the modal on the way out, or it sits on top of the destination. */
+  onNavigate: () => void;
   showCheckups?: boolean;
 }) {
   const cols = showCheckups ? 7 : 6;
@@ -190,7 +197,11 @@ function VisitTable({
             {rows.length === 0 && <tr><td colSpan={cols} className="px-3 py-6 text-center text-fg-muted">No records</td></tr>}
             {rows.map((v) => (
               <tr key={v.no} className="border-b border-border/60 last:border-0 align-top">
-                <td className="px-3 py-2 font-medium text-primary">{v.no}</td><td className="px-3 py-2">{v.caseNo ?? '—'}</td><td className="px-3 py-2 whitespace-nowrap">{new Date(v.date).toLocaleDateString()}</td>
+                <td className="px-3 py-2 font-medium">
+                  <Link href={`${hrefBase}/${v.id}`} onClick={onNavigate} className="text-primary hover:underline">
+                    {v.no}
+                  </Link>
+                </td><td className="px-3 py-2">{v.caseNo ?? '—'}</td><td className="px-3 py-2 whitespace-nowrap">{new Date(v.date).toLocaleDateString()}</td>
                 {showCheckups && <td className="px-3 py-2 text-fg-muted">{v.checkupNos ?? '—'}</td>}
                 <td className="px-3 py-2 whitespace-nowrap">{v.doctorName}</td><td className="px-3 py-2 text-fg-muted">{v.symptoms ?? '—'}</td><td className="px-3 py-2 text-fg-muted">{v.findings ?? '—'}</td>
               </tr>

@@ -245,17 +245,19 @@ ending before it began — now rejected.
 
 ---
 
-## Phase P1 — Patient module
+## Phase P1 — Patient module — DONE
 
 **Blueprint:** §5.1, rule #7, §9.2.
 
-1. **`Dead = Yes` must suppress the Show/Action menu** — `patient/page.tsx:241`
-   renders it unconditionally, so a deceased patient can still be pushed into a
-   new OPD/IPD/Radiology/Pathology/Pharmacy record. This is rule #7 and the
-   cheapest fix in the list.
-2. Patient Details report rows do not link anywhere. The blueprint's navigation
-   graph has `Patient Details --Case ID--> OPD Visit Detail / IPD Detail`.
-   Make the OPD No / IPD No cells links.
+1. ~~`Dead = Yes` must suppress the Show/Action menu~~ — a deceased row shows a
+   inert "Deceased" chip where the New-encounter menu used to be. Show, the 360
+   profile, Edit and Delete stay: the existing record must remain reachable.
+   The rule is *also* enforced in `opd.service.create` and `ipd.service.create`,
+   because a UI-only guard is not a guard — the forms are reachable by URL and
+   the patient picker does not know the flag.
+2. ~~Patient Details report rows do not link anywhere~~ — the OPD No / IPD No
+   cells are links to the encounter (`PatientReportVisit` gained an `id`), and
+   the modal closes on the way out so it does not sit over the destination.
 
 ---
 

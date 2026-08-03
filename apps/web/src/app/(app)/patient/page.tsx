@@ -238,19 +238,31 @@ export default function PatientPage() {
             >
               <IdCard className="h-3.5 w-3.5" />
             </Link>
-            <Menu
-              trigger={
-                <span className="flex h-7 items-center gap-1 rounded-sm border border-line px-2 text-xs text-fg-muted transition hover:bg-surface-sunken hover:text-fg">
-                  Action <ChevronDown className="h-3.5 w-3.5" />
-                </span>
-              }
-            >
-              <MenuItem icon={Stethoscope} onClick={() => quickCreate(p, 'opd')}>New OPD</MenuItem>
-              <MenuItem icon={BedDouble} onClick={() => quickCreate(p, 'ipd')}>New IPD</MenuItem>
-              <MenuItem icon={Scan} onClick={() => quickCreate(p, 'radiology')}>Radiology</MenuItem>
-              <MenuItem icon={TestTube} onClick={() => quickCreate(p, 'pathology')}>Pathology</MenuItem>
-              <MenuItem icon={Pill} onClick={() => quickCreate(p, 'pharmacy')}>Pharmacy</MenuItem>
-            </Menu>
+            {/* Rule #7: every item in this menu starts a *new* encounter, so a
+                deceased patient gets no menu at all. The existing records stay
+                reachable through Show and the 360 profile beside it. */}
+            {p.isDeceased ? (
+              <span
+                title="Patient is deceased — no new records can be started"
+                className="flex h-7 items-center rounded-sm border border-line px-2 text-xs text-fg-subtle"
+              >
+                Deceased
+              </span>
+            ) : (
+              <Menu
+                trigger={
+                  <span className="flex h-7 items-center gap-1 rounded-sm border border-line px-2 text-xs text-fg-muted transition hover:bg-surface-sunken hover:text-fg">
+                    Action <ChevronDown className="h-3.5 w-3.5" />
+                  </span>
+                }
+              >
+                <MenuItem icon={Stethoscope} onClick={() => quickCreate(p, 'opd')}>New OPD</MenuItem>
+                <MenuItem icon={BedDouble} onClick={() => quickCreate(p, 'ipd')}>New IPD</MenuItem>
+                <MenuItem icon={Scan} onClick={() => quickCreate(p, 'radiology')}>Radiology</MenuItem>
+                <MenuItem icon={TestTube} onClick={() => quickCreate(p, 'pathology')}>Pathology</MenuItem>
+                <MenuItem icon={Pill} onClick={() => quickCreate(p, 'pharmacy')}>Pharmacy</MenuItem>
+              </Menu>
+            )}
             {canEdit && (
               <IconButton
                 label="Edit patient"

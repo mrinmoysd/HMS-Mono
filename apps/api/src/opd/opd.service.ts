@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type {
   IpdAdmissionDto,
@@ -99,6 +99,10 @@ export class OpdService {
       where: { id: input.patientId, branchId, deletedAt: null },
     });
     if (!patient) throw new NotFoundException('Patient not found');
+    // Rule #7: the patient list hides the New-encounter menu for the deceased,
+    // but the rule has to hold here too — the form can be reached by URL, and
+    // the patient picker does not know the flag.
+    if (patient.isDeceased) throw new BadRequestException('Patient is recorded as deceased');
 
     const visit = await this.prisma.$transaction(async (tx) => {
       // The visit mints its own case (or continues the one the user named).

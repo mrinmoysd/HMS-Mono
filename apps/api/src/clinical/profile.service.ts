@@ -166,6 +166,7 @@ export class ProfileService {
     }
 
     const opd: PatientReportVisit[] = opdVisits.map((o) => ({
+      id: o.id,
       no: o.opdNo,
       caseNo: o.case?.caseNo ?? null,
       date: o.appointmentDate.toISOString(),
@@ -175,6 +176,7 @@ export class ProfileService {
       checkupNos: checkupsByVisit.get(o.id)?.join(', ') ?? null,
     }));
     const ipd: PatientReportVisit[] = ipdAdmissions.map((a) => ({
+      id: a.id,
       no: a.ipdNo,
       caseNo: a.case?.caseNo ?? null,
       date: a.admissionDate.toISOString(),
