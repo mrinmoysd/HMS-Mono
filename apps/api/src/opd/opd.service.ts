@@ -11,6 +11,7 @@ import type {
   OpdVisitUpdateInput,
   OpdCheckupDto,
   OpdCheckupInput,
+  OpdPatientRow,
   Paginated,
 } from '@smart-hospital/shared';
 import { PrismaService } from '../prisma/prisma.service';
@@ -169,6 +170,99 @@ export class OpdService {
 
     await this.audit.record({ branchId, userId: user.id, action: 'create', entity: 'opd', entityId: visit.id });
     return toDto(visit, new Map([[user.id, user.name]]));
+  }
+
+  /**
+   * OPD Patient View (blueprint §7.1) — one row per patient who has ever been
+   * through OPD, not one row per visit.
+   *
+   * Raw SQL because this is two aggregates over different tables collapsed onto
+   * the patient, and a Prisma `groupBy` cannot join the checkup count to the
+   * visit count without a second round trip per row. Soft-deleted visits and
+   * checkups are excluded from both counts, or a deleted visit would keep
+   * inflating a patient's history forever.
+   */
+  async patientView(branchId: string, query: ListQuery): Promise<Paginated<OpdPatientRow>> {
+    const { skip, take } = toPrismaPage(query);
+    const search = query.search?.trim() ?? '';
+    const like = `%${search}%`;
+
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        patientId: string;
+        patientNo: string;
+        name: string;
+        gender: string | null;
+        phone: string | null;
+        age: string | null;
+        totalVisits: bigint;
+        totalRecheckups: bigint;
+        lastVisitDate: Date | null;
+        lastConsultantName: string | null;
+        total: bigint;
+      }>
+    >`
+      WITH v AS (
+        SELECT o."patientId",
+               COUNT(*)                              AS visits,
+               MAX(o."appointmentDate")              AS last_visit
+          FROM opd_visit o
+         WHERE o."branchId" = ${branchId}::uuid AND o."deletedAt" IS NULL
+         GROUP BY o."patientId"
+      ),
+      c AS (
+        SELECT o."patientId", COUNT(*) AS checkups
+          FROM opd_checkup k
+          JOIN opd_visit o ON o.id = k."visitId"
+         WHERE o."branchId" = ${branchId}::uuid
+           AND o."deletedAt" IS NULL AND k."deletedAt" IS NULL
+         GROUP BY o."patientId"
+      ),
+      last_doc AS (
+        SELECT DISTINCT ON (o."patientId") o."patientId", u.name AS consultant
+          FROM opd_visit o
+          JOIN "user" u ON u.id = o."consultantId"
+         WHERE o."branchId" = ${branchId}::uuid AND o."deletedAt" IS NULL
+         ORDER BY o."patientId", o."appointmentDate" DESC
+      )
+      SELECT p.id            AS "patientId",
+             p."patientNo"   AS "patientNo",
+             p.name,
+             p.gender::text  AS gender,
+             p.phone,
+             p.age,
+             v.visits        AS "totalVisits",
+             COALESCE(c.checkups, 0) AS "totalRecheckups",
+             v.last_visit    AS "lastVisitDate",
+             last_doc.consultant AS "lastConsultantName",
+             COUNT(*) OVER () AS total
+        FROM v
+        JOIN patient p ON p.id = v."patientId"
+        LEFT JOIN c        ON c."patientId" = v."patientId"
+        LEFT JOIN last_doc ON last_doc."patientId" = v."patientId"
+       WHERE p."deletedAt" IS NULL
+         AND (${search} = '' OR p.name ILIKE ${like} OR p."patientNo" ILIKE ${like} OR p.phone ILIKE ${like})
+       ORDER BY v.last_visit DESC
+       LIMIT ${take} OFFSET ${skip}
+    `;
+
+    const total = rows.length > 0 ? Number(rows[0]!.total) : 0;
+    return paginate(
+      rows.map((r) => ({
+        id: r.patientId,
+        patientNo: r.patientNo,
+        name: r.name,
+        gender: r.gender,
+        phone: r.phone,
+        age: r.age ?? '',
+        totalVisits: Number(r.totalVisits),
+        totalRecheckups: Number(r.totalRecheckups),
+        lastVisitDate: r.lastVisitDate ? r.lastVisitDate.toISOString() : null,
+        lastConsultantName: r.lastConsultantName,
+      })),
+      total,
+      query,
+    );
   }
 
   async detail(branchId: string, id: string): Promise<OpdVisitDetailDto> {

@@ -11,6 +11,7 @@ import type {
   OpdCheckupDto,
   OpdCheckupInput,
   OpdVisitDetailDto,
+  OpdPatientRow,
   OpdVisitDto,
   OpdVisitInput,
   OpdVisitUpdateInput,
@@ -41,6 +42,14 @@ export function usePatientSearch(search: string) {
 }
 
 /** Browsable patient directory for the OPD "Patient View" tab (wider page than the typeahead). */
+/** OPD Patient View rollup — one row per patient, with Total Recheckup. */
+export function useOpdPatientView(params: Partial<ListQuery>) {
+  return useQuery({
+    queryKey: ['opd-patient-view', params],
+    queryFn: () => api.get<Paginated<OpdPatientRow>>(`/opd/patient-view?${qs(params)}`),
+  });
+}
+
 export function usePatientDirectory(search: string) {
   return useQuery({
     queryKey: ['patient-directory', search],

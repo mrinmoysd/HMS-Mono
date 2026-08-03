@@ -50,6 +50,19 @@ export class OpdController {
     return this.opd.create(user, branchId, body);
   }
 
+  /**
+   * Must precede `:id` — Nest matches in declaration order, so a route added
+   * below it would be swallowed as a visit whose id is "patient-view".
+   */
+  @Get('patient-view')
+  @RequirePermission('opd', 'view')
+  patientView(
+    @BranchId() branchId: string,
+    @Query(new ZodValidationPipe(listQuerySchema)) query: ListQuery,
+  ) {
+    return this.opd.patientView(branchId, query);
+  }
+
   @Get(':id')
   @RequirePermission('opd', 'view')
   detail(@BranchId() branchId: string, @Param('id') id: string) {

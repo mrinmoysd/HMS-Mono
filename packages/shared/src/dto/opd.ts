@@ -175,3 +175,27 @@ export interface OpdVisitDetailDto {
   paid: number;
   balance: number;
 }
+
+/**
+ * One row of the OPD Patient View (blueprint §7.1) — a *patient*, not a visit.
+ *
+ * The visit lists answer "what happened today"; this answers "how much has this
+ * patient been through the clinic", which is why Total Recheckup lives here and
+ * nowhere else: a follow-up on an existing visit adds a checkup, not a visit,
+ * so a patient with one visit and four checkups is invisible to a visit count.
+ */
+export interface OpdPatientRow {
+  /** The patient's id — this row *is* a patient, not an encounter. */
+  id: string;
+  patientNo: string;
+  name: string;
+  gender: string | null;
+  phone: string | null;
+  age: string;
+  /** Distinct OPD visits (encounters), excluding soft-deleted ones. */
+  totalVisits: number;
+  /** Checkups across those visits — the blueprint's "Total Recheckup". */
+  totalRecheckups: number;
+  lastVisitDate: string | null;
+  lastConsultantName: string | null;
+}

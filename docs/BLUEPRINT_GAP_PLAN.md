@@ -138,6 +138,26 @@ counts them. We have no such sub-entity, so:
 5. Patient View gains Total Recheckup; the Patient Details report gains the
    OPD Checkup ID column.
 
+**O1.4 — Patient View as a per-patient rollup — DONE**
+
+Step 5 stayed open after O1 because the tab had the wrong shape: it was a
+patient picker beside one patient's visits, so a *count across* patients had
+nowhere to live. It is now a rollup table — one row per patient, columns
+Patient No / Name / Gender / Age / Phone / **Total Visit** / **Total
+Recheckup** / Last Visit / Last Consultant — with the old view kept as the
+drill-down behind a row.
+
+`GET /opd/patient-view` aggregates in one raw query (visit counts and max date,
+checkup counts, and a `DISTINCT ON` for the latest consultant), excluding
+soft-deleted visits and checkups, with `COUNT(*) OVER ()` for paging. The route
+is declared before `:id` — Nest matches in declaration order and would
+otherwise read `patient-view` as a visit id.
+
+Verified: search by name, patient no and phone fragment; paging; the empty
+result. PT000011 reports 3 visits against 4 recheckups — exactly the divergence
+the column exists to expose — and the Patient Details report for the same
+patient independently lists those four CHKIDs, one visit carrying two.
+
 ---
 
 ## Phase O2 — OPD detail page shell
@@ -319,9 +339,6 @@ fixtures before this database is used for anything else.
 
 **Deliberately not fixed, still open:**
 
-- **#307 — OPD Patient View is not a per-patient rollup.** "Total Recheckup"
-  therefore has nowhere to live; the checkup IDs surface only in the Patient
-  Details report. Known since O1 and unchanged.
 - The queue's Convert-to-OPD button renders but no doctor/shift/date in the
   seeded data returns rows through the picker, so it was never clicked against
   a real row. The endpoint and the identical list-side button are both verified.
