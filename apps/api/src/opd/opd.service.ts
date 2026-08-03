@@ -94,7 +94,18 @@ export class OpdService {
     return new Map(users.map((u) => [u.id, u.name]));
   }
 
-  async create(user: RequestUser, branchId: string, input: OpdVisitInput): Promise<OpdVisitDto> {
+  /**
+   * `opts.caseId` is for internal callers only — Convert-to-OPD passes the
+   * appointment's case so booking and visit stay one episode. Mirrors
+   * `IpdService.create`: clients name a case by number via `input.caseNo` and
+   * cannot file a visit under another patient's case by guessing a UUID.
+   */
+  async create(
+    user: RequestUser,
+    branchId: string,
+    input: OpdVisitInput,
+    opts: { caseId?: string } = {},
+  ): Promise<OpdVisitDto> {
     const patient = await this.prisma.patient.findFirst({
       where: { id: input.patientId, branchId, deletedAt: null },
     });
@@ -109,6 +120,7 @@ export class OpdService {
       // Inside the transaction so a failed bill does not leave an orphan case.
       const caseId = await resolveCaseId(tx, this.sequence, branchId, input.patientId, {
         caseNo: input.caseNo,
+        caseId: opts.caseId,
       });
 
       // Generate the OPD bill through the shared invoice engine.

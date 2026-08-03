@@ -261,11 +261,23 @@ ending before it began — now rejected.
 
 ---
 
-## Phase N1 — Appointment → OPD conversion
+## Phase N1 — Appointment → OPD conversion — DONE
 
 **Blueprint:** §9.1 (`QUEUE → OPD`), state machine §9.3
 (`Approved → Consumed: converted to OPD visit`).
-**Status:** missing. No conversion action exists in the API or the UI.
+**Status:** ~~missing~~ — done.
+
+`POST /appointments/:id/convert-to-opd` creates the visit and stamps the
+appointment `consumed` + `opdVisitId` in one call, so a dropped response cannot
+leave a booking that still looks convertible. `consumed` is a new terminal
+status, deliberately *not* in the set `PATCH /:id/status` accepts — it asserts a
+visit exists, so only the conversion may claim it. The appointment's case
+carries forward when it has one.
+
+The row action reuses `OpdForm` with a `fromAppointment` prop: patient locked,
+doctor/date/fee pre-filled, Save routed to the conversion endpoint. Present on
+both the appointment list and the queue; a consumed row links to its visit
+instead.
 
 Today an appointment is a dead end: the only way to turn it into a visit is to
 open OPD and re-enter everything. This is the flow break most visible to a

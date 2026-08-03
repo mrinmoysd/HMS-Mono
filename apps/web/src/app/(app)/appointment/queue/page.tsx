@@ -3,13 +3,16 @@
 import { PageHeader } from '@/components/ui/page-header';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, ArrowUp, ArrowDown, ListOrdered } from 'lucide-react';
+import { Search, ArrowUp, ArrowDown, ListOrdered, Stethoscope } from 'lucide-react';
 import type { QueueRow } from '@smart-hospital/shared';
 import { Button } from '@/components/ui/button';
 import { Field, Select, TextInput } from '@/components/ui/field';
 import { useDoctors } from '@/lib/hooks/use-clinical';
 import { useShifts, useDoctorShiftMatrix, useAvailableSlots } from '@/lib/hooks/use-appointment-setup';
 import { useQueue, useReorderQueue } from '@/lib/hooks/use-appointment';
+import { OpdForm } from '../../opd/opd-form';
+import { useToast } from '@/components/ui/toast';
+import { useAbility } from '@/lib/auth-store';
 
 const EMPTY: QueueRow[] = [];
 
@@ -18,6 +21,9 @@ export default function QueuePage() {
   const { data: shifts = [] } = useShifts();
   const { data: matrix } = useDoctorShiftMatrix();
   const reorder = useReorderQueue();
+  const toast = useToast();
+  const canAddOpd = useAbility().can('opd', 'add');
+  const [converting, setConverting] = useState<QueueRow | null>(null);
 
   const [doctorId, setDoctorId] = useState('');
   const [shiftId, setShiftId] = useState('');
@@ -92,12 +98,13 @@ export default function QueuePage() {
                 <th className="px-3 py-2.5 font-semibold">Phone</th>
                 <th className="px-3 py-2.5 font-semibold">Priority</th>
                 <th className="px-3 py-2.5 font-semibold">Status</th>
+                <th className="px-3 py-2.5 font-semibold">OPD</th>
                 <th className="px-3 py-2.5 text-right font-semibold">Order</th>
               </tr>
             </thead>
             <tbody>
-              {isLoading && <tr><td colSpan={7} className="px-3 py-8 text-center text-fg-muted">Loading…</td></tr>}
-              {!isLoading && ordered.length === 0 && <tr><td colSpan={7} className="px-3 py-10 text-center text-fg-muted">No patients in this queue</td></tr>}
+              {isLoading && <tr><td colSpan={8} className="px-3 py-8 text-center text-fg-muted">Loading…</td></tr>}
+              {!isLoading && ordered.length === 0 && <tr><td colSpan={8} className="px-3 py-10 text-center text-fg-muted">No patients in this queue</td></tr>}
               {ordered.map((r, i) => (
                 <tr key={r.id} className="border-b border-border/60 last:border-0">
                   <td className="px-3 py-2.5 tabular font-medium">{i + 1}</td>
@@ -106,6 +113,22 @@ export default function QueuePage() {
                   <td className="px-3 py-2.5">{r.phone ?? '—'}</td>
                   <td className="px-3 py-2.5">{r.priority}</td>
                   <td className="px-3 py-2.5 capitalize">{r.status}</td>
+                  {/* QUEUE → OPD (blueprint §9.1): the queue is where the front
+                      desk actually stands when the patient walks up. */}
+                  <td className="px-3 py-2.5">
+                    {r.status === 'consumed' && r.opdVisitId ? (
+                      <Link href={`/opd/${r.opdVisitId}`} className="text-primary hover:underline">Open visit</Link>
+                    ) : canAddOpd && r.status !== 'cancelled' ? (
+                      <button
+                        onClick={() => setConverting(r)}
+                        className="flex h-7 items-center gap-1 rounded-sm px-2 text-xs text-fg-muted hover:bg-primary/10 hover:text-primary"
+                      >
+                        <Stethoscope className="h-3.5 w-3.5" /> To OPD
+                      </button>
+                    ) : (
+                      <span className="text-fg-muted">—</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move up" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-border/50 disabled:opacity-30"><ArrowUp className="h-4 w-4" /></button>
@@ -117,6 +140,23 @@ export default function QueuePage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {converting && (
+        <OpdForm
+          open
+          onClose={() => setConverting(null)}
+          fromAppointment={{
+            id: converting.id,
+            apptNo: converting.apptNo,
+            patientId: converting.patientId,
+            patientName: converting.patientName,
+            doctorId: converting.doctorId,
+            apptDate: converting.apptDate,
+            fees: converting.fees,
+          }}
+          onConverted={(v) => toast.success(`${converting.apptNo} converted · ${v.opdNo}`)}
+        />
       )}
     </div>
   );

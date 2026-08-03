@@ -3,7 +3,7 @@
 import { Select } from '@/components/ui/field';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Printer, Users, ListOrdered, Menu as MenuIcon, CalendarClock } from 'lucide-react';
+import { Plus, Printer, Users, ListOrdered, Menu as MenuIcon, CalendarClock, Stethoscope } from 'lucide-react';
 import type { AppointmentDto, AppointmentTab } from '@smart-hospital/shared';
 import type { SortState } from '@/components/ui/data-table';
 import { DataTable, type Column } from '@/components/ui/data-table';
@@ -16,6 +16,8 @@ import type { ExportTable } from '@/lib/export';
 import { AppointmentForm, printAppointmentSlip } from './appointment-form';
 import { AppointmentDetailsModal } from './appointment-details-modal';
 import { RescheduleModal } from './reschedule-modal';
+import { OpdForm } from '../opd/opd-form';
+import { useToast } from '@/components/ui/toast';
 import { useAppointments, useSetAppointmentStatus } from '@/lib/hooks/use-clinical';
 import { useAbility } from '@/lib/auth-store';
 
@@ -29,6 +31,8 @@ export default function AppointmentPage() {
   const ability = useAbility();
   const canAdd = ability.can('appointment', 'add');
   const canEdit = ability.can('appointment', 'edit');
+  const canAddOpd = ability.can('opd', 'add');
+  const toast = useToast();
 
   const [tab, setTab] = useState<AppointmentTab>('today');
   const [search, setSearch] = useState('');
@@ -37,6 +41,7 @@ export default function AppointmentPage() {
   const [sort, setSort] = useState<SortState | undefined>();
   const [open, setOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [converting, setConverting] = useState<AppointmentDto | null>(null);
   const [rescheduleAppt, setRescheduleAppt] = useState<AppointmentDto | null>(null);
 
   const sortParam = sort ? `${sort.key}:${sort.dir}` : undefined;
@@ -143,10 +148,34 @@ export default function AppointmentPage() {
             <button onClick={() => printAppointmentSlip(a)} aria-label="Print slip" title="Print slip" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-border/50">
               <Printer className="h-4 w-4" />
             </button>
-            {canEdit && (
+            {canEdit && a.status !== 'consumed' && a.status !== 'cancelled' && (
               <button onClick={() => setRescheduleAppt(a)} aria-label="Reschedule" title="Reschedule" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary">
                 <CalendarClock className="h-4 w-4" />
               </button>
+            )}
+            {/* The blueprint's QUEUE → OPD edge (§9.1). A consumed appointment
+                links to the visit it became instead. */}
+            {a.status === 'consumed' && a.opdVisitId ? (
+              <Link
+                href={`/opd/${a.opdVisitId}`}
+                aria-label="Open OPD visit"
+                title="Open OPD visit"
+                className="flex h-7 items-center gap-1 rounded-sm px-2 text-xs text-primary hover:bg-primary/10"
+              >
+                <Stethoscope className="h-3.5 w-3.5" /> OPD
+              </Link>
+            ) : (
+              canAddOpd &&
+              a.status !== 'cancelled' && (
+                <button
+                  onClick={() => setConverting(a)}
+                  aria-label="Convert to OPD"
+                  title="Convert to OPD"
+                  className="flex h-7 items-center gap-1 rounded-sm px-2 text-xs text-fg-muted hover:bg-primary/10 hover:text-primary"
+                >
+                  <Stethoscope className="h-3.5 w-3.5" /> To OPD
+                </button>
+              )
             )}
           </>
         )}
@@ -155,6 +184,23 @@ export default function AppointmentPage() {
       <AppointmentForm open={open} onClose={() => setOpen(false)} />
       <AppointmentDetailsModal id={detailId} open={!!detailId} onClose={() => setDetailId(null)} />
       <RescheduleModal appt={rescheduleAppt} open={!!rescheduleAppt} onClose={() => setRescheduleAppt(null)} />
+
+      {converting && (
+        <OpdForm
+          open
+          onClose={() => setConverting(null)}
+          fromAppointment={{
+            id: converting.id,
+            apptNo: converting.apptNo,
+            patientId: converting.patientId,
+            patientName: converting.patientName,
+            doctorId: converting.doctorId,
+            apptDate: converting.apptDate,
+            fees: converting.fees,
+          }}
+          onConverted={(v) => toast.success(`${converting.apptNo} converted · ${v.opdNo}`)}
+        />
+      )}
     </div>
   );
 }

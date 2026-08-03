@@ -8,5 +8,6 @@ import { OpdService } from './opd.service';
   imports: [BillingModule, IpdModule], // shared InvoiceService + IpdService for move-to-ipd
   controllers: [OpdController],
   providers: [OpdService],
+  exports: [OpdService], // AppointmentService converts an appointment into a visit
 })
 export class OpdModule {}

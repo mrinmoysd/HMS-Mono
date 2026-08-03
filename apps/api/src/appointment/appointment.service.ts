@@ -1,11 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type {
   AppointmentDetailDto,
   AppointmentDto,
   AppointmentInput,
   AppointmentTab,
+  ConvertToOpdInput,
   DoctorWiseRow,
+  OpdVisitDto,
   ListQuery,
   Paginated,
   QueueRow,
@@ -14,6 +16,7 @@ import type {
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit/audit.service';
 import { SequenceService } from '../common/sequence/sequence.service';
+import { OpdService } from '../opd/opd.service';
 import { paginate, toPrismaPage } from '../common/pagination';
 import { startOfToday, endOfToday } from '../common/dates';
 import type { RequestUser } from '../common/types/request-user';
@@ -32,6 +35,7 @@ export class AppointmentService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly sequence: SequenceService,
+    private readonly opd: OpdService,
   ) {}
 
   async list(
@@ -137,6 +141,55 @@ export class AppointmentService {
     await this.audit.record({ branchId, userId: user.id, action: 'delete', entity: 'appointment', entityId: id });
   }
 
+  /**
+   * Convert an appointment into an OPD visit (blueprint §9.1 QUEUE → OPD,
+   * §9.3 Approved → Consumed).
+   *
+   * Not two calls from the browser: the visit and the appointment's terminal
+   * state have to move together, or a failed second request leaves an
+   * appointment that looks bookable while its visit already exists.
+   *
+   * The appointment's case carries forward when it has one, so the booking and
+   * the visit it produced stay one episode rather than two cases for what the
+   * patient experienced as a single trip.
+   */
+  async convertToOpd(
+    user: RequestUser,
+    branchId: string,
+    id: string,
+    input: ConvertToOpdInput,
+  ): Promise<OpdVisitDto> {
+    const appt = await this.prisma.appointment.findFirst({
+      where: { id, branchId, deletedAt: null },
+    });
+    if (!appt) throw new NotFoundException('Appointment not found');
+    if (appt.status === 'consumed') throw new BadRequestException('Appointment is already converted');
+    if (appt.status === 'cancelled') throw new BadRequestException('Appointment is cancelled');
+
+    // The patient is the appointment's, never the caller's — see
+    // `convertToOpdSchema`, which omits patientId for this reason.
+    const visit = await this.opd.create(
+      user,
+      branchId,
+      { ...input, patientId: appt.patientId },
+      { caseId: appt.caseId ?? undefined },
+    );
+
+    await this.prisma.appointment.update({
+      where: { id },
+      data: { status: 'consumed', opdVisitId: visit.id },
+    });
+    await this.audit.record({
+      branchId,
+      userId: user.id,
+      action: 'convert_to_opd',
+      entity: 'appointment',
+      entityId: id,
+      after: { opdVisitId: visit.id },
+    });
+    return visit;
+  }
+
   // ── A2: detail ─────────────────────────────────────────────
   async get(branchId: string, id: string): Promise<AppointmentDetailDto> {
     const a = await this.prisma.appointment.findFirst({
@@ -237,6 +290,10 @@ export class AppointmentService {
       phone: r.patient.phone,
       priority: r.priority,
       status: r.status,
+      doctorId: r.doctorId,
+      apptDate: r.apptDate.toISOString(),
+      fees: Number(r.fees),
+      opdVisitId: r.opdVisitId,
     }));
   }
 
@@ -312,6 +369,7 @@ function toDto(a: Row, createdByName: string | null): AppointmentDto {
     paymentMode: a.paymentMode,
     liveConsult: a.liveConsult,
     status: a.status,
+    opdVisitId: a.opdVisitId,
     alternateAddress: a.alternateAddress,
     message: a.message,
     createdByName,

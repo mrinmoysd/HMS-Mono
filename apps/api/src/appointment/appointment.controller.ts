@@ -12,14 +12,16 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
-  APPOINTMENT_STATUSES,
+  APPOINTMENT_EDITABLE_STATUSES,
   APPOINTMENT_TABS,
   appointmentSchema,
+  convertToOpdSchema,
   listQuerySchema,
   reorderQueueSchema,
   rescheduleAppointmentSchema,
   type AppointmentInput,
   type AppointmentTab,
+  type ConvertToOpdInput,
   type ListQuery,
   type ReorderQueueInput,
   type RescheduleAppointmentInput,
@@ -32,7 +34,9 @@ import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import type { RequestUser } from '../common/types/request-user';
 
-const statusSchema = z.object({ status: z.enum(APPOINTMENT_STATUSES) });
+// Deliberately the *editable* set, not APPOINTMENT_STATUSES: `consumed` claims
+// an OPD visit exists, so only the conversion endpoint may set it.
+const statusSchema = z.object({ status: z.enum(APPOINTMENT_EDITABLE_STATUSES) });
 
 @ApiTags('appointment')
 @ApiBearerAuth()
@@ -116,6 +120,22 @@ export class AppointmentController {
     @Body(new ZodValidationPipe(statusSchema)) body: { status: string },
   ) {
     return this.appointments.setStatus(user, branchId, id, body.status);
+  }
+
+  /**
+   * Needs `opd:add`, not `appointment:edit` — the meaningful thing this does is
+   * create an OPD visit and bill it. A receptionist who may reschedule an
+   * appointment is not thereby allowed to open an encounter.
+   */
+  @Post(':id/convert-to-opd')
+  @RequirePermission('opd', 'add')
+  convertToOpd(
+    @CurrentUser() user: RequestUser,
+    @BranchId() branchId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(convertToOpdSchema)) body: ConvertToOpdInput,
+  ) {
+    return this.appointments.convertToOpd(user, branchId, id, body);
   }
 
   @Delete(':id')

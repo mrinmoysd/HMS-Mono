@@ -4,7 +4,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   AppointmentDetailDto,
   AppointmentDto,
+  ConvertToOpdInput,
   DoctorWiseRow,
+  OpdVisitDto,
   QueueRow,
   RescheduleAppointmentInput,
 } from '@smart-hospital/shared';
@@ -24,6 +26,24 @@ export function useRescheduleAppointment() {
     mutationFn: ({ id, input }: { id: string; input: RescheduleAppointmentInput }) =>
       api.patch<AppointmentDto>(`/appointments/${id}`, input),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['appointments'] }),
+  });
+}
+
+/**
+ * Convert an appointment into an OPD visit (blueprint §9.1). One call: the
+ * server creates the visit and marks the appointment consumed together, so a
+ * dropped response cannot leave a booking that still looks convertible.
+ */
+export function useConvertToOpd() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: ConvertToOpdInput }) =>
+      api.post<OpdVisitDto>(`/appointments/${id}/convert-to-opd`, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['appointments'] });
+      qc.invalidateQueries({ queryKey: ['appointment-queue'] });
+      qc.invalidateQueries({ queryKey: ['opd'] });
+    },
   });
 }
 

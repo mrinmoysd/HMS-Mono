@@ -116,7 +116,7 @@ export class PortalService {
       patientGender: p.gender, caseNo: a.case?.caseNo ?? null, doctorId: a.doctorId, doctorName: a.doctor.name,
       apptDate: a.apptDate.toISOString(), shift: a.shift, slot: a.slot, fees: Number(a.fees),
       discountPct: Number(a.discountPct), paid: Number(a.paid), priority: a.priority, source: a.source,
-      paymentMode: a.paymentMode, liveConsult: a.liveConsult, status: a.status,
+      paymentMode: a.paymentMode, liveConsult: a.liveConsult, status: a.status, opdVisitId: a.opdVisitId,
       alternateAddress: a.alternateAddress, message: a.message, createdByName: null,
     }));
   }
@@ -138,6 +138,7 @@ export class PortalService {
       patientGender: p.gender, caseNo: a.case?.caseNo ?? null, doctorId: a.doctorId, doctorName: a.doctor.name,
       apptDate: a.apptDate.toISOString(), shift: null, slot: null, fees: 0, discountPct: 0, paid: 0,
       priority: 'normal', source: 'portal', paymentMode: 'cash', liveConsult: false, status: 'pending',
+      opdVisitId: null,
       alternateAddress: null, message: a.message, createdByName: null,
     };
   }

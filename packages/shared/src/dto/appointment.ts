@@ -1,7 +1,16 @@
 import { z } from 'zod';
+import { opdVisitSchema } from './opd';
 
 export const APPOINTMENT_PRIORITIES = ['normal', 'urgent', 'vip'] as const;
-export const APPOINTMENT_STATUSES = ['pending', 'approved', 'cancelled', 'completed'] as const;
+/**
+ * `consumed` is terminal and set only by the conversion action (§9.3) — it is
+ * deliberately not offered on the Add/Edit form, because it asserts that an OPD
+ * visit exists. `completed` stays hand-settable and means "the patient was
+ * seen"; the two are not the same claim.
+ */
+export const APPOINTMENT_STATUSES = ['pending', 'approved', 'cancelled', 'completed', 'consumed'] as const;
+/** Statuses a user may pick by hand on the appointment form. */
+export const APPOINTMENT_EDITABLE_STATUSES = ['pending', 'approved', 'cancelled', 'completed'] as const;
 export const APPOINTMENT_TABS = ['today', 'upcoming', 'old'] as const;
 export type AppointmentTab = (typeof APPOINTMENT_TABS)[number];
 
@@ -48,10 +57,21 @@ export interface AppointmentDto {
   paymentMode: string;
   liveConsult: boolean;
   status: string;
+  /** Set once converted — the OPD visit this appointment became. */
+  opdVisitId: string | null;
   alternateAddress: string | null;
   message: string | null;
   createdByName: string | null;
 }
+
+/**
+ * Convert an appointment into an OPD visit (blueprint §9.1 QUEUE → OPD).
+ * Deliberately the full OPD visit body minus `patientId`: the patient comes
+ * from the appointment and must not be overridable, or "convert" would become
+ * "create a visit for somebody else".
+ */
+export const convertToOpdSchema = opdVisitSchema.omit({ patientId: true });
+export type ConvertToOpdInput = z.infer<typeof convertToOpdSchema>;
 
 // ── A2: detail, reschedule, doctor-wise, queue ────────────────
 export interface AppointmentDetailDto extends AppointmentDto {
@@ -99,6 +119,11 @@ export interface QueueRow {
   phone: string | null;
   priority: string;
   status: string;
+  /** The three below exist so the queue can convert a row without a second fetch. */
+  doctorId: string;
+  apptDate: string;
+  fees: number;
+  opdVisitId: string | null;
 }
 
 export const reorderQueueSchema = z.object({

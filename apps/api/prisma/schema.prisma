@@ -540,7 +540,13 @@ model Appointment {
   source           String?
   paymentMode      String   @default("cash")
   liveConsult      Boolean  @default(false)
-  status           String   @default("pending") // pending | approved | cancelled | completed
+  /// pending | approved | cancelled | completed | consumed.
+  /// `consumed` is the blueprint's terminal state (§9.3): the appointment
+  /// became an OPD visit, and `opdVisitId` says which one. Distinct from
+  /// `completed`, which someone sets by hand to mean "the patient was seen".
+  status           String   @default("pending")
+  /// Set with `status = consumed` — the visit this appointment turned into.
+  opdVisitId       String?  @db.Uuid
   message          String?
   alternateAddress String?
   // Surfaced on the Appointment Details screen alongside Payment Mode.

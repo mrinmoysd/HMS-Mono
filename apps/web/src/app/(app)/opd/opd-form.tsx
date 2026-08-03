@@ -2,7 +2,7 @@
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { useEffect, useState } from 'react';
-import { computeInvoiceTotals, opdVisitSchema } from '@smart-hospital/shared';
+import { computeInvoiceTotals, opdVisitSchema, type OpdVisitDto } from '@smart-hospital/shared';
 import { FormDrawer } from '@/components/ui/form-drawer';
 import { Button } from '@/components/ui/button';
 import { Field, TextInput, TextArea, Select } from '@/components/ui/field';
@@ -11,24 +11,48 @@ import { PatientInfoCard } from '@/components/emr/patient-info-card';
 import { ChargeLineEditor, type ChargeLine } from '@/components/charge-line-editor';
 import { SymptomsBlock } from '@/components/emr/symptoms-block';
 import { useDoctors, useCreateOpdVisit } from '@/lib/hooks/use-clinical';
+import { useConvertToOpd } from '@/lib/hooks/use-appointment';
 import { useCharges } from '@/lib/hooks/use-masters';
 import { ApiRequestError } from '@/lib/api';
 import { printOpdVisitSlip } from '@/lib/print';
+
+/**
+ * The appointment being converted (blueprint §9.1 QUEUE → OPD). Its presence
+ * turns this form into the conversion form: the patient is fixed, the doctor,
+ * date and fee are pre-filled from the booking, and Save posts to the
+ * conversion endpoint so the visit and the appointment's terminal state move
+ * together.
+ */
+export interface ConvertSource {
+  id: string;
+  apptNo: string;
+  patientId: string;
+  patientName: string;
+  doctorId: string;
+  apptDate: string;
+  fees: number;
+}
 
 export function OpdForm({
   open,
   onClose,
   initialPatientId = '',
   initialPatientLabel = '',
+  fromAppointment,
+  onConverted,
 }: {
   open: boolean;
   onClose: () => void;
   initialPatientId?: string;
   initialPatientLabel?: string;
+  fromAppointment?: ConvertSource;
+  onConverted?: (visit: OpdVisitDto) => void;
 }) {
   const { data: doctors = [] } = useDoctors();
   const { data: chargeData } = useCharges({ size: 100, module: 'opd' });
   const create = useCreateOpdVisit();
+  const convert = useConvertToOpd();
+  const saving = fromAppointment ? convert.isPending : create.isPending;
 
   const [patientId, setPatientId] = useState(initialPatientId);
   const [patientLabel, setPatientLabel] = useState(initialPatientLabel);
@@ -64,6 +88,30 @@ export function OpdForm({
   const [payMode, setPayMode] = useState('cash');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState<string | null>(null);
+
+  // Prefill from the appointment. The fee becomes the first charge line so the
+  // visit bills what the patient was quoted at booking; it stays editable,
+  // because what was quoted and what is owed are not always the same by the
+  // time the patient is in the chair.
+  useEffect(() => {
+    if (!open || !fromAppointment) return;
+    setPatientId(fromAppointment.patientId);
+    setPatientLabel(fromAppointment.patientName);
+    setConsultantId(fromAppointment.doctorId);
+    setDate(toLocalInput(fromAppointment.apptDate));
+    if (fromAppointment.fees > 0) {
+      setLines([
+        {
+          name: `Consultation (${fromAppointment.apptNo})`,
+          appliedCharge: fromAppointment.fees,
+          standardCharge: fromAppointment.fees,
+          qty: 1,
+          discountPct: 0,
+          taxPct: 0,
+        },
+      ]);
+    }
+  }, [open, fromAppointment]);
 
   const net = computeInvoiceTotals(lines.filter((l) => l.name)).netAmount;
 
@@ -126,8 +174,14 @@ export function OpdForm({
       return;
     }
     try {
-      const visit = await create.mutateAsync(parsed.data);
+      // Converting posts the same body minus patientId — the appointment owns
+      // the patient, and the endpoint would ignore ours anyway.
+      const { patientId: _patientId, ...rest } = parsed.data;
+      const visit = fromAppointment
+        ? await convert.mutateAsync({ id: fromAppointment.id, input: rest })
+        : await create.mutateAsync(parsed.data);
       if (print) printOpdVisitSlip(visit);
+      if (fromAppointment) onConverted?.(visit);
       reset();
       onClose();
     } catch (err) {
@@ -138,13 +192,13 @@ export function OpdForm({
   return (
     <FormDrawer
       open={open}
-      title="Add OPD Patient"
+      title={fromAppointment ? `Convert ${fromAppointment.apptNo} to OPD` : 'Add OPD Patient'}
       onClose={onClose}
       onSubmit={() => submit(false)}
-      submitting={create.isPending}
+      submitting={saving}
       wide
       extraActions={
-        <Button type="button" variant="secondary" onClick={() => submit(true)} loading={create.isPending}>
+        <Button type="button" variant="secondary" onClick={() => submit(true)} loading={saving}>
           Save &amp; Print
         </Button>
       }
@@ -155,16 +209,25 @@ export function OpdForm({
         </p>
       )}
       <div className="space-y-4">
-        <Field label="Patient" required error={errors.patientId}>
-          <PatientSelect
-            value={patientId}
-            selectedLabel={patientLabel}
-            onChange={(id, label) => {
-              setPatientId(id);
-              setPatientLabel(label);
-            }}
-          />
-        </Field>
+        {fromAppointment ? (
+          <Field label="Patient">
+            <div className="rounded-sm border border-border bg-surface-sunken px-3 py-2 text-sm">
+              {fromAppointment.patientName}
+              <span className="ml-2 text-fg-muted">from {fromAppointment.apptNo}</span>
+            </div>
+          </Field>
+        ) : (
+          <Field label="Patient" required error={errors.patientId}>
+            <PatientSelect
+              value={patientId}
+              selectedLabel={patientLabel}
+              onChange={(id, label) => {
+                setPatientId(id);
+                setPatientLabel(label);
+              }}
+            />
+          </Field>
+        )}
 
         {patientId && <PatientInfoCard patientId={patientId} />}
 
@@ -245,6 +308,13 @@ export function OpdForm({
  * `yyyy-mm-ddThh:mm` for now, in local time. Never toISOString — that is UTC
  * and lands the visit on the wrong day either side of midnight.
  */
+/** ISO instant → `yyyy-mm-ddThh:mm` in local time, for a datetime-local input. */
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 function localNow(): string {
   const d = new Date();
   const p = (n: number) => String(n).padStart(2, '0');
