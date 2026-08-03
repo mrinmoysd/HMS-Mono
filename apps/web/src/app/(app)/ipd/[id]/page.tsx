@@ -172,7 +172,7 @@ export default function IpdDetailPage() {
           </div>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="rounded-md border border-border bg-surface p-5"><ConsultantRegisterTab scope={scope} canEdit={canEditClinical} /></div>
-            <div className="rounded-md border border-border bg-surface p-5"><BedHistoryTab admissionId={id} canEdit={canEdit} /></div>
+            <div className="rounded-md border border-border bg-surface p-5"><BedHistoryTab admissionId={id} canEdit={canEdit && admission?.status === 'admitted'} /></div>
           </div>
         </div>
       )}
@@ -183,7 +183,7 @@ export default function IpdDetailPage() {
       {tab === 'medication' && <MedicationTab scope={scope} canEdit={canEditClinical} mar />}
       {tab === 'operations' && <OperationsTab scope={scope} canEdit={canEditClinical} />}
       {tab === 'liveconsult' && <LiveConsultTab scope={scope} canEdit={canEditClinical} />}
-      {tab === 'bedhistory' && <BedHistoryTab admissionId={id} canEdit={canEdit} />}
+      {tab === 'bedhistory' && <BedHistoryTab admissionId={id} canEdit={canEdit && admission?.status === 'admitted'} />}
       {tab === 'charges' && <ChargesTab type="ipd" id={id} data={data} canEdit={canEdit} />}
       {tab === 'payments' && <PaymentsTab type="ipd" id={id} data={data} canEdit={canEdit} />}
       {tab === 'timeline' && <TimelineTab patientId={h.patientId} entries={profile?.timeline ?? []} canEdit={canEditClinical} />}

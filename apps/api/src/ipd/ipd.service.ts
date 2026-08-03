@@ -131,7 +131,7 @@ export class IpdService {
       // a bed; the money starts on the Charges tab once treatment does.
 
       const ipdNo = await this.sequence.next(branchId, 'ipd', tx);
-      return tx.ipdAdmission.create({
+      const created = await tx.ipdAdmission.create({
         data: {
           branchId,
           ipdNo,
@@ -160,6 +160,23 @@ export class IpdService {
         },
         include,
       });
+
+      // Open the first bed occupancy (rule #8). The log starts at admission,
+      // not at the first transfer — otherwise an untransferred patient has no
+      // record of where they were.
+      await tx.bedHistory.create({
+        data: {
+          branchId,
+          ipdAdmissionId: created.id,
+          bedId: bed.id,
+          bedLabel: `${created.bed.bedGroup.name} · ${created.bed.bedNo}`,
+          fromDate: input.admissionDate,
+          active: true,
+          createdById: user.id,
+        },
+      });
+
+      return created;
     });
 
     await this.audit.record({ branchId, userId: user.id, action: 'create', entity: 'ipd', entityId: admission.id });
@@ -225,7 +242,19 @@ export class IpdService {
       const existing = await tx.ipdAdmission.findFirst({ where: { id, branchId, deletedAt: null } });
       if (!existing) throw new NotFoundException('Admission not found');
       if (existing.status === 'discharged') throw new BadRequestException('Already discharged');
+      // Backdating is expected; backdating past the admission is not. It would
+      // write a bed occupancy that ends before it starts.
+      if (input.dischargeDate < existing.admissionDate) {
+        throw new BadRequestException('Discharge date cannot be before the admission date');
+      }
       await tx.bed.update({ where: { id: existing.bedId }, data: { status: 'available' } });
+
+      // Close the open occupancy at the discharge date (rule #8). Without this
+      // the log keeps claiming the patient is still in the bed.
+      await tx.bedHistory.updateMany({
+        where: { branchId, ipdAdmissionId: id, active: true },
+        data: { toDate: input.dischargeDate, active: false },
+      });
 
       // Blueprint §8.5 step 5 / rule #7: a death discharge marks the patient
       // deceased. That flag is what stops the Patient list offering to start a
@@ -265,18 +294,25 @@ export class IpdService {
     return this.toDto(branchId, admission, names);
   }
 
-  /** Bed occupancy history for an admission (synthesises the current bed if no transfers yet). */
+  /**
+   * Bed occupancy log for an admission. Every row is a real record now —
+   * admission opens one, each transfer closes and opens one, discharge closes
+   * the last. It used to synthesise a row from the admission's *current* bed
+   * when no transfer existed, which quietly reported the wrong bed for the
+   * early part of any stay that later moved.
+   */
   async bedHistory(branchId: string, admissionId: string): Promise<BedHistoryRow[]> {
-    const rows = await this.prisma.bedTransfer.findMany({
+    const rows = await this.prisma.bedHistory.findMany({
       where: { branchId, ipdAdmissionId: admissionId },
       orderBy: { fromDate: 'asc' },
     });
-    if (rows.length > 0) {
-      return rows.map((r) => ({ id: r.id, bedLabel: r.bedLabel, fromDate: r.fromDate.toISOString(), toDate: r.toDate ? r.toDate.toISOString() : null, active: r.active }));
-    }
-    const a = await this.prisma.ipdAdmission.findFirst({ where: { id: admissionId, branchId, deletedAt: null }, include });
-    if (!a) throw new NotFoundException('Admission not found');
-    return [{ id: 'current', bedLabel: `${a.bed.bedGroup.name} · ${a.bed.bedNo}`, fromDate: a.admissionDate.toISOString(), active: a.status === 'admitted', toDate: a.dischargeDate ? a.dischargeDate.toISOString() : null }];
+    return rows.map((r) => ({
+      id: r.id,
+      bedLabel: r.bedLabel,
+      fromDate: r.fromDate.toISOString(),
+      toDate: r.toDate ? r.toDate.toISOString() : null,
+      active: r.active,
+    }));
   }
 
   /** Transfer a bed: close the current occupancy, open the new one, flip bed statuses. */
@@ -292,16 +328,18 @@ export class IpdService {
       if (newBed.status === 'allotted') throw new BadRequestException('Bed is already allotted');
 
       const now = new Date();
-      const active = await tx.bedTransfer.findFirst({ where: { branchId, ipdAdmissionId: admissionId, active: true } });
-      if (active) {
-        await tx.bedTransfer.update({ where: { id: active.id }, data: { toDate: now, active: false } });
+      // Admission always opens an occupancy, so there is normally one to close.
+      // The fallback covers a row that somehow lost its open occupancy — better
+      // to record the stretch we can infer than to leave a gap in the log.
+      const open = await tx.bedHistory.findFirst({ where: { branchId, ipdAdmissionId: admissionId, active: true } });
+      if (open) {
+        await tx.bedHistory.update({ where: { id: open.id }, data: { toDate: now, active: false } });
       } else {
-        // No history yet — record the current bed as the (now-closed) first occupancy.
-        await tx.bedTransfer.create({
+        await tx.bedHistory.create({
           data: { branchId, ipdAdmissionId: admissionId, bedId: a.bedId, bedLabel: `${a.bed.bedGroup.name} · ${a.bed.bedNo}`, fromDate: a.admissionDate, toDate: now, active: false, createdById: user.id },
         });
       }
-      await tx.bedTransfer.create({
+      await tx.bedHistory.create({
         data: { branchId, ipdAdmissionId: admissionId, bedId, bedLabel: `${newBed.bedGroup.name} · ${newBed.bedNo}`, fromDate: now, active: true, createdById: user.id },
       });
       await tx.bed.update({ where: { id: a.bedId }, data: { status: 'available' } });

@@ -204,18 +204,27 @@ Bed release *does* work (`ipd.service.ts:219`).
 
 ---
 
-## Phase I2 — Bed History is fabricated
+## Phase I2 — Bed History is fabricated — DONE
 
 **Blueprint:** §8.3 tab 11, rule #8 "Bed History is append-only".
-**Status:** synthesised at read time.
+**Status:** ~~synthesised at read time~~ — done.
 
-`ipd.service.ts:242` returns a single row built from the admission's *current*
-bed. The transfer path (lines 270-271) flips two bed statuses and writes no
-history. So every transfer silently erases the previous occupancy.
+The audit was half right. `bed_transfer` did exist and the transfer path *did*
+write to it, so a transfer was not erasing anything. What was actually broken:
 
-**Fix:** a real `BedHistory` table written on admission, on transfer (close the
-old row with `toDate` + `active=false`, open a new one) and on discharge.
-Backfill one row per existing admission.
+- **Admission wrote nothing**, so an untransferred stay had no record at all and
+  the read path synthesised a row from the admission's *current* bed. Harmless
+  until the patient moved, at which point the synthesis silently reported the
+  new bed for the whole stay.
+- **Discharge wrote nothing**, so a transferred-then-discharged patient kept an
+  open occupancy claiming they were still in the bed.
+
+**Done:** `bed_transfer` renamed to `bed_history` (the admission and discharge
+rows are not transfers), written on admission, on transfer and on discharge;
+read path returns real rows only; existing data backfilled and unclosed
+occupancies stamped with their discharge date. The dry-run also turned up that
+`discharge` accepted a date *before* the admission, which wrote an occupancy
+ending before it began — now rejected.
 
 ---
 

@@ -2419,11 +2419,21 @@ model ConsultantRegister {
   @@map("consultant_register")
 }
 
-model BedTransfer {
+/// Append-only bed occupancy log (blueprint rule #8). One row per stretch the
+/// patient spent in a bed: opened on admission, closed and reopened on every
+/// transfer, closed on discharge. Rows are never updated except to stamp
+/// `toDate`/`active` when the occupancy ends, and never deleted — the previous
+/// occupancy is the record of where the patient actually was.
+///
+/// Named BedTransfer until it also covered the admission and discharge rows,
+/// which are not transfers.
+model BedHistory {
   id             String    @id @default(uuid()) @db.Uuid
   branchId       String    @db.Uuid
   ipdAdmissionId String    @db.Uuid
   bedId          String    @db.Uuid
+  /// Denormalised "Group · BedNo" as it read at the time. Renaming a bed group
+  /// later must not rewrite where a discharged patient was recorded as lying.
   bedLabel       String
   fromDate       DateTime  @default(now())
   toDate         DateTime?
@@ -2432,7 +2442,7 @@ model BedTransfer {
   createdAt      DateTime  @default(now())
 
   @@index([branchId, ipdAdmissionId])
-  @@map("bed_transfer")
+  @@map("bed_history")
 }
 
 // ── Phase A0: Appointment scheduling masters ──
