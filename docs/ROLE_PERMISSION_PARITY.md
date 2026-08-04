@@ -666,10 +666,12 @@ features, preserving module keys as the group layer.
    `['add','delete']` with no `view`; every other row includes `view`.
 2. Transcribe section 6 into `DEFAULT_GRANTS: Record<RoleKey, Record<FeatureKey, number>>`
    using the hex encoding directly — it is compact and diffable against the spec.
-3. Migration: expand `permission` from 116 to 751 rows, and rewrite
-   `role_permission` from the hex table. Keep module-level keys as derived
-   (`opd:view` = OR over the OPD group) so existing `@RequirePermission('opd','view')`
-   call sites keep working during the transition.
+3. Migration: **add** the 751 feature rows to `permission` and seed
+   `role_permission` for them, leaving the existing 116 module rows in place.
+   Module keys are derived at read time (`opd:view` = OR over the OPD group) so
+   existing `@RequirePermission('opd','view')` call sites keep working during
+   the transition. The module rows are retired per-module in R1, not replaced
+   here — see the R0 finding below for why replacing them would escalate.
 4. `Ability` gains `canFeature(featureKey, action)` alongside today's `can()`.
 
 **Verification:** assert the seeded matrix reproduces section 5's counts exactly
@@ -677,11 +679,46 @@ features, preserving module keys as the group layer.
 (OPD 13, IPD 15, Reports 4, …). That table is a checksum on the transcription,
 and it will catch a mistyped hex digit.
 
+### R0 finding — the rollup must never be persisted
+
+Building R0.3 turned up a defect in this plan's original ordering, worth
+recording because it would have shipped as a privilege escalation.
+
+`deriveModulePermissions` ORs a group's features up to `module:action`, which is
+what keeps today's call sites working. But a nurse holds `delete` on OPD
+Timeline, OPD Medication and Nurse Note — so the rollup yields `opd:delete` and
+`ipd:delete`, and *that* is the key guarding `DELETE /opd/:id`, the entire
+visit. On the encounter row itself the nurse holds view and nothing else.
+
+So the rollup is sound as a **read-time compatibility shim** and unsound as
+**stored state**. R0.4 as first written — "rewrite role_permission from the hex
+table" — would have granted every nurse the ability to delete visits and
+admissions.
+
+**The order is therefore R1 before R0.4**, and R0.4 loses the reseed:
+
+- Migrate call sites to feature keys first, so the precise check is the one
+  being enforced.
+- Only once a module has no module-level call sites left may its module rows be
+  retired.
+- `role_permission` keeps its current module rows untouched until then.
+
+Locked in by `ability.test.ts`, "the rollup over-grants delete on encounter
+modules", which asserts the divergence rather than papering over it.
+
+A second finding, benign: the rollup yields 102 keys for super_admin, not 116.
+Dashboard, Reports, Multi Branch and QR Attendance are view-only across every
+feature, and Billing has no edit or delete anywhere. No controller guards any of
+those 14 absent pairs, so nothing fails closed — but a future call site needing
+one has to change the feature table, not the guard.
+
 ## Phase R1 — Migrate call sites to feature keys
 
 Re-decorate the 383 guarded handlers from module granularity to feature
 granularity. Mechanical but large; do it module by module, following the same
 order as the blueprint work (OPD, IPD, Patient, Appointment first).
+
+**Runs before R0.4** — see the finding above.
 
 ## Phase R2 — The permission editor
 
