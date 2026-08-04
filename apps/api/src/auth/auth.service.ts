@@ -36,7 +36,10 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
-    const permissions = await this.permissions.permissionKeysForRole(user.roleId);
+    const [permissions, features] = await Promise.all([
+      this.permissions.permissionKeysForRole(user.roleId),
+      this.permissions.featureKeysForRole(user.roleId),
+    ]);
     const authUser: AuthUser = {
       id: user.id,
       username: user.username,
@@ -47,6 +50,7 @@ export class AuthService {
       roleLabel: user.role.label,
       branchId: user.branchId,
       permissions,
+      features,
     };
 
     const tokens = await this.issueTokens({

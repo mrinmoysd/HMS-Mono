@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { Ability, type AuthUser, type PermissionKey } from '@smart-hospital/shared';
+import { Ability, type AuthUser, type FeaturePermissionKey, type PermissionKey } from '@smart-hospital/shared';
 
 interface AuthState {
   user: AuthUser | null;
@@ -49,5 +49,12 @@ export const useAuthStore = create<AuthState>()(
 /** Build the client-side ability from the logged-in user's permissions. */
 export function useAbility(): Ability {
   const user = useAuthStore((s) => s.user);
-  return new Ability((user?.permissions ?? []) as PermissionKey[]);
+  // Both levels. `features` drives canFeature() for modules migrated in R1;
+  // `permissions` still drives the sidebar and every unmigrated module. Passing
+  // only the module keys would leave newly-granted abilities unreachable — a
+  // receptionist may now register a patient, but would never see the button.
+  return new Ability(
+    (user?.permissions ?? []) as PermissionKey[],
+    (user?.features ?? []) as FeaturePermissionKey[],
+  );
 }

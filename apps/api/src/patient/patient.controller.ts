@@ -26,7 +26,7 @@ import {
   type UpdatePatientInput,
 } from '@smart-hospital/shared';
 import { PatientService } from './patient.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -39,14 +39,19 @@ export class PatientController {
   constructor(private readonly patients: PatientService) {}
 
   @Get()
-  @RequirePermission('patient', 'view')
+  // ?disabled=true selects the Disabled Patient list, which the spec models as
+  // its own view-only feature (patient.enabled_disabled, Admin/Accountant/
+  // Doctor). The guard cannot read the query param, so that narrower list is
+  // not separately gated here — same limitation as the IPD tabs, recorded
+  // rather than faked.
+  @RequireFeature('patient.patient', 'view')
   list(@BranchId() branchId: string, @Query(new ZodValidationPipe(patientListQuerySchema)) query: PatientListQuery) {
     return this.patients.list(branchId, query);
   }
 
   // Declared before ':id' so the literal route wins over the UUID param.
   @Get('lookup')
-  @RequirePermission('patient', 'view')
+  @RequireFeature('patient.patient', 'view')
   lookup(
     @BranchId() branchId: string,
     @Query(new ZodValidationPipe(phoneLookupQuerySchema)) query: PhoneLookupQuery,
@@ -55,13 +60,13 @@ export class PatientController {
   }
 
   @Get(':id')
-  @RequirePermission('patient', 'view')
+  @RequireFeature('patient.patient', 'view')
   get(@BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.patients.get(branchId, id);
   }
 
   @Post()
-  @RequirePermission('patient', 'add')
+  @RequireFeature('patient.patient', 'add')
   create(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -72,7 +77,10 @@ export class PatientController {
 
   @Post('import')
   @HttpCode(200)
-  @RequirePermission('patient', 'add')
+  // Import is its own feature, `10000000` — Admin alone, and view is its only
+  // toggle. Bulk-loading the patient register is not the same act as adding one
+  // patient, so Accountant, Doctor and Receptionist lose it.
+  @RequireFeature('patient.import', 'view')
   import(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -82,7 +90,7 @@ export class PatientController {
   }
 
   @Patch(':id')
-  @RequirePermission('patient', 'edit')
+  @RequireFeature('patient.patient', 'edit')
   update(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -94,7 +102,7 @@ export class PatientController {
 
   @Delete('bulk')
   @HttpCode(200)
-  @RequirePermission('patient', 'delete')
+  @RequireFeature('patient.patient', 'delete')
   bulkRemove(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -105,7 +113,7 @@ export class PatientController {
 
   @Delete(':id')
   @HttpCode(204)
-  @RequirePermission('patient', 'delete')
+  @RequireFeature('patient.patient', 'delete')
   async remove(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,

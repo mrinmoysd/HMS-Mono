@@ -34,6 +34,13 @@ export interface AuthUser {
   roleLabel: string;
   branchId: string;
   permissions: string[];
+  /**
+   * FeaturePermissionKey[] — the precise grants, e.g. "patient.patient:add".
+   * Optional so an older client (or an older API) still parses. The web gates
+   * on these where a module has been migrated in R1; Ability falls back to the
+   * module keys when the list is absent.
+   */
+  features?: string[];
 }
 
 export interface AuthTokens {

@@ -47,9 +47,14 @@ export default function PatientPage() {
   const ability = useAbility();
   const toast = useToast();
   const confirm = useConfirm();
-  const canAdd = ability.can('patient', 'add');
-  const canEdit = ability.can('patient', 'edit');
-  const canDelete = ability.can('patient', 'delete');
+  // Feature-level, matching what patient.controller.ts enforces (R1). Gating on
+  // the module keys instead would hide controls the API now allows — a
+  // receptionist may register and edit patients, but would never see the button.
+  const canAdd = ability.canFeature('patient.patient', 'add');
+  const canEdit = ability.canFeature('patient.patient', 'edit');
+  const canDelete = ability.canFeature('patient.patient', 'delete');
+  // Bulk-loading the register is its own Admin-only feature, not part of add.
+  const canImport = ability.canFeature('patient.import', 'view');
 
   const [listTab, setListTab] = useState<ListTab>('all');
   const [search, setSearch] = useState(params.get('search') ?? '');
@@ -290,7 +295,7 @@ export default function PatientPage() {
               </Button>
             )}
             <ExportMenu table={exportTable} />
-            {canAdd && (
+            {canImport && (
               <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
                 <Upload className="h-4 w-4" /> Import
               </Button>
