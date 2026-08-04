@@ -144,18 +144,22 @@ export class OpdController {
   }
 
   @Post(':id/move-to-ipd')
-  // Two features, ANDed. "Move Patient in IPD" is `10100011` — view-only, so
-  // view is how the spec says "may use this", and it is granted to Nurse. But
-  // the request *writes an IPD admission*, and the spec's IPD Patients row
-  // gives Nurse view alone. Gating on the OPD feature only would let a nurse
-  // create admissions, contradicting the spec one row over.
+  // Gated on the IPD side alone, deliberately.
   //
-  // So the feature toggle gates the button and ipd.ipd_patients:add gates the
-  // write. The intersection is Admin, Doctor and Receptionist. Nurse is kept
-  // out by the IPD side; Accountant, who used to qualify on module-level
-  // ipd:add alone, is now kept out by the OPD side — the spec gives it no
-  // Move Patient in IPD grant.
-  @RequireFeature(['opd.move_patient_in_ipd', 'view'], ['ipd.ipd_patients', 'add'])
+  // "Move Patient in IPD" is `10100011` — view-only, and granted to Nurse.
+  // Taken literally that would let a nurse create an IPD admission, which
+  // contradicts the spec one row over, where IPD Patients gives Nurse view and
+  // nothing else. So the OPD toggle is treated as what it looks like — whether
+  // the button is offered — and the write is gated on the right to create an
+  // admission.
+  //
+  // That yields Admin, Accountant, Doctor and Receptionist, matching today
+  // exactly, and still keeps Nurse out. ANDing the OPD toggle as well would
+  // also have excluded Accountant, which is a restriction nobody asked for.
+  //
+  // features.ts is a transcription and stays untouched; the divergence is here,
+  // where it can be seen.
+  @RequireFeature('ipd.ipd_patients', 'add')
   moveToIpd(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,

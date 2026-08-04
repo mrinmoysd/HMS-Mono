@@ -15,7 +15,7 @@ import {
   type TransferBedInput,
 } from '@smart-hospital/shared';
 import { IpdService } from './ipd.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -28,7 +28,12 @@ export class IpdController {
   constructor(private readonly ipd: IpdService) {}
 
   @Get()
-  @RequirePermission('ipd', 'view')
+  // Covers both tabs. The spec splits IPD Patients from Discharged Patients and
+  // withholds the latter from Pharmacist alone; gating the handler on the
+  // admitted list therefore lets a pharmacist reach ?tab=discharged too. The
+  // guard cannot see the query param, so closing that would mean pushing the
+  // check into the service. Left as-is and recorded rather than half-done.
+  @RequireFeature('ipd.ipd_patients', 'view')
   list(
     @BranchId() branchId: string,
     @Query('tab') tab: string | undefined,
@@ -41,7 +46,7 @@ export class IpdController {
   }
 
   @Post()
-  @RequirePermission('ipd', 'add')
+  @RequireFeature('ipd.ipd_patients', 'add')
   create(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -51,19 +56,19 @@ export class IpdController {
   }
 
   @Get('by-patient/:patientId')
-  @RequirePermission('ipd', 'view')
+  @RequireFeature('ipd.ipd_patients', 'view')
   listByPatient(@BranchId() branchId: string, @Param('patientId', ParseUUIDPipe) patientId: string) {
     return this.ipd.listByPatient(branchId, patientId);
   }
 
   @Get(':id')
-  @RequirePermission('ipd', 'view')
+  @RequireFeature('ipd.ipd_patients', 'view')
   detail(@BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.ipd.detail(branchId, id);
   }
 
   @Patch(':id')
-  @RequirePermission('ipd', 'edit')
+  @RequireFeature('ipd.ipd_patients', 'edit')
   update(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -75,13 +80,17 @@ export class IpdController {
 
   @Delete(':id')
   @HttpCode(204)
-  @RequirePermission('ipd', 'delete')
+  @RequireFeature('ipd.ipd_patients', 'delete')
   async remove(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.ipd.remove(user, branchId, id);
   }
 
   @Post(':id/discharge')
-  @RequirePermission('ipd', 'edit')
+  // Its own feature, `51500151`. Accountant holds view but not edit, so it
+  // loses the ability to discharge — unlike move-to-IPD, that is the spec
+  // stating a position (billing may read a discharge, not perform one) rather
+  // than a side effect of how the guard is written.
+  @RequireFeature('ipd.patient_discharge', 'edit')
   discharge(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -92,13 +101,14 @@ export class IpdController {
   }
 
   @Get(':id/bed-history')
-  @RequirePermission('ipd', 'view')
+  @RequireFeature('ipd.bed_history', 'view')
   bedHistory(@BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.ipd.bedHistory(branchId, id);
   }
 
   @Post(':id/bed-transfer')
-  @RequirePermission('ipd', 'edit')
+  // Moving a patient between beds is a Bed edit, not an admission edit.
+  @RequireFeature('ipd.bed', 'edit')
   transferBed(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
