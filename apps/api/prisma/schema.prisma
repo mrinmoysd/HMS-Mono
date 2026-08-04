@@ -49,15 +49,31 @@ model Role {
   @@map("role")
 }
 
+/// A permission atom. Two kinds live here during the R0→R1 migration:
+///
+///   feature IS NULL — the legacy module-level row, e.g. (opd, view). 116 of them.
+///   feature IS NOT NULL — a feature-level row, e.g. (opd, view, 'opd.opd_patient').
+///                         751 of them, from packages/shared/src/rbac/features.ts.
+///
+/// Both are live at once on purpose. Module rows are what the 383 existing
+/// @RequirePermission call sites resolve against; they are retired module by
+/// module in R1, as each module's handlers move to feature keys. They are NOT
+/// rewritten from the feature rows — see docs/ROLE_PERMISSION_PARITY.md, the R0
+/// finding, for why doing that would hand nurses the ability to delete visits.
 model Permission {
-  id      String @id @default(uuid()) @db.Uuid
+  id      String  @id @default(uuid()) @db.Uuid
   module  String // ModuleKey from @smart-hospital/shared
   action  String // view | add | edit | delete
   label   String
+  feature String? // FeatureKey, or null for a module-level row
 
   rolePermissions RolePermission[]
 
-  @@unique([module, action])
+  // Uniqueness is enforced by two partial indexes rather than one constraint,
+  // because (module, action) repeats across a group's features — `opd:view`
+  // appears on all 22 OPD rows. See the migration for the index definitions.
+  @@index([module, action])
+  @@index([feature])
   @@map("permission")
 }
 

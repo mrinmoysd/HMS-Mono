@@ -50,19 +50,24 @@ async function main() {
   });
   console.log(`  ✔ branch: ${branch.name}`);
 
-  // 3) Permissions — every (module, action) tuple
+  // 3) Permissions — every (module, action) tuple, module-level (feature = null).
+  //    Not an upsert on a compound key any more: (module, action) stopped being
+  //    unique when feature rows arrived, and its uniqueness now lives in a
+  //    partial index that Prisma cannot express as a `where`. Feature-level rows
+  //    are seeded separately by seed-permissions.ts and are untouched here.
   const permissionIds = new Map<string, string>();
   for (const module of MODULES) {
     for (const action of ACTIONS) {
-      const p = await prisma.permission.upsert({
-        where: { module_action: { module, action } },
-        update: {},
-        create: { module, action, label: `${MODULE_META[module].label} — ${action}` },
-      });
+      const existing = await prisma.permission.findFirst({ where: { module, action, feature: null } });
+      const p =
+        existing ??
+        (await prisma.permission.create({
+          data: { module, action, label: `${MODULE_META[module].label} — ${action}` },
+        }));
       permissionIds.set(`${module}:${action}`, p.id);
     }
   }
-  console.log(`  ✔ ${permissionIds.size} permissions`);
+  console.log(`  ✔ ${permissionIds.size} module-level permissions`);
 
   // 4) Roles + default permission matrices
   for (const slug of ROLES) {
