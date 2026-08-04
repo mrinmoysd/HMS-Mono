@@ -2,6 +2,7 @@
 export * from './rbac/modules';
 export * from './rbac/roles';
 export * from './rbac/ability';
+export * from './rbac/features';
 
 // DTOs
 export * from './dto/auth';
