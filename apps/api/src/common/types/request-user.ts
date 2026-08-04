@@ -8,6 +8,12 @@ export interface RequestUser {
   roleSlug: string;
   branchId: string;
   permissions: string[]; // PermissionKey[] e.g. "patient:add"
+  /**
+   * FeaturePermissionKey[] e.g. "opd.opd_patient:add" — the precise grants.
+   * Optional because a token minted before R0.4 has none; Ability falls back to
+   * the module rollup in that case rather than locking the session out.
+   */
+  features?: string[];
 }
 
 export interface AuthenticatedRequest extends Request {

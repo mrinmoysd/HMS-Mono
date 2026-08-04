@@ -35,7 +35,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
     if (!user) throw new UnauthorizedException('User not found or inactive');
 
-    const permissions = await this.permissions.permissionKeysForRole(user.roleId);
+    // Both levels, loaded fresh per request. `features` is what @RequireFeature
+    // checks; `permissions` still backs the not-yet-migrated @RequirePermission
+    // handlers and the web sidebar.
+    const [permissions, features] = await Promise.all([
+      this.permissions.permissionKeysForRole(user.roleId),
+      this.permissions.featureKeysForRole(user.roleId),
+    ]);
     return {
       id: user.id,
       username: user.username,
@@ -43,6 +49,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       roleSlug: user.role.slug,
       branchId: user.branchId,
       permissions,
+      features,
     };
   }
 }

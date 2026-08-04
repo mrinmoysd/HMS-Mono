@@ -15,12 +15,29 @@ import {
   type OpdVisitUpdateInput,
 } from '@smart-hospital/shared';
 import { OpdService } from './opd.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import type { RequestUser } from '../common/types/request-user';
 
+/**
+ * Migrated to feature-level permissions (R1, first module).
+ *
+ * Each handler now names the blueprint feature it actually is, instead of the
+ * whole `opd` module. What that changes, per docs/ROLE_PERMISSION_PARITY.md §6:
+ *
+ *   Doctor and Receptionist GAIN delete on OPD Patient, Visit and Checkup —
+ *     the spec grants `f` there; our module matrix withheld delete from everyone
+ *     but Admin.
+ *   Pharmacist, Pathologist and Radiologist LOSE add and edit. The spec gives
+ *     them 1, 3 and 4 OPD features respectively, all read-only; our module
+ *     matrix handed them the whole of OPD because they needed to see it.
+ *   Nurse is unchanged on the encounter (view only) but keeps checkup:view.
+ *
+ * These are the intended corrections, not incidental. The module-level matrix
+ * could not express any of them.
+ */
 @ApiTags('opd')
 @ApiBearerAuth()
 @Controller('opd')
@@ -28,7 +45,7 @@ export class OpdController {
   constructor(private readonly opd: OpdService) {}
 
   @Get()
-  @RequirePermission('opd', 'view')
+  @RequireFeature('opd.opd_patient', 'view')
   list(
     @BranchId() branchId: string,
     @Query('tab') tab: string | undefined,
@@ -41,7 +58,7 @@ export class OpdController {
   }
 
   @Post()
-  @RequirePermission('opd', 'add')
+  @RequireFeature('opd.opd_patient', 'add')
   create(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -55,7 +72,7 @@ export class OpdController {
    * below it would be swallowed as a visit whose id is "patient-view".
    */
   @Get('patient-view')
-  @RequirePermission('opd', 'view')
+  @RequireFeature('opd.opd_patient', 'view')
   patientView(
     @BranchId() branchId: string,
     @Query(new ZodValidationPipe(listQuerySchema)) query: ListQuery,
@@ -64,13 +81,13 @@ export class OpdController {
   }
 
   @Get(':id')
-  @RequirePermission('opd', 'view')
+  @RequireFeature('opd.opd_patient', 'view')
   detail(@BranchId() branchId: string, @Param('id') id: string) {
     return this.opd.detail(branchId, id);
   }
 
   @Patch(':id')
-  @RequirePermission('opd', 'edit')
+  @RequireFeature('opd.opd_patient', 'edit')
   update(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -81,7 +98,7 @@ export class OpdController {
   }
 
   @Delete(':id')
-  @RequirePermission('opd', 'delete')
+  @RequireFeature('opd.opd_patient', 'delete')
   remove(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id') id: string) {
     return this.opd.remove(user, branchId, id);
   }
@@ -89,13 +106,13 @@ export class OpdController {
   // Checkups within a visit (blueprint §7.3 tab 2). Read is gated on 'opd'
   // view so the Visits tab renders for anyone who can open the visit.
   @Get(':id/checkups')
-  @RequirePermission('opd', 'view')
+  @RequireFeature('opd.checkup', 'view')
   listCheckups(@BranchId() branchId: string, @Param('id') id: string) {
     return this.opd.listCheckups(branchId, id);
   }
 
   @Post(':id/checkups')
-  @RequirePermission('opd', 'add')
+  @RequireFeature('opd.checkup', 'add')
   createCheckup(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -106,7 +123,7 @@ export class OpdController {
   }
 
   @Patch('checkups/:checkupId')
-  @RequirePermission('opd', 'edit')
+  @RequireFeature('opd.checkup', 'edit')
   updateCheckup(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -117,7 +134,7 @@ export class OpdController {
   }
 
   @Delete('checkups/:checkupId')
-  @RequirePermission('opd', 'delete')
+  @RequireFeature('opd.checkup', 'delete')
   removeCheckup(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -127,7 +144,18 @@ export class OpdController {
   }
 
   @Post(':id/move-to-ipd')
-  @RequirePermission('ipd', 'add')
+  // Two features, ANDed. "Move Patient in IPD" is `10100011` — view-only, so
+  // view is how the spec says "may use this", and it is granted to Nurse. But
+  // the request *writes an IPD admission*, and the spec's IPD Patients row
+  // gives Nurse view alone. Gating on the OPD feature only would let a nurse
+  // create admissions, contradicting the spec one row over.
+  //
+  // So the feature toggle gates the button and ipd.ipd_patients:add gates the
+  // write. The intersection is Admin, Doctor and Receptionist. Nurse is kept
+  // out by the IPD side; Accountant, who used to qualify on module-level
+  // ipd:add alone, is now kept out by the OPD side — the spec gives it no
+  // Move Patient in IPD grant.
+  @RequireFeature(['opd.move_patient_in_ipd', 'view'], ['ipd.ipd_patients', 'add'])
   moveToIpd(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
