@@ -228,7 +228,7 @@ export class MultiBranchService {
       this.prisma.attendance.count({ where: { branchId, status: 'absent', ...(dateWhere ? { date: dateWhere } : {}) } }),
       this.prisma.payroll.findMany({ where: { branchId, ...(dateWhere ? { createdAt: dateWhere } : {}) }, select: { net: true, status: true } }),
       this.prisma.invoice.findMany({ where: { branchId, deletedAt: null, ...(dateWhere ? { createdAt: dateWhere } : {}) }, select: { id: true, patientId: true, refund: true, netAmount: true } }),
-      this.prisma.payment.findMany({ where: { invoice: { branchId, deletedAt: null }, ...(dateWhere ? { paidAt: dateWhere } : {}) }, select: { amount: true, mode: true } }),
+      this.prisma.payment.findMany({ where: { deletedAt: null, invoice: { branchId, deletedAt: null }, ...(dateWhere ? { paidAt: dateWhere } : {}) }, select: { amount: true, mode: true } }),
     ]);
 
     const apptOnline = appointments.filter((a) => ONLINE_MODES.includes(a.paymentMode));

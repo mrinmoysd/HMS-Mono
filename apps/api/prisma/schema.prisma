@@ -532,10 +532,15 @@ model Payment {
   reference   String?
   paidAt      DateTime @default(now())
   createdById String?  @db.Uuid
+  /// Voided, not erased. Money that was recorded and then reversed is evidence:
+  /// it stays queryable for audit and reconciliation, and every read filters it
+  /// out so it never counts toward paid or balance.
+  deletedAt   DateTime?
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId])
+  @@index([deletedAt])
   @@map("payment")
 }
 

@@ -174,7 +174,7 @@ export class InvoiceService {
           balance,
           status,
         },
-        include: { ...invoiceInclude, items: true, payments: { orderBy: { paidAt: 'asc' } } },
+        include: { ...invoiceInclude, items: true, payments: { where: { deletedAt: null }, orderBy: { paidAt: 'asc' } } },
       });
       await this.audit.record({
         branchId,
@@ -238,10 +238,14 @@ export class InvoiceService {
     return this.prisma.$transaction(async (tx) => {
       const invoice = await tx.invoice.findFirst({ where: { id: invoiceId, branchId, deletedAt: null } });
       if (!invoice) throw new NotFoundException('Invoice not found');
-      const payment = await tx.payment.findFirst({ where: { id: paymentId, invoiceId } });
+      const payment = await tx.payment.findFirst({ where: { id: paymentId, invoiceId, deletedAt: null } });
       if (!payment) throw new NotFoundException('Payment not found');
 
-      await tx.payment.delete({ where: { id: paymentId } });
+      // Void, do not erase. Money that was taken and then reversed is evidence;
+      // the row stays and every read filters deletedAt. The invoice totals below
+      // are recomputed without it, so `paid` and `balance` are unaffected by its
+      // survival.
+      await tx.payment.update({ where: { id: paymentId }, data: { deletedAt: new Date() } });
       const paid = round2(Number(invoice.paid) - Number(payment.amount));
       const balance = round2(Number(invoice.netAmount) - paid);
       const status = paid <= 0 ? 'unpaid' : balance <= 0 ? 'paid' : 'partial';
@@ -253,7 +257,7 @@ export class InvoiceService {
       await this.audit.record({
         branchId,
         userId: user.id,
-        action: 'payment_remove',
+        action: 'payment_void',
         entity: 'invoice',
         entityId: invoiceId,
         after: { removedPaymentId: paymentId, amount: Number(payment.amount) },
@@ -315,7 +319,7 @@ export class InvoiceService {
   async get(branchId: string, id: string): Promise<InvoiceDto> {
     const invoice = await this.prisma.invoice.findFirst({
       where: { id, branchId, deletedAt: null },
-      include: { ...invoiceInclude, items: true, payments: { orderBy: { paidAt: 'asc' } } },
+      include: { ...invoiceInclude, items: true, payments: { where: { deletedAt: null }, orderBy: { paidAt: 'asc' } } },
     });
     if (!invoice) throw new NotFoundException('Invoice not found');
     const names = await this.names([invoice.createdById, invoice.consultantId]);

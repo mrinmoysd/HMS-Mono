@@ -135,18 +135,19 @@ export class DashboardService {
 
     const [mtd, prev, spark] = await Promise.all([
       this.prisma.payment.findMany({
-        where: { invoice: { branchId, deletedAt: null }, paidAt: { gte: monthStart } },
+        where: { deletedAt: null, invoice: { branchId, deletedAt: null }, paidAt: { gte: monthStart } },
         select: { amount: true },
       }),
       this.prisma.payment.findMany({
         where: {
+          deletedAt: null,
           invoice: { branchId, deletedAt: null },
           paidAt: { gte: prevStart, lt: prevEnd },
         },
         select: { amount: true },
       }),
       this.prisma.payment.findMany({
-        where: { invoice: { branchId, deletedAt: null }, paidAt: { gte: sparkFrom } },
+        where: { deletedAt: null, invoice: { branchId, deletedAt: null }, paidAt: { gte: sparkFrom } },
         select: { amount: true, paidAt: true },
       }),
     ]);
