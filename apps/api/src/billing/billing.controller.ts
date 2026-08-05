@@ -10,6 +10,19 @@ import type { RequestUser } from '../common/types/request-user';
 
 @ApiTags('billing')
 @ApiBearerAuth()
+/**
+ * Billing authorisation is data-dependent (R1). The spec splits it into seven
+ * `<Module> Billing` features with different grants — Pharmacist sees Pharmacy
+ * Billing alone, Pathologist only Pathology — but these endpoints key off an
+ * invoice id, so the module is a property of the row, not of the request. A
+ * guard cannot know it without loading the record.
+ *
+ * So the coarse `billing:view` gate stays here and InvoiceService narrows: the
+ * list is filtered to the modules the caller may view, and the single-row
+ * reads and payment writes assert against that row's module. Billing's
+ * module-level rows therefore cannot retire yet — see the R1 note in
+ * docs/ROLE_PERMISSION_PARITY.md.
+ */
 @Controller('invoices')
 export class BillingController {
   constructor(private readonly invoices: InvoiceService) {}
@@ -17,23 +30,24 @@ export class BillingController {
   @Get()
   @RequirePermission('billing', 'view')
   list(
+    @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
     @Query('module') module: string | undefined,
     @Query(new ZodValidationPipe(listQuerySchema)) query: ListQuery,
   ) {
-    return this.invoices.list(branchId, module, query);
+    return this.invoices.list(user, branchId, module, query);
   }
 
   @Get('by-case/:caseNo')
   @RequirePermission('billing', 'view')
-  byCase(@BranchId() branchId: string, @Param('caseNo') caseNo: string) {
-    return this.invoices.findByCaseNo(branchId, caseNo);
+  byCase(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('caseNo') caseNo: string) {
+    return this.invoices.findByCaseNo(user, branchId, caseNo);
   }
 
   @Get(':id')
   @RequirePermission('billing', 'view')
-  get(@BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
-    return this.invoices.get(branchId, id);
+  get(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
+    return this.invoices.getForUser(user, branchId, id);
   }
 
   @Post(':id/payments')
@@ -49,6 +63,11 @@ export class BillingController {
   }
 
   @Delete(':id/payments/:paymentId')
+  // Deliberately still module-level. The spec has NO delete toggle on any of
+  // the 18 Billing features, so there is no feature key to migrate this to —
+  // reversing a recorded payment simply is not modelled. Left on billing:edit
+  // (Admin and Accountant, unchanged) pending a decision, rather than inventing
+  // a grant or silently widening `add` to cover deletion.
   @RequirePermission('billing', 'edit')
   removePayment(
     @CurrentUser() user: RequestUser,

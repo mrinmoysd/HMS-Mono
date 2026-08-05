@@ -7,7 +7,8 @@ import {
   type AddEncounterPaymentInput,
 } from '@smart-hospital/shared';
 import { EncounterBillingService } from './encounter-billing.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeatureFor } from '../rbac/require-feature.decorator';
+import { billingFeature, billingPaymentFeature } from './billing-features';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -19,15 +20,21 @@ import type { RequestUser } from '../common/types/request-user';
 export class EncounterBillingController {
   constructor(private readonly billing: EncounterBillingService) {}
 
+  // `:type` is in the URL here, so the per-module feature is known before the
+  // handler runs and the guard can resolve it. An unrecognised type resolves to
+  // null, which denies.
   @Get(':type/:id')
-  @RequirePermission('billing', 'view')
+  @RequireFeatureFor((c) => billingFeature(c.params.type, 'view'))
   get(@BranchId() branchId: string, @Param('type') type: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.billing.getBilling(branchId, type, id);
   }
 
   @Post(':type/:id/charges')
   @HttpCode(200)
-  @RequirePermission('billing', 'edit')
+  // Adding a charge changes what the bill totals, so it is gated on the bill
+  // feature — which is view-only in the spec. Nobody may edit a bill; see the
+  // Billing note in docs/ROLE_PERMISSION_PARITY.md.
+  @RequireFeatureFor((c) => billingFeature(c.params.type, 'view'))
   addCharges(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -40,7 +47,8 @@ export class EncounterBillingController {
 
   @Post(':type/:id/payments')
   @HttpCode(200)
-  @RequirePermission('billing', 'edit')
+  // Recording a payment is `add` on the module's Billing Payment feature.
+  @RequireFeatureFor((c) => billingPaymentFeature(c.params.type, 'add'))
   addPayment(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,

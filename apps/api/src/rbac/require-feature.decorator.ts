@@ -34,3 +34,28 @@ export const RequireFeature = (
       : (specs as [string, ActionKey][]).map(([feature, action]) => ({ feature, action }));
   return SetMetadata(FEATURE_KEY, list);
 };
+
+export const FEATURE_RESOLVER_KEY = 'required_feature_resolver';
+
+/** What a resolver receives — just the parts of the request it may branch on. */
+export interface FeatureResolverContext {
+  params: Record<string, string>;
+  query: Record<string, unknown>;
+}
+
+/**
+ * Guard a handler whose feature depends on the request.
+ *
+ * Billing needs this. The spec models billing per module — OPD Billing,
+ * Pharmacy Billing, Pathology Billing and so on are seven separate features
+ * with different grants — but our endpoints are generic over a `:type` route
+ * param, so the required key is not known until the request arrives.
+ *
+ * Returning null denies. That is deliberate: an unrecognised `:type` should
+ * fail closed rather than fall through to whatever the last branch was.
+ *
+ *   @RequireFeatureFor((c) => billingFeature(c.params.type, 'view'))
+ */
+export const RequireFeatureFor = (
+  resolve: (ctx: FeatureResolverContext) => RequiredFeature[] | RequiredFeature | null,
+) => SetMetadata(FEATURE_RESOLVER_KEY, resolve);

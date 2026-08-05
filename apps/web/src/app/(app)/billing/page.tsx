@@ -13,11 +13,24 @@ import { useInvoices, useAddPayment } from '@/lib/hooks/use-clinical';
 import { useAbility } from '@/lib/auth-store';
 import { api } from '@/lib/api';
 
-const MODULES = ['opd', 'ipd', 'pharmacy', 'pathology', 'radiology', 'blood', 'ambulance'];
+/** Chip label → the feature key that governs it (R1). `blood` is the UI's short name. */
+const MODULES: { key: string; feature: string }[] = [
+  { key: 'opd', feature: 'billing.opd_billing' },
+  { key: 'ipd', feature: 'billing.ipd_billing' },
+  { key: 'pharmacy', feature: 'billing.pharmacy_billing' },
+  { key: 'pathology', feature: 'billing.pathology_billing' },
+  { key: 'radiology', feature: 'billing.radiology_billing' },
+  { key: 'blood', feature: 'billing.blood_bank_billing' },
+  { key: 'ambulance', feature: 'billing.ambulance_billing' },
+];
 
 export default function BillingPage() {
   const ability = useAbility();
   const canPay = ability.can('billing', 'edit');
+  // Billing is per module in the spec. Showing every chip meant a pathologist
+  // could pick "Opd" and get a 403 behind an empty table; the API already
+  // scopes the rows, so the filters should offer only what it will return.
+  const modules = MODULES.filter((m) => ability.canFeature(m.feature, 'view'));
   const [module, setModule] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -72,13 +85,13 @@ export default function BillingPage() {
         >
           All
         </button>
-        {MODULES.map((m) => (
+        {modules.map((m) => (
           <button
-            key={m}
-            onClick={() => { setModule(m); setCaseResults(null); setPage(1); }}
-            className={`rounded-full px-3 py-1 text-sm capitalize ${module === m && !caseResults ? 'bg-primary text-primary-fg' : 'bg-bg text-fg-muted'}`}
+            key={m.key}
+            onClick={() => { setModule(m.key); setCaseResults(null); setPage(1); }}
+            className={`rounded-full px-3 py-1 text-sm capitalize ${module === m.key && !caseResults ? 'bg-primary text-primary-fg' : 'bg-bg text-fg-muted'}`}
           >
-            {m}
+            {m.key}
           </button>
         ))}
         <div className="ml-auto flex items-center gap-2">

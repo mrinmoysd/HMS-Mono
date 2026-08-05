@@ -9,6 +9,12 @@ import {
   type Paginated,
 } from '@smart-hospital/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  abilityOf,
+  assertCanAddBillingPayment,
+  assertCanViewBilling,
+  viewableBillingModules,
+} from './billing-features';
 import { AuditService } from '../common/audit/audit.service';
 import { SequenceService } from '../common/sequence/sequence.service';
 import { paginate, toPrismaPage } from '../common/pagination';
@@ -196,6 +202,9 @@ export class InvoiceService {
     return this.prisma.$transaction(async (tx) => {
       const invoice = await tx.invoice.findFirst({ where: { id: invoiceId, branchId, deletedAt: null } });
       if (!invoice) throw new NotFoundException('Invoice not found');
+      // "<Module> Billing Payment" is view+add — recording a payment is `add`,
+      // and it is granted per module, so it is checked against this row.
+      assertCanAddBillingPayment(abilityOf(user), invoice.module);
 
       const capped = Math.min(amount, Number(invoice.balance));
       if (capped > 0) {
@@ -262,12 +271,24 @@ export class InvoiceService {
     return new Map(users.map((u) => [u.id, u.name]));
   }
 
-  async list(branchId: string, module: string | undefined, query: ListQuery): Promise<Paginated<InvoiceDto>> {
+  async list(
+    user: RequestUser,
+    branchId: string,
+    module: string | undefined,
+    query: ListQuery,
+  ): Promise<Paginated<InvoiceDto>> {
     const { skip, take, orderBy } = toPrismaPage(query, INVOICE_SORTABLE);
+    // Billing is per module in the spec, and the module lives on the row, so
+    // the narrowing happens here rather than in the guard. Without it a
+    // pharmacist holding only Pharmacy Billing would read every OPD and IPD
+    // bill in the branch.
+    const ability = abilityOf(user);
+    const viewable = viewableBillingModules(ability);
+    if (module) assertCanViewBilling(ability, module);
     const where: Prisma.InvoiceWhereInput = {
       branchId,
       deletedAt: null,
-      ...(module ? { module } : {}),
+      ...(module ? { module } : { module: { in: viewable } }),
       ...(query.search
         ? {
             OR: [
@@ -286,6 +307,11 @@ export class InvoiceService {
     return paginate(rows.map((r) => toDto(r, false, names)), total, query);
   }
 
+  /**
+   * Internal read — no permission check. Callers are other services hydrating a
+   * bill they just wrote, and they have already been authorised by their own
+   * module's guard. The user-facing read is getForUser below.
+   */
   async get(branchId: string, id: string): Promise<InvoiceDto> {
     const invoice = await this.prisma.invoice.findFirst({
       where: { id, branchId, deletedAt: null },
@@ -296,10 +322,22 @@ export class InvoiceService {
     return toDto(invoice, true, names);
   }
 
+  /** What the Billing hub calls: the same read, checked against this row's module. */
+  async getForUser(user: RequestUser, branchId: string, id: string): Promise<InvoiceDto> {
+    const dto = await this.get(branchId, id);
+    assertCanViewBilling(abilityOf(user), dto.module);
+    return dto;
+  }
+
   /** Case ID lookup for the Billing hub (FRD §2.5). */
-  async findByCaseNo(branchId: string, caseNo: string): Promise<InvoiceDto[]> {
+  async findByCaseNo(user: RequestUser, branchId: string, caseNo: string): Promise<InvoiceDto[]> {
     const rows = await this.prisma.invoice.findMany({
-      where: { branchId, deletedAt: null, case: { caseNo } },
+      where: {
+        branchId,
+        deletedAt: null,
+        case: { caseNo },
+        module: { in: viewableBillingModules(abilityOf(user)) },
+      },
       include: invoiceInclude,
       orderBy: { createdAt: 'desc' },
     });
