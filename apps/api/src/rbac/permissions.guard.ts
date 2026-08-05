@@ -46,6 +46,7 @@ export class PermissionsGuard implements CanActivate {
       const resolved = resolver({
         params: (req.params ?? {}) as Record<string, string>,
         query: (req.query ?? {}) as Record<string, unknown>,
+        body: (req.body ?? {}) as Record<string, unknown>,
       });
       // null means the resolver did not recognise the request — fail closed.
       if (resolved === null) throw new ForbiddenException('Unknown resource for permission check');

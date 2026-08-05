@@ -41,6 +41,16 @@ export const FEATURE_RESOLVER_KEY = 'required_feature_resolver';
 export interface FeatureResolverContext {
   params: Record<string, string>;
   query: Record<string, unknown>;
+  /**
+   * The parsed body, when there is one. Blood Bank needs it: a blood issue and
+   * a component issue are separate features with different grants, and POST
+   * /issues discriminates on `body.type` rather than on the URL.
+   *
+   * This is the raw body — guards run before validation pipes, so treat it as
+   * untrusted and read it defensively. A resolver that cannot make sense of it
+   * should return null, which denies.
+   */
+  body: Record<string, unknown>;
 }
 
 /**
