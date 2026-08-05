@@ -25,7 +25,7 @@ import {
   type PharmaSupplierInput,
 } from '@smart-hospital/shared';
 import { PharmacyService } from './pharmacy.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -38,19 +38,19 @@ export class PharmacyController {
   constructor(private readonly pharmacy: PharmacyService) {}
 
   @Get('medicines')
-  @RequirePermission('pharmacy', 'view')
+  @RequireFeature('pharmacy.medicine', 'view')
   listMedicines(@BranchId() branchId: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.pharmacy.listMedicines(branchId, q);
   }
 
   @Get('medicines/:id')
-  @RequirePermission('pharmacy', 'view')
+  @RequireFeature('pharmacy.medicine', 'view')
   medicineDetail(@BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.pharmacy.medicineDetail(branchId, id);
   }
 
   @Post('medicines')
-  @RequirePermission('pharmacy', 'add')
+  @RequireFeature('pharmacy.medicine', 'add')
   createMedicine(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -60,7 +60,7 @@ export class PharmacyController {
   }
 
   @Patch('medicines/:id')
-  @RequirePermission('pharmacy', 'edit')
+  @RequireFeature('pharmacy.medicine', 'edit')
   updateMedicine(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -72,7 +72,7 @@ export class PharmacyController {
 
   @Post('medicines/bulk-delete')
   @HttpCode(204)
-  @RequirePermission('pharmacy', 'delete')
+  @RequireFeature('pharmacy.medicine', 'delete')
   async deleteMedicines(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -82,7 +82,10 @@ export class PharmacyController {
   }
 
   @Post('medicines/import')
-  @RequirePermission('pharmacy', 'add')
+  // Import Medicine is its own feature, `10010000` — Admin and Pharmacist,
+  // with view its only toggle. Bulk-loading the catalogue is not the same act
+  // as adding one medicine, so Accountant and Receptionist lose it.
+  @RequireFeature('pharmacy.import_medicine', 'view')
   importMedicines(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -93,7 +96,9 @@ export class PharmacyController {
   }
 
   @Post('medicines/:id/bad-stock')
-  @RequirePermission('pharmacy', 'edit')
+  // Bad Stock is `b10b0010` — view/add/delete, no edit. Writing off stock is
+  // an add against that feature, not an edit of the medicine.
+  @RequireFeature('pharmacy.medicine_bad_stock', 'add')
   createBadStock(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -104,7 +109,7 @@ export class PharmacyController {
   }
 
   @Post('bills')
-  @RequirePermission('pharmacy', 'add')
+  @RequireFeature('pharmacy.pharmacy_bill', 'add')
   generateBill(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -115,13 +120,14 @@ export class PharmacyController {
 
   /** Declared before any `bills/:id` route so the literal segment wins. */
   @Get('bills/next-no')
-  @RequirePermission('pharmacy', 'add')
+  // Read only by the create form, so it follows who may create a bill.
+  @RequireFeature('pharmacy.pharmacy_bill', 'add')
   nextBillNo(@BranchId() branchId: string, @Query('patientId') patientId?: string) {
     return this.pharmacy.nextBillNo(branchId, patientId);
   }
 
   @Patch('bills/:id')
-  @RequirePermission('pharmacy', 'edit')
+  @RequireFeature('pharmacy.pharmacy_bill', 'edit')
   updateBill(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -133,20 +139,20 @@ export class PharmacyController {
 
   @Delete('bills/:id')
   @HttpCode(204)
-  @RequirePermission('pharmacy', 'delete')
+  @RequireFeature('pharmacy.pharmacy_bill', 'delete')
   deleteBill(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.pharmacy.deleteBill(user, branchId, id);
   }
 
   // Medicine Purchase (batch procurement)
   @Get('purchases')
-  @RequirePermission('pharmacy', 'view')
+  @RequireFeature('pharmacy.medicine_purchase', 'view')
   listPurchases(@BranchId() branchId: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.pharmacy.listPurchases(branchId, q);
   }
 
   @Post('purchases')
-  @RequirePermission('pharmacy', 'add')
+  @RequireFeature('pharmacy.medicine_purchase', 'add')
   createPurchase(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -156,27 +162,29 @@ export class PharmacyController {
   }
 
   @Get('purchases/:id')
-  @RequirePermission('pharmacy', 'view')
+  @RequireFeature('pharmacy.medicine_purchase', 'view')
   purchaseDetail(@BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.pharmacy.purchaseDetail(branchId, id);
   }
 
   @Delete('purchases/:id')
   @HttpCode(204)
-  @RequirePermission('pharmacy', 'delete')
+  @RequireFeature('pharmacy.medicine_purchase', 'delete')
   deletePurchase(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.pharmacy.deletePurchase(user, branchId, id);
   }
 
   // Per-batch TPA rate schedule
   @Get('purchase-items/:id/tpa')
-  @RequirePermission('pharmacy', 'view')
+  @RequireFeature('pharmacy.medicine_purchase', 'view')
   batchTpaDetail(@BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.pharmacy.getBatchTpaDetail(branchId, id);
   }
 
   @Put('purchase-items/:id/tpa')
-  @RequirePermission('pharmacy', 'edit')
+  // Medicine Purchase has no edit toggle (`b10b0010`), so rewriting a batch's
+  // TPA schedule is gated on add — the same right that created the batch.
+  @RequireFeature('pharmacy.medicine_purchase', 'add')
   updateBatchTpa(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -187,14 +195,18 @@ export class PharmacyController {
   }
 
   // Suppliers (Setup master)
+  // Suppliers and Dosages were gated on generic `setup:*`, which made them
+  // Admin-only. They are Pharmacy features: the spec gives Medicine Supplier
+  // full CRUD to Pharmacist (and view to Doctor), and Medicine Dosage full CRUD
+  // to Pharmacist. The people who run the pharmacy can now maintain them.
   @Get('suppliers')
-  @RequirePermission('setup', 'view')
+  @RequireFeature('pharmacy.medicine_supplier', 'view')
   listSuppliers(@BranchId() branchId: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.pharmacy.listSuppliers(branchId, q);
   }
 
   @Post('suppliers')
-  @RequirePermission('setup', 'add')
+  @RequireFeature('pharmacy.medicine_supplier', 'add')
   createSupplier(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -204,7 +216,7 @@ export class PharmacyController {
   }
 
   @Patch('suppliers/:id')
-  @RequirePermission('setup', 'edit')
+  @RequireFeature('pharmacy.medicine_supplier', 'edit')
   updateSupplier(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -216,20 +228,20 @@ export class PharmacyController {
 
   @Delete('suppliers/:id')
   @HttpCode(204)
-  @RequirePermission('setup', 'delete')
+  @RequireFeature('pharmacy.medicine_supplier', 'delete')
   async removeSupplier(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.pharmacy.removeSupplier(user, branchId, id);
   }
 
   // Medicine Dosage (Setup master)
   @Get('dosages')
-  @RequirePermission('setup', 'view')
+  @RequireFeature('pharmacy.medicine_dosage', 'view')
   listDosages(@BranchId() branchId: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.pharmacy.listDosages(branchId, q);
   }
 
   @Post('dosages')
-  @RequirePermission('setup', 'add')
+  @RequireFeature('pharmacy.medicine_dosage', 'add')
   createDosage(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -239,7 +251,7 @@ export class PharmacyController {
   }
 
   @Patch('dosages/:id')
-  @RequirePermission('setup', 'edit')
+  @RequireFeature('pharmacy.medicine_dosage', 'edit')
   updateDosage(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -251,7 +263,7 @@ export class PharmacyController {
 
   @Delete('dosages/:id')
   @HttpCode(204)
-  @RequirePermission('setup', 'delete')
+  @RequireFeature('pharmacy.medicine_dosage', 'delete')
   async removeDosage(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.pharmacy.removeDosage(user, branchId, id);
   }
