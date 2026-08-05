@@ -3,9 +3,10 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { PageHeader } from '@/components/ui/page-header';
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Lock } from 'lucide-react';
 import type { ShiftDto, AppointmentPriorityDto } from '@smart-hospital/shared';
 import { Tabs } from '@/components/ui/tabs';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
 import { useConfirmDelete } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/components/ui/toast';
@@ -25,8 +26,40 @@ type Section = 'slots' | 'doctor-shift' | 'shift' | 'priority';
 
 export default function AppointmentSetupPage() {
   const ability = useAbility();
-  const canManage = ability.can('setup', 'add');
+
+  // Each tab is its own feature (R1). They do not share a permission: the spec
+  // gives Slot/Shift/Doctor Shift to Accountant, Doctor and Receptionist but
+  // keeps Appointment Priority to Admin and Receptionist. Gating them together
+  // on `setup:add` showed a doctor a Priority tab whose every request 403s.
+  const tabs = [
+    { value: 'slots', label: 'Slots', feature: 'appointment.slot' },
+    { value: 'doctor-shift', label: 'Doctor Shift', feature: 'appointment.doctor_shift' },
+    { value: 'shift', label: 'Shift', feature: 'appointment.shift' },
+    { value: 'priority', label: 'Appointment Priority', feature: 'appointment.appointment_priority' },
+  ].filter((t) => ability.canFeature(t.feature, 'view'));
+
   const [section, setSection] = useState<Section>('slots');
+  // Land on a tab that is actually visible, whatever the role.
+  const active = tabs.some((t) => t.value === section) ? section : (tabs[0]?.value as Section);
+
+  const can = (feature: string) => ability.canFeature(feature, 'edit');
+
+  // Pharmacist, Pathologist, Radiologist and Nurse hold none of these four
+  // features. Say so, rather than rendering a titled page with nothing under
+  // it — an empty shell is exactly what docs/ROLE_PERMISSION_PARITY.md §7
+  // criticises the reference build for.
+  if (tabs.length === 0) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="Appointment Setup" backHref="/setup" backLabel="Back to Setup" />
+        <EmptyState
+          icon={Lock}
+          title="You don't have access to Appointment Setup"
+          description="Shifts, slots and appointment priorities are managed by the scheduling and admin roles."
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -37,19 +70,14 @@ export default function AppointmentSetupPage() {
         backLabel="Back to Setup"
       />
       <Tabs
-        tabs={[
-          { value: 'slots', label: 'Slots' },
-          { value: 'doctor-shift', label: 'Doctor Shift' },
-          { value: 'shift', label: 'Shift' },
-          { value: 'priority', label: 'Appointment Priority' },
-        ]}
-        value={section}
+        tabs={tabs.map(({ value, label }) => ({ value, label }))}
+        value={active}
         onChange={(s) => setSection(s as Section)}
       />
-      {section === 'slots' && <SlotsPanel canManage={canManage} />}
-      {section === 'doctor-shift' && <DoctorShiftPanel canManage={canManage} />}
-      {section === 'shift' && <ShiftPanel canManage={canManage} />}
-      {section === 'priority' && <PriorityPanel canManage={canManage} />}
+      {active === 'slots' && <SlotsPanel canManage={can('appointment.slot')} />}
+      {active === 'doctor-shift' && <DoctorShiftPanel canManage={can('appointment.doctor_shift')} />}
+      {active === 'shift' && <ShiftPanel canManage={can('appointment.shift')} />}
+      {active === 'priority' && <PriorityPanel canManage={can('appointment.appointment_priority')} />}
     </div>
   );
 }

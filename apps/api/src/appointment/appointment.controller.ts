@@ -28,7 +28,7 @@ import {
 } from '@smart-hospital/shared';
 import { z } from 'zod';
 import { AppointmentService } from './appointment.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -45,7 +45,7 @@ export class AppointmentController {
   constructor(private readonly appointments: AppointmentService) {}
 
   @Get()
-  @RequirePermission('appointment', 'view')
+  @RequireFeature('appointment.appointment', 'view')
   list(
     @BranchId() branchId: string,
     @Query('tab') tab: string | undefined,
@@ -60,13 +60,13 @@ export class AppointmentController {
 
   // Static sub-routes declared BEFORE ':id' so they aren't shadowed.
   @Get('doctor-wise')
-  @RequirePermission('appointment', 'view')
+  @RequireFeature('appointment.doctor_wise_appointment', 'view')
   doctorWise(@BranchId() branchId: string, @Query('doctorId', ParseUUIDPipe) doctorId: string, @Query('date') date?: string) {
     return this.appointments.doctorWise(branchId, doctorId, date);
   }
 
   @Get('queue')
-  @RequirePermission('appointment', 'view')
+  @RequireFeature('appointment.patient_queue', 'view')
   queue(
     @BranchId() branchId: string,
     @Query('doctorId', ParseUUIDPipe) doctorId: string,
@@ -79,13 +79,15 @@ export class AppointmentController {
 
   @Post('queue/reorder')
   @HttpCode(200)
-  @RequirePermission('appointment', 'edit')
+  // Patient Queue is `11100010` — view is its only toggle, so view is how the
+  // spec says "may work the queue". Reordering is exactly that.
+  @RequireFeature('appointment.patient_queue', 'view')
   reorderQueue(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Body(new ZodValidationPipe(reorderQueueSchema)) body: ReorderQueueInput) {
     return this.appointments.reorderQueue(user, branchId, body.ids);
   }
 
   @Post()
-  @RequirePermission('appointment', 'add')
+  @RequireFeature('appointment.appointment', 'add')
   create(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -95,13 +97,18 @@ export class AppointmentController {
   }
 
   @Get(':id')
-  @RequirePermission('appointment', 'view')
+  @RequireFeature('appointment.appointment', 'view')
   get(@BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.appointments.get(branchId, id);
   }
 
   @Patch(':id')
-  @RequirePermission('appointment', 'edit')
+  // Appointment is `b0b000b0` — view+add+delete, with NO edit bit. The spec
+  // models changing a booked appointment as Reschedule, its own feature, so
+  // that is what gates both in-place writes here. Accountant loses this: it
+  // holds no Appointment or Reschedule grant at all, only the surrounding
+  // Slot/Shift/Queue views.
+  @RequireFeature('appointment.reschedule', 'view')
   reschedule(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -112,7 +119,8 @@ export class AppointmentController {
   }
 
   @Patch(':id/status')
-  @RequirePermission('appointment', 'edit')
+  // Same reasoning as PATCH :id — no edit toggle exists on Appointment.
+  @RequireFeature('appointment.reschedule', 'view')
   setStatus(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -128,7 +136,9 @@ export class AppointmentController {
    * appointment is not thereby allowed to open an encounter.
    */
   @Post(':id/convert-to-opd')
-  @RequirePermission('opd', 'add')
+  // Writes an OPD visit, so it is gated on the OPD side — same call as
+  // move-to-IPD. Matches R1-OPD's opd.opd_patient:add set.
+  @RequireFeature('opd.opd_patient', 'add')
   convertToOpd(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -140,7 +150,7 @@ export class AppointmentController {
 
   @Delete(':id')
   @HttpCode(204)
-  @RequirePermission('appointment', 'delete')
+  @RequireFeature('appointment.appointment', 'delete')
   async remove(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
