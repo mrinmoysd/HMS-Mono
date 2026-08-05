@@ -15,7 +15,7 @@ import {
   type ListQuery,
 } from '@smart-hospital/shared';
 import { DiagnosticsService } from './diagnostics.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -28,25 +28,25 @@ export class PathologyController {
   constructor(private readonly diagnostics: DiagnosticsService) {}
 
   @Get('tests')
-  @RequirePermission('pathology', 'view')
+  @RequireFeature('pathology.pathology_test', 'view')
   listTests(@BranchId() branchId: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.diagnostics.listTests(branchId, 'pathology', q);
   }
 
   @Get('tests/:id')
-  @RequirePermission('pathology', 'view')
+  @RequireFeature('pathology.pathology_test', 'view')
   getTest(@BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.diagnostics.getTest(branchId, 'pathology', id);
   }
 
   @Get('previous-reports')
-  @RequirePermission('pathology', 'view')
+  @RequireFeature('pathology.pathology_test', 'view')
   previousReports(@BranchId() branchId: string, @Query('patientId', ParseUUIDPipe) patientId: string) {
     return this.diagnostics.previousReports(branchId, 'pathology', patientId);
   }
 
   @Post('tests')
-  @RequirePermission('pathology', 'add')
+  @RequireFeature('pathology.pathology_test', 'add')
   createTest(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -56,7 +56,7 @@ export class PathologyController {
   }
 
   @Patch('tests/:id')
-  @RequirePermission('pathology', 'edit')
+  @RequireFeature('pathology.pathology_test', 'edit')
   updateTest(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -68,13 +68,13 @@ export class PathologyController {
 
   @Delete('tests/:id')
   @HttpCode(204)
-  @RequirePermission('pathology', 'delete')
+  @RequireFeature('pathology.pathology_test', 'delete')
   async removeTest(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.diagnostics.removeTest(user, branchId, 'pathology', id);
   }
 
   @Post('bills')
-  @RequirePermission('pathology', 'add')
+  @RequireFeature('pathology.pathology_bill', 'add')
   generateBill(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -85,13 +85,14 @@ export class PathologyController {
 
   /** Preview the next bill number for the Generate Bill form. Does not consume it. */
   @Get('bills/next-no')
-  @RequirePermission('pathology', 'add')
+  // Read only by the create form, so it follows who may create a bill.
+  @RequireFeature('pathology.pathology_bill', 'add')
   nextBillNo(@BranchId() branchId: string, @Query('patientId') patientId?: string) {
     return this.diagnostics.nextBillNo(branchId, 'pathology', patientId);
   }
 
   @Patch('bills/:id')
-  @RequirePermission('pathology', 'edit')
+  @RequireFeature('pathology.pathology_bill', 'edit')
   updateBill(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -102,21 +103,24 @@ export class PathologyController {
   }
 
   @Delete('bills/:id')
-  @RequirePermission('pathology', 'delete')
+  @RequireFeature('pathology.pathology_bill', 'delete')
   @HttpCode(204)
   deleteBill(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id') id: string) {
     return this.diagnostics.deleteBill(user, branchId, 'pathology', id);
   }
 
   // Category (Setup master)
+  // Categories, Units and Parameters were gated on generic `setup:*`, which
+  // made them Admin-only. They are Pathology features with full CRUD for the
+  // Pathologist, who is the person who actually curates them.
   @Get('categories')
-  @RequirePermission('setup', 'view')
+  @RequireFeature('pathology.pathology_category', 'view')
   listCategories(@BranchId() branchId: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.diagnostics.listCategories(branchId, 'pathology', q);
   }
 
   @Post('categories')
-  @RequirePermission('setup', 'add')
+  @RequireFeature('pathology.pathology_category', 'add')
   createCategory(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -126,7 +130,7 @@ export class PathologyController {
   }
 
   @Patch('categories/:id')
-  @RequirePermission('setup', 'edit')
+  @RequireFeature('pathology.pathology_category', 'edit')
   updateCategory(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -138,20 +142,20 @@ export class PathologyController {
 
   @Delete('categories/:id')
   @HttpCode(204)
-  @RequirePermission('setup', 'delete')
+  @RequireFeature('pathology.pathology_category', 'delete')
   async removeCategory(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.diagnostics.removeCategory(user, branchId, 'pathology', id);
   }
 
   // Unit (Setup master)
   @Get('units')
-  @RequirePermission('setup', 'view')
+  @RequireFeature('pathology.pathology_unit', 'view')
   listUnits(@BranchId() branchId: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.diagnostics.listUnits(branchId, 'pathology', q);
   }
 
   @Post('units')
-  @RequirePermission('setup', 'add')
+  @RequireFeature('pathology.pathology_unit', 'add')
   createUnit(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -161,7 +165,7 @@ export class PathologyController {
   }
 
   @Patch('units/:id')
-  @RequirePermission('setup', 'edit')
+  @RequireFeature('pathology.pathology_unit', 'edit')
   updateUnit(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -173,7 +177,7 @@ export class PathologyController {
 
   @Delete('units/:id')
   @HttpCode(204)
-  @RequirePermission('setup', 'delete')
+  @RequireFeature('pathology.pathology_unit', 'delete')
   async removeUnit(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.diagnostics.removeUnit(user, branchId, 'pathology', id);
   }

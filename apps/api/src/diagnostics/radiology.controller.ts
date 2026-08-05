@@ -15,7 +15,7 @@ import {
   type ListQuery,
 } from '@smart-hospital/shared';
 import { DiagnosticsService } from './diagnostics.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -28,25 +28,25 @@ export class RadiologyController {
   constructor(private readonly diagnostics: DiagnosticsService) {}
 
   @Get('tests')
-  @RequirePermission('radiology', 'view')
+  @RequireFeature('radiology.radiology_test', 'view')
   listTests(@BranchId() branchId: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.diagnostics.listTests(branchId, 'radiology', q);
   }
 
   @Get('tests/:id')
-  @RequirePermission('radiology', 'view')
+  @RequireFeature('radiology.radiology_test', 'view')
   getTest(@BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.diagnostics.getTest(branchId, 'radiology', id);
   }
 
   @Get('previous-reports')
-  @RequirePermission('radiology', 'view')
+  @RequireFeature('radiology.radiology_test', 'view')
   previousReports(@BranchId() branchId: string, @Query('patientId', ParseUUIDPipe) patientId: string) {
     return this.diagnostics.previousReports(branchId, 'radiology', patientId);
   }
 
   @Post('tests')
-  @RequirePermission('radiology', 'add')
+  @RequireFeature('radiology.radiology_test', 'add')
   createTest(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -56,7 +56,7 @@ export class RadiologyController {
   }
 
   @Patch('tests/:id')
-  @RequirePermission('radiology', 'edit')
+  @RequireFeature('radiology.radiology_test', 'edit')
   updateTest(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -68,13 +68,13 @@ export class RadiologyController {
 
   @Delete('tests/:id')
   @HttpCode(204)
-  @RequirePermission('radiology', 'delete')
+  @RequireFeature('radiology.radiology_test', 'delete')
   async removeTest(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.diagnostics.removeTest(user, branchId, 'radiology', id);
   }
 
   @Post('bills')
-  @RequirePermission('radiology', 'add')
+  @RequireFeature('radiology.radiology_bill', 'add')
   generateBill(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -85,13 +85,14 @@ export class RadiologyController {
 
   /** Preview the next bill number for the Generate Bill form. Does not consume it. */
   @Get('bills/next-no')
-  @RequirePermission('radiology', 'add')
+  // Read only by the create form, so it follows who may create a bill.
+  @RequireFeature('radiology.radiology_bill', 'add')
   nextBillNo(@BranchId() branchId: string, @Query('patientId') patientId?: string) {
     return this.diagnostics.nextBillNo(branchId, 'radiology', patientId);
   }
 
   @Patch('bills/:id')
-  @RequirePermission('radiology', 'edit')
+  @RequireFeature('radiology.radiology_bill', 'edit')
   updateBill(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -102,21 +103,24 @@ export class RadiologyController {
   }
 
   @Delete('bills/:id')
-  @RequirePermission('radiology', 'delete')
+  @RequireFeature('radiology.radiology_bill', 'delete')
   @HttpCode(204)
   deleteBill(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id') id: string) {
     return this.diagnostics.deleteBill(user, branchId, 'radiology', id);
   }
 
   // Category (Setup master)
+  // Categories, Units and Parameters were gated on generic `setup:*`, which
+  // made them Admin-only. They are Radiology features with full CRUD for the
+  // Radiologist, who is the person who actually curates them.
   @Get('categories')
-  @RequirePermission('setup', 'view')
+  @RequireFeature('radiology.radiology_category', 'view')
   listCategories(@BranchId() branchId: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.diagnostics.listCategories(branchId, 'radiology', q);
   }
 
   @Post('categories')
-  @RequirePermission('setup', 'add')
+  @RequireFeature('radiology.radiology_category', 'add')
   createCategory(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -126,7 +130,7 @@ export class RadiologyController {
   }
 
   @Patch('categories/:id')
-  @RequirePermission('setup', 'edit')
+  @RequireFeature('radiology.radiology_category', 'edit')
   updateCategory(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -138,20 +142,20 @@ export class RadiologyController {
 
   @Delete('categories/:id')
   @HttpCode(204)
-  @RequirePermission('setup', 'delete')
+  @RequireFeature('radiology.radiology_category', 'delete')
   async removeCategory(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.diagnostics.removeCategory(user, branchId, 'radiology', id);
   }
 
   // Unit (Setup master)
   @Get('units')
-  @RequirePermission('setup', 'view')
+  @RequireFeature('radiology.radiology_unit', 'view')
   listUnits(@BranchId() branchId: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.diagnostics.listUnits(branchId, 'radiology', q);
   }
 
   @Post('units')
-  @RequirePermission('setup', 'add')
+  @RequireFeature('radiology.radiology_unit', 'add')
   createUnit(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -161,7 +165,7 @@ export class RadiologyController {
   }
 
   @Patch('units/:id')
-  @RequirePermission('setup', 'edit')
+  @RequireFeature('radiology.radiology_unit', 'edit')
   updateUnit(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -173,7 +177,7 @@ export class RadiologyController {
 
   @Delete('units/:id')
   @HttpCode(204)
-  @RequirePermission('setup', 'delete')
+  @RequireFeature('radiology.radiology_unit', 'delete')
   async removeUnit(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.diagnostics.removeUnit(user, branchId, 'radiology', id);
   }
