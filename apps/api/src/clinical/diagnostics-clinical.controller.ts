@@ -11,7 +11,8 @@ import {
   type ReportLabInput,
 } from '@smart-hospital/shared';
 import { DiagnosticsClinicalService } from './diagnostics-clinical.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature, RequireFeatureFor } from '../rbac/require-feature.decorator';
+import { ENCOUNTER_FEATURES as EF, encounterFeature } from './clinical-features';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -26,42 +27,43 @@ export class DiagnosticsClinicalController {
   constructor(private readonly svc: DiagnosticsClinicalService) {}
 
   // ── Lab Investigation ──────────────────────────────────────
+  // Lab Investigation is view-only on both sides — its sole toggle.
   @Get('lab')
-  @RequirePermission('patient', 'view')
+  @RequireFeatureFor((c) => encounterFeature(c.query.encounterType, ...EF.lab, 'view'))
   listLab(@BranchId() b: string, @Query() q: EncQuery) {
     return this.svc.listLab(b, q);
   }
   @Post('lab')
-  @RequirePermission('patient', 'edit')
+  @RequireFeatureFor((c) => encounterFeature(c.body.encounterType, ...EF.lab, 'view'))
   orderLab(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(orderLabSchema)) body: OrderLabInput) {
     return this.svc.orderLab(u, b, body);
   }
   @Patch('lab/:id')
-  @RequirePermission('patient', 'edit')
+  @RequireFeatureFor((c) => encounterFeature(c.body.encounterType, ...EF.lab, 'view'))
   reportLab(@CurrentUser() u: RequestUser, @BranchId() b: string, @Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(reportLabSchema)) body: ReportLabInput) {
     return this.svc.reportLab(u, b, id, body);
   }
 
   // ── Prescription ───────────────────────────────────────────
   @Get('prescriptions')
-  @RequirePermission('patient', 'view')
+  @RequireFeatureFor((c) => encounterFeature(c.query.encounterType, ...EF.prescription, 'view'))
   listPrescriptions(@BranchId() b: string, @Query() q: EncQuery) {
     return this.svc.listPrescriptions(b, q);
   }
   @Post('prescriptions')
-  @RequirePermission('patient', 'edit')
+  @RequireFeatureFor((c) => encounterFeature(c.body.encounterType, ...EF.prescription, 'add'))
   createPrescription(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(createPrescriptionSchema)) body: CreatePrescriptionInput) {
     return this.svc.createPrescription(u, b, body);
   }
 
   // ── Medication ─────────────────────────────────────────────
   @Get('medication')
-  @RequirePermission('patient', 'view')
+  @RequireFeatureFor((c) => encounterFeature(c.query.encounterType, ...EF.medication, 'view'))
   listMedication(@BranchId() b: string, @Query() q: EncQuery) {
     return this.svc.listMedication(b, q);
   }
   @Post('medication')
-  @RequirePermission('patient', 'edit')
+  @RequireFeatureFor((c) => encounterFeature(c.body.encounterType, ...EF.medication, 'add'))
   addMedication(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(addMedicationSchema)) body: AddMedicationInput) {
     return this.svc.addMedication(u, b, body);
   }

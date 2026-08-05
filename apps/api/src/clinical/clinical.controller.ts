@@ -25,7 +25,9 @@ import {
 import { ClinicalService } from './clinical.service';
 import { VitalTypeService } from './vital-type.service';
 import { ProfileService } from './profile.service';
+import { RequireFeature, RequireFeatureFor } from '../rbac/require-feature.decorator';
 import { RequirePermission } from '../rbac/require-permission.decorator';
+import { ENCOUNTER_FEATURES as EF, encounterFeature } from './clinical-features';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -43,50 +45,52 @@ export class ClinicalController {
 
   // Patient 360 aggregation
   @Get('patients/:id/profile')
-  @RequirePermission('patient', 'view')
+  @RequireFeature('patient.patient', 'view')
   patientProfile(@BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.profile.profile(branchId, id);
   }
 
   // Consolidated Patient Details report (all visits + department bills)
   @Get('patients/:id/report')
-  @RequirePermission('patient', 'view')
+  @RequireFeature('patient.patient', 'view')
   patientReport(@BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.profile.report(branchId, id);
   }
 
   // Vital types (Setup master)
+  // The clinical masters are System Settings features in the spec, not a
+  // by-product of patient access.
   @Get('vital-types')
-  @RequirePermission('patient', 'view')
+  @RequireFeature('system_settings.vital', 'view')
   listVitalTypes(@BranchId() b: string) {
     return this.vitalTypes.list(b);
   }
   @Post('vital-types')
-  @RequirePermission('setup', 'add')
+  @RequireFeature('system_settings.vital', 'add')
   createVitalType(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(vitalTypeSchema)) body: VitalTypeInput) {
     return this.vitalTypes.create(u, b, body);
   }
 
   // Finding catalog (Setup master)
   @Get('findings')
-  @RequirePermission('patient', 'view')
+  @RequireFeature('system_settings.findings', 'view')
   listFindingMasters(@BranchId() b: string) {
     return this.clinical.listFindings(b);
   }
   @Post('findings')
-  @RequirePermission('setup', 'add')
+  @RequireFeature('system_settings.findings', 'add')
   createFindingMaster(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(findingSchema)) body: FindingInput) {
     return this.clinical.createFinding(u, b, body);
   }
 
   // Symptom-type catalog (Setup master)
   @Get('symptom-types')
-  @RequirePermission('patient', 'view')
+  @RequireFeature('system_settings.symptoms_type', 'view')
   listSymptomTypeMasters(@BranchId() b: string) {
     return this.clinical.listSymptomTypes(b);
   }
   @Post('symptom-types')
-  @RequirePermission('setup', 'add')
+  @RequireFeature('system_settings.symptoms_type', 'add')
   createSymptomTypeMaster(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(symptomTypeSchema)) body: SymptomTypeInput) {
     return this.clinical.createSymptomType(u, b, body);
   }
@@ -94,17 +98,17 @@ export class ClinicalController {
   // ICD-10 code catalog (Setup master). Groups come from the generic
   // name-catalog under 'icd-group'.
   @Get('icd-codes')
-  @RequirePermission('patient', 'view')
+  @RequireFeature('system_settings.icd_10_codes', 'view')
   listIcdCodes(@BranchId() b: string) {
     return this.clinical.listIcdCodes(b);
   }
   @Post('icd-codes')
-  @RequirePermission('setup', 'add')
+  @RequireFeature('system_settings.icd_10_codes', 'add')
   createIcdCode(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(icdCodeSchema)) body: IcdCodeInput) {
     return this.clinical.createIcdCode(u, b, body);
   }
   @Patch('icd-codes/:id')
-  @RequirePermission('setup', 'edit')
+  @RequireFeature('system_settings.icd_10_codes', 'edit')
   updateIcdCode(
     @CurrentUser() u: RequestUser,
     @BranchId() b: string,
@@ -114,7 +118,7 @@ export class ClinicalController {
     return this.clinical.updateIcdCode(u, b, id, body);
   }
   @Delete('icd-codes/:id')
-  @RequirePermission('setup', 'delete')
+  @RequireFeature('system_settings.icd_10_codes', 'delete')
   @HttpCode(204)
   async removeIcdCode(@CurrentUser() u: RequestUser, @BranchId() b: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.clinical.removeIcdCode(u, b, id);
@@ -122,22 +126,22 @@ export class ClinicalController {
 
   // Vitals
   @Get('clinical/vitals/current')
-  @RequirePermission('patient', 'view')
+  @RequireFeatureFor((c) => encounterFeature(c.query.encounterType, ...EF.vitals, 'view'))
   currentVitals(@BranchId() b: string, @Query('patientId', ParseUUIDPipe) patientId: string) {
     return this.clinical.currentVitals(b, patientId);
   }
   @Get('clinical/vitals/matrix')
-  @RequirePermission('patient', 'view')
+  @RequireFeatureFor((c) => encounterFeature(c.query.encounterType, ...EF.vitals, 'view'))
   vitalMatrix(@BranchId() b: string, @Query('patientId', ParseUUIDPipe) patientId: string) {
     return this.clinical.vitalMatrix(b, patientId);
   }
   @Post('clinical/vitals')
-  @RequirePermission('patient', 'edit')
+  @RequireFeatureFor((c) => encounterFeature(c.body.encounterType, ...EF.vitals, 'add'))
   addVitals(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(addVitalsSchema)) body: AddVitalsInput) {
     return this.clinical.addVitals(u, b, body);
   }
   @Patch('clinical/vitals/:id')
-  @RequirePermission('patient', 'edit')
+  @RequireFeatureFor((c) => encounterFeature(c.body.encounterType, ...EF.vitals, 'edit'))
   updateVital(
     @CurrentUser() u: RequestUser,
     @BranchId() b: string,
@@ -148,12 +152,16 @@ export class ClinicalController {
   }
   @Delete('clinical/vitals/:id')
   @HttpCode(204)
-  @RequirePermission('patient', 'delete')
+  @RequireFeatureFor((c) => encounterFeature(c.query.encounterType, ...EF.vitals, 'delete'))
   async removeVital(@CurrentUser() u: RequestUser, @BranchId() b: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.clinical.removeVital(u, b, id);
   }
 
   // Findings
+  // clinical/findings and clinical/symptoms record annotations against a
+  // patient. The spec has Findings and Symptoms Type only as System Settings
+  // *masters*, with no feature for the recorded values, so these two pairs stay
+  // module-level rather than being bent onto a master's key.
   @Get('clinical/findings')
   @RequirePermission('patient', 'view')
   listFindings(@BranchId() b: string, @Query('patientId', ParseUUIDPipe) patientId: string) {
@@ -179,17 +187,17 @@ export class ClinicalController {
 
   // Timeline
   @Get('clinical/timeline')
-  @RequirePermission('patient', 'view')
+  @RequireFeatureFor((c) => encounterFeature(c.query.encounterType, ...EF.timeline, 'view'))
   listTimeline(@BranchId() b: string, @Query('patientId', ParseUUIDPipe) patientId: string) {
     return this.clinical.listTimeline(b, patientId);
   }
   @Post('clinical/timeline')
-  @RequirePermission('patient', 'edit')
+  @RequireFeatureFor((c) => encounterFeature(c.body.encounterType, ...EF.timeline, 'add'))
   addTimeline(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(timelineEntrySchema)) body: TimelineEntryInput) {
     return this.clinical.addTimeline(u, b, body);
   }
   @Patch('clinical/timeline/:id')
-  @RequirePermission('patient', 'edit')
+  @RequireFeatureFor((c) => encounterFeature(c.body.encounterType, ...EF.timeline, 'edit'))
   updateTimeline(
     @CurrentUser() u: RequestUser,
     @BranchId() b: string,
@@ -200,7 +208,7 @@ export class ClinicalController {
   }
   @Delete('clinical/timeline/:id')
   @HttpCode(204)
-  @RequirePermission('patient', 'delete')
+  @RequireFeatureFor((c) => encounterFeature(c.query.encounterType, ...EF.timeline, 'delete'))
   async removeTimeline(@CurrentUser() u: RequestUser, @BranchId() b: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.clinical.removeTimeline(u, b, id);
   }
