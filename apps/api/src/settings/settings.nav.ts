@@ -30,6 +30,7 @@ export const SETTINGS_NAV: SettingsNavItemDto[] = [
   g('users', 'Users', 'Platform', null),
   g('captcha', 'Captcha Settings', 'Platform', null),
 
+  g('modules', 'Modules', 'System', '/setup/settings/modules'),
   g('queue', 'Queue Process', 'System', null),
 ];
 

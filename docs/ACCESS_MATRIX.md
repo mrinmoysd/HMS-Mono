@@ -15,11 +15,11 @@ cannot be answered without one).
 
 ## Summary
 
-- routes: **380**
+- routes: **383**
 - feature-gated: 307
 - resolver-gated: 34
 - module-gated (documented exceptions): 13
-- authenticated, no permission: 12
+- authenticated, no permission: 13
 - public: 6
 - **unguarded: 0**
 
@@ -383,6 +383,9 @@ cannot be answered without one).
 | GET | `/settings` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | GET | `/settings/general` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | PUT | `/settings/general` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| GET | `/settings/modules` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| PUT | `/settings/modules` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| GET | `/settings/modules/state` | *authenticated* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | GET | `/settings/prefixes` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | PUT | `/settings/prefixes` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | GET | `/shifts` | `appointment.shift:view` | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | · |

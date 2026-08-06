@@ -2,7 +2,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { PATH_METADATA, METHOD_METADATA } from '@nestjs/common/constants';
 import { RequestMethod } from '@nestjs/common';
-import { Ability, defaultGrantsFor, featureGrantsFor, ROLES } from '@smart-hospital/shared';
+import {
+  Ability,
+  defaultGrantsFor,
+  featureGrantsFor,
+  moduleOfFeature,
+  togglesForModule,
+  ROLES,
+} from '@smart-hospital/shared';
 import type { ActionKey, FeaturePermissionKey, PermissionKey, RoleKey } from '@smart-hospital/shared';
 import { PERMISSION_KEY, type RequiredPermission } from './require-permission.decorator';
 import { FEATURE_KEY, FEATURE_RESOLVER_KEY, type RequiredFeature } from './require-feature.decorator';
@@ -168,6 +175,25 @@ export function roleMayAccess(entry: RouteEntry, role: RoleKey): boolean | null 
     case 'none':
       return false; // the guard fails closed
   }
+}
+
+/**
+ * The toggle groups a route belongs to — what Settings ▸ Modules would switch
+ * off to close it (G3).
+ *
+ * Mirrors the set `PermissionsGuard` builds at request time. `role`, `public`
+ * and `authenticated` routes return nothing: the guard returns before the module
+ * check for all three, which is what keeps Settings reachable.
+ */
+export function routeModules(entry: RouteEntry): string[] {
+  const out = new Set<string>();
+  if (entry.kind === 'feature' || entry.kind === 'resolver') {
+    for (const f of entry.features) out.add(moduleOfFeature(f.feature));
+  }
+  if (entry.kind === 'module' && entry.permission) {
+    for (const g of togglesForModule(entry.permission.module)) out.add(g);
+  }
+  return [...out];
 }
 
 export const MATRIX_ROLES = ROLES.filter((r) => r !== 'patient') as RoleKey[];

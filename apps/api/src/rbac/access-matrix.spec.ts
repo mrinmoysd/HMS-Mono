@@ -1,7 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { FEATURES } from '@smart-hospital/shared';
-import { collectRoutes, roleMayAccess, MATRIX_ROLES, type RouteEntry } from './route-inventory';
+import { FEATURES, MODULE_TOGGLES } from '@smart-hospital/shared';
+import {
+  collectRoutes,
+  roleMayAccess,
+  routeModules,
+  MATRIX_ROLES,
+  type RouteEntry,
+} from './route-inventory';
 
 /**
  * Phase R5 — the regression grid.
@@ -43,6 +49,9 @@ const AUTHENTICATED_ROUTES = [
   'POST /portal/appointments',
   'POST /portal/invoices/:id/pay',
   'GET /reports/categories',
+  // The sidebar needs to know which modules are off; almost no one who needs
+  // that may open Settings. It returns only the disabled list.
+  'GET /settings/modules/state',
 ];
 
 /** Routes reachable with no authentication at all. This list should stay tiny. */
@@ -75,6 +84,8 @@ const ROLE_GATED_ROUTES = [
   'GET /settings',
   'GET /settings/general',
   'PUT /settings/general',
+  'GET /settings/modules',
+  'PUT /settings/modules',
   'GET /settings/prefixes',
   'PUT /settings/prefixes',
 ];
@@ -99,6 +110,27 @@ const MODULE_GATED_ROUTES = [
   'POST /custom-fields',
   'POST /invoices/:id/payments',
 ];
+
+/**
+ * Toggleable modules that no route names statically, and why each is genuine
+ * rather than a forgotten decorator.
+ *
+ * Both are real and different, so neither is a reason to weaken the check.
+ */
+const MODULES_WITHOUT_OWN_ROUTES: Record<string, string> = {
+  // `GET /reports/:key` resolves its feature from the URL at request time
+  // (`@RequireFeatureFor`), so no report feature key exists in the metadata to
+  // read here. The guard DOES gate it: it computes the module from whatever the
+  // resolver returned, which is always a `reports.*` key.
+  reports: 'resolver-gated — the feature is chosen per request, invisible to static analysis',
+
+  // The QR Attendance screen is a view over the Human Resource attendance
+  // endpoints; it has no API of its own. Switching it off therefore removes the
+  // screen while attendance itself keeps following the Human Resource toggle.
+  // That is the intended meaning, but it is worth stating: this one toggle is
+  // navigation-level, not an access boundary.
+  qr_attendance: 'UI-only — the screen reads human_resource attendance endpoints',
+};
 
 let routes: RouteEntry[];
 const id = (r: RouteEntry) => `${r.method} ${r.route}`;
@@ -167,6 +199,37 @@ describe('invariants', () => {
       .filter((r) => roleMayAccess(r, 'admin') === false)
       .map((r) => `${id(r)}  ${r.features.map((f) => `${f.feature}:${f.action}`).join(' + ')}`);
     expect(denied).toEqual([]);
+  });
+
+  // ── Modules on/off (G3) ──────────────────────────────────────────────────
+  // The point of the module switch is that it outranks permissions. These two
+  // check the half that is easy to get wrong: that turning a module off really
+  // does close every one of its routes, and that it closes nothing else.
+
+  it('every toggleable module owns a route, or is listed as one that cannot', () => {
+    // A module you can switch off that gates nothing is a lie in the UI — the
+    // admin turns it off, the screens stay reachable, and nobody finds out
+    // until a customer does. Two modules genuinely cannot be seen here, and
+    // each is listed with the reason rather than the check being loosened.
+    const covered = new Set(routes.flatMap(routeModules));
+    const orphans = MODULE_TOGGLES.filter((r) => r.toggleable && !covered.has(r.key))
+      .map((r) => r.key)
+      .sort();
+    expect(orphans).toEqual(Object.keys(MODULES_WITHOUT_OWN_ROUTES).sort());
+  });
+
+  it('every feature key a route declares belongs to a module the switch knows', () => {
+    // If a feature key's prefix is not a toggle group, the guard computes a
+    // module name that no switch can ever name — so that route would silently
+    // ignore Settings ▸ Modules forever.
+    const known = new Set(MODULE_TOGGLES.map((r) => r.key));
+    const unknown: string[] = [];
+    for (const route of routes) {
+      for (const m of routeModules(route)) {
+        if (!known.has(m)) unknown.push(`${id(route)} -> ${m}`);
+      }
+    }
+    expect(unknown).toEqual([]);
   });
 });
 

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isToggleableModule } from '../rbac/module-toggles';
 
 /**
  * The settings registry (parity plan, phase G0).
@@ -63,11 +64,43 @@ export type GeneralSettingInput = z.infer<typeof generalSettingSchema>;
 
 export const GENERAL_SETTING_DEFAULT: GeneralSettingInput = generalSettingSchema.parse({});
 
+// ── Modules on/off ─────────────────────────────────────────────────────────
+/**
+ * Which modules are switched off for this branch (parity plan, phase G3).
+ *
+ * The stored value is the *disabled* list, so a module added in a later release
+ * is on by default rather than shipping invisible. `isToggleableModule` rejects
+ * anything protected or not yet built, which is what stops an admin — or a
+ * hand-edited row — from disabling the Settings screen that would turn it back
+ * on.
+ */
+export const moduleSettingSchema = z.object({
+  disabled: z
+    .array(z.string().min(1).max(64))
+    .max(64)
+    .default([])
+    .refine((keys) => keys.every(isToggleableModule), {
+      message: 'Contains a module that cannot be disabled',
+    }),
+});
+
+export type ModuleSettingInput = z.infer<typeof moduleSettingSchema>;
+
+export const MODULE_SETTING_DEFAULT: ModuleSettingInput = moduleSettingSchema.parse({});
+
+/** What the sidebar needs: the disabled set, without requiring Settings access. */
+export interface ModuleStateDto {
+  disabled: string[];
+}
+
 /**
  * Every settings schema, for the test that asserts each one parses `{}`.
  * A new setting group must be added here — that is the point.
  */
-export const SETTINGS_SCHEMAS = { general: generalSettingSchema } as const;
+export const SETTINGS_SCHEMAS = {
+  general: generalSettingSchema,
+  modules: moduleSettingSchema,
+} as const;
 
 // ── Prefix Setting ─────────────────────────────────────────────────────────
 /**

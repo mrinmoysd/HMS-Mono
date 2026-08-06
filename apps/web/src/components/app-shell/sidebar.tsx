@@ -4,8 +4,15 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronDown, Hospital, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
-import { MODULES, MODULE_META, SIDEBAR_GROUPS, type ModuleKey } from '@smart-hospital/shared';
+import {
+  MODULES,
+  MODULE_META,
+  SIDEBAR_GROUPS,
+  sidebarModuleEnabled,
+  type ModuleKey,
+} from '@smart-hospital/shared';
 import { useAbility } from '@/lib/auth-store';
+import { useModuleState } from '@/lib/hooks/use-settings';
 import { cn } from '@/lib/utils';
 import { MODULE_ICONS, MODULE_SUBNAV, moduleHref } from './nav-config';
 
@@ -35,14 +42,26 @@ export function Sidebar({
     });
   }
 
-  // Only modules the role can access, grouped per FRONTEND_DESIGN §3.1.
+  // Modules switched off in Settings ▸ Modules. Undefined while loading, which
+  // we read as "nothing disabled" so navigation renders immediately rather than
+  // flashing empty — the API denies a disabled module regardless of what the
+  // sidebar shows, so being briefly optimistic here is safe.
+  const moduleState = useModuleState();
+  // Memoised on the query's data, not rebuilt per render — `?? []` would be a
+  // fresh array every time and defeat the useMemo below.
+  const disabled = useMemo(() => moduleState.data?.disabled ?? [], [moduleState.data]);
+
+  // Only modules the role can access AND that are switched on, grouped per
+  // FRONTEND_DESIGN §3.1.
   const byGroup = useMemo(() => {
-    const visible = MODULES.filter((m) => ability.canAccess(m));
+    const visible = MODULES.filter(
+      (m) => ability.canAccess(m) && sidebarModuleEnabled(disabled, m),
+    );
     return SIDEBAR_GROUPS.map((group) => ({
       group,
       items: visible.filter((m) => MODULE_META[m].group === group),
     })).filter((g) => g.items.length > 0);
-  }, [ability]);
+  }, [ability, disabled]);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 

@@ -1,7 +1,9 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Ability } from '@smart-hospital/shared';
+import { Ability, moduleOfFeature, togglesForModule } from '@smart-hospital/shared';
 import type { PermissionKey } from '@smart-hospital/shared';
+import { ModuleAccessService } from '../settings/module-access.service';
+import { resolveBranchId } from '../common/context/branch-context.interceptor';
 import { PERMISSION_KEY, type RequiredPermission } from './require-permission.decorator';
 import {
   FEATURE_KEY,
@@ -38,12 +40,26 @@ import type { FeaturePermissionKey, RoleKey } from '@smart-hospital/shared';
  *
  * Nothing else reaches a handler. Adding a route without one of these fails
  * immediately and loudly, which is the entire point.
+ *
+ * **Disabled modules are checked first.** Settings ▸ Modules can switch a module
+ * off for a branch; that denies every role including Admin, and is enforced here
+ * rather than only in the sidebar, because hiding a link is not access control.
+ * The check deliberately sits ahead of the permission check — see the comment
+ * at the call site.
+ *
+ * `@RequireRole` returns before it, which is what keeps Settings itself
+ * reachable. Combined with `PROTECTED_MODULES` refusing to disable
+ * `system_settings`, there is no way to switch off the screen that switches
+ * things back on.
  */
 @Injectable()
 export class PermissionsGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly modules: ModuleAccessService,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const targets = [context.getHandler(), context.getClass()];
 
     // @Public routes never reached JwtAuthGuard's user lookup, so there is no
@@ -96,6 +112,27 @@ export class PermissionsGuard implements CanActivate {
       // null means the resolver did not recognise the request — fail closed.
       if (resolved === null) throw new ForbiddenException('Unknown resource for permission check');
       features = [...features, ...(Array.isArray(resolved) ? resolved : [resolved])];
+    }
+
+    // ── Modules on/off, before any permission check ──────────────────────────
+    // A module switched off in Settings is unreachable regardless of who is
+    // asking, Admin included. Running this *before* the feature check is the
+    // whole point: if it ran after, a role that happened to lack the permission
+    // would get "Missing permission" and a role that had it would get through,
+    // which is not "the module is off" — it is "the module is off for some
+    // people".
+    const branchId = resolveBranchId(req.user, req.headers as Record<string, unknown>);
+    if (branchId) {
+      const touched = new Set<string>();
+      for (const f of features) touched.add(moduleOfFeature(f.feature));
+      if (required) for (const g of togglesForModule(required.module)) touched.add(g);
+
+      const disabled = await this.modules.disabledFor(branchId);
+      for (const m of touched) {
+        if (disabled.has(m)) {
+          throw new ForbiddenException(`Module disabled: ${m}`);
+        }
+      }
     }
 
     for (const f of features) {
