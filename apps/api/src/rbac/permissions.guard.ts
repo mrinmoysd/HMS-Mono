@@ -10,9 +10,10 @@ import {
   type RequiredFeature,
 } from './require-feature.decorator';
 import { NO_PERMISSION_KEY } from './authenticated.decorator';
+import { ROLE_KEY } from './require-role.decorator';
 import { IS_PUBLIC_KEY } from '../auth/jwt-auth.guard';
 import type { AuthenticatedRequest } from '../common/types/request-user';
-import type { FeaturePermissionKey } from '@smart-hospital/shared';
+import type { FeaturePermissionKey, RoleKey } from '@smart-hospital/shared';
 
 /**
  * Enforces the permission declared by @RequireFeature (preferred) or
@@ -31,6 +32,7 @@ import type { FeaturePermissionKey } from '@smart-hospital/shared';
  *
  *   @Public()          no authentication at all — login, health, the CMS site
  *   @Authenticated()   signed in is the whole check — your own profile, portal
+ *   @RequireRole       the caller's role itself — the permission editor only
  *   @RequireFeature    a named feature and action
  *   @RequirePermission legacy module gate, for the few with no feature key
  *
@@ -50,6 +52,18 @@ export class PermissionsGuard implements CanActivate {
     if (this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, targets)) return true;
     if (this.reflector.getAllAndOverride<boolean>(NO_PERMISSION_KEY, targets)) return true;
 
+    // Role gating, for the permission editor. Deliberately not expressible as a
+    // permission — see require-role.decorator.ts for why the loop matters.
+    const roles = this.reflector.getAllAndOverride<RoleKey[] | undefined>(ROLE_KEY, targets);
+    if (roles?.length) {
+      const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
+      const slug = req.user?.roleSlug as RoleKey | undefined;
+      if (!slug || !roles.includes(slug)) {
+        throw new ForbiddenException(`This endpoint is restricted to: ${roles.join(', ')}`);
+      }
+      return true;
+    }
+
     const declared = this.reflector.getAllAndOverride<RequiredFeature[] | undefined>(FEATURE_KEY, targets);
     const resolver = this.reflector.getAllAndOverride<
       ((ctx: FeatureResolverContext) => RequiredFeature[] | RequiredFeature | null) | undefined
@@ -62,7 +76,7 @@ export class PermissionsGuard implements CanActivate {
       // route.
       throw new ForbiddenException(
         'This endpoint declares no permission. Add @RequireFeature, @RequirePermission, ' +
-          '@Authenticated or @Public to it.',
+          '@RequireRole, @Authenticated or @Public to it.',
       );
     }
 

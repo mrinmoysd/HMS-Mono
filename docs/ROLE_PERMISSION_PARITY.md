@@ -760,16 +760,53 @@ reading that whoever manages operations manages the list of them. The spec
 models Operation Theatre only as an encounter record and never exposes its
 masters.
 
-## Phase R2 — The permission editor
+## Phase R2 — The permission editor — **DONE**
 
-Build what the reference has at `/admin/roles/permission/{id}`: 36 collapsible
-groups, a row per feature, up to 4 checkboxes per row, group-level and
-column-level select-all. Plus what the reference lacks:
+`/setup/roles`. All 36 groups, 332 feature rows, up to four checkboxes each,
+collapsible, searchable, with per-group and per-column select-all. Saves are a
+diff, not the whole tree, so two people editing different groups cannot
+silently overwrite each other.
 
-- `@RequirePermission('setup','edit')` on both the read and the write endpoint —
-  **the defect in Part I §7 is not reproduced**;
-- Super Admin's row is not editable and not rendered as editable;
-- an audit record per change (we already have `AuditService`).
+Changes take effect immediately: the JWT strategy reloads permissions from the
+database on every request, so no re-login is needed. Verified live — granting
+`human_resource.leave_types:view` to Nurse turned a 403 into a 200 on the same
+token, and revoking it turned it back.
+
+### What we do differently from the reference
+
+Both are recorded in the anti-parity section and both are deliberate:
+
+1. **The read endpoint is guarded.** Part I §7 records that the reference's
+   editor renders every role's permission set to any authenticated user and
+   accepts a submit from them. Ours restricts both endpoints identically.
+2. **Super Admin is not offered.** It bypasses every check and has no permission
+   row, so its checkboxes would be decoration. It is shown, locked, with the
+   reason. Patient is locked too: the portal's boundary is record ownership, not
+   feature grants, so its toggles would do nothing.
+
+### Access is by role, not by permission
+
+`@RequireRole('super_admin', 'admin')` — the only role-gated route in the
+codebase, and the R5 matrix has an allowlist assertion to keep it that way.
+
+The reason is a loop. Any permission that gates the permission editor can be
+revoked *using* the permission editor: an admin could grant editor access to a
+receptionist, or remove it from every role including their own, after which
+nobody can edit permissions again without someone going into the database. A
+role check cannot be granted or revoked through the screen it protects.
+
+### The editor refuses more than it accepts
+
+A feature exposes exactly the toggles Admin holds, and the editor will not
+write outside them — the UI renders `—` instead of a checkbox, and the API
+rejects the change with the list of actions that feature does have.
+
+This is not theoretical. Ticking `add` on a view-only feature is precisely the
+Multi Branch bug R5 caught: the row saves, the checkbox looks ticked, and the
+guard still denies, because no role can hold a toggle that does not exist. It
+should not be possible to reintroduce that through a screen, so it isn't.
+
+Every save writes one audit row carrying the granted/revoked delta.
 
 ## Phase R3 — Close our own holes (Part II §E) — **DONE**
 

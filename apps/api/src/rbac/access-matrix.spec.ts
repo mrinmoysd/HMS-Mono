@@ -56,6 +56,18 @@ const PUBLIC_ROUTES = [
 ];
 
 /**
+ * Routes gated on the caller's ROLE rather than on a permission. This list
+ * should contain the permission editor and nothing else — role gating cannot be
+ * adjusted without a deploy, which is the problem the feature model exists to
+ * solve. See require-role.decorator.ts for why the editor is the exception.
+ */
+const ROLE_GATED_ROUTES = [
+  'GET /rbac/roles',
+  'GET /rbac/roles/:slug/permissions',
+  'PUT /rbac/roles/:slug/permissions',
+];
+
+/**
  * Routes still on the coarse module gate. Every one is documented in
  * docs/ROLE_PERMISSION_PARITY.md under "Deliberately left module-level" —
  * there is no feature key in the spec to migrate them to.
@@ -155,6 +167,16 @@ describe('exemptions are explicit', () => {
 
   it('only the listed routes are reachable unauthenticated', () => {
     expect(routes.filter((r) => r.kind === 'public').map(id).sort()).toEqual([...PUBLIC_ROUTES].sort());
+  });
+
+  it('only the permission editor is gated on a role', () => {
+    expect(routes.filter((r) => r.kind === 'role').map(id).sort()).toEqual([...ROLE_GATED_ROUTES].sort());
+  });
+
+  it('the role-gated routes admit Admin and Super Admin only', () => {
+    for (const r of routes.filter((x) => x.kind === 'role')) {
+      expect([...(r.roles ?? [])].sort()).toEqual(['admin', 'super_admin']);
+    }
   });
 
   it('only the documented routes remain on a module gate', () => {

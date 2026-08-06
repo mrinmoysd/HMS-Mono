@@ -16,9 +16,16 @@ import {
   Droplet,
   FlaskConical,
   Radio,
+  ShieldCheck,
 } from 'lucide-react';
 
 const AREAS = [
+  {
+    href: '/setup/roles',
+    title: 'Roles & Permissions',
+    desc: 'What each role may see and do, feature by feature. Admin and Super Admin only.',
+    icon: ShieldCheck,
+  },
   {
     href: '/setup/charges',
     title: 'Hospital Charges',

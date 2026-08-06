@@ -7,6 +7,7 @@ import type { ActionKey, FeaturePermissionKey, PermissionKey, RoleKey } from '@s
 import { PERMISSION_KEY, type RequiredPermission } from './require-permission.decorator';
 import { FEATURE_KEY, FEATURE_RESOLVER_KEY, type RequiredFeature } from './require-feature.decorator';
 import { NO_PERMISSION_KEY } from './authenticated.decorator';
+import { ROLE_KEY } from './require-role.decorator';
 import { IS_PUBLIC_KEY } from '../auth/jwt-auth.guard';
 
 /**
@@ -20,7 +21,7 @@ import { IS_PUBLIC_KEY } from '../auth/jwt-auth.guard';
  * enforce, so it cannot drift from the running behaviour.
  */
 
-export type GuardKind = 'feature' | 'resolver' | 'module' | 'authenticated' | 'public' | 'none';
+export type GuardKind = 'feature' | 'resolver' | 'module' | 'role' | 'authenticated' | 'public' | 'none';
 
 export interface RouteEntry {
   method: string;
@@ -32,6 +33,8 @@ export interface RouteEntry {
   features: RequiredFeature[];
   /** Legacy module gate, when kind === 'module'. */
   permission?: RequiredPermission;
+  /** Allowed role slugs, when kind === 'role'. */
+  roles?: RoleKey[];
 }
 
 const VERB = new Map<number, string>([
@@ -96,12 +99,15 @@ export function collectRoutes(srcRoot = path.join(__dirname, '..')): RouteEntry[
         const features = pick<RequiredFeature[]>(FEATURE_KEY);
         const resolver = pick<unknown>(FEATURE_RESOLVER_KEY);
         const permission = pick<RequiredPermission>(PERMISSION_KEY);
+        const roles = pick<RoleKey[]>(ROLE_KEY);
 
         const kind: GuardKind = isPublic
           ? 'public'
           : noPerm
             ? 'authenticated'
-            : features?.length
+            : roles?.length
+              ? 'role'
+              : features?.length
               ? 'feature'
               : resolver
                 ? 'resolver'
@@ -117,6 +123,7 @@ export function collectRoutes(srcRoot = path.join(__dirname, '..')): RouteEntry[
           kind,
           features: features ?? [],
           permission,
+          roles,
         });
       }
     }
@@ -150,6 +157,8 @@ export function roleMayAccess(entry: RouteEntry, role: RoleKey): boolean | null 
     case 'public':
     case 'authenticated':
       return true;
+    case 'role':
+      return (entry.roles ?? []).includes(role);
     case 'feature':
       return entry.features.every((f) => ability.canFeature(f.feature, f.action));
     case 'module':

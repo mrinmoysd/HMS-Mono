@@ -15,7 +15,7 @@ cannot be answered without one).
 
 ## Summary
 
-- routes: **372**
+- routes: **375**
 - feature-gated: 307
 - resolver-gated: 34
 - module-gated (documented exceptions): 13
@@ -356,6 +356,9 @@ cannot be answered without one).
 | POST | `/radiology/units` | `radiology.radiology_unit:add` | ✓ | ✓ | · | · | · | · | ✓ | · | · |
 | DELETE | `/radiology/units/:id` | `radiology.radiology_unit:delete` | ✓ | ✓ | · | · | · | · | ✓ | · | · |
 | PATCH | `/radiology/units/:id` | `radiology.radiology_unit:edit` | ✓ | ✓ | · | · | · | · | ✓ | · | · |
+| GET | `/rbac/roles` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| GET | `/rbac/roles/:slug/permissions` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| PUT | `/rbac/roles/:slug/permissions` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | GET | `/records/births` | `birth_death.birth_record:view` | ✓ | ✓ | · | ✓ | · | · | · | ✓ | · |
 | POST | `/records/births` | `birth_death.birth_record:add` | ✓ | ✓ | · | ✓ | · | · | · | · | · |
 | DELETE | `/records/births/:id` | `birth_death.birth_record:delete` | ✓ | ✓ | · | ✓ | · | · | · | · | · |
