@@ -827,30 +827,44 @@ user-visible weight.
 Also in this phase: split `finance` into `Income` and `Expense` groups, and lift
 `Hospital Charges` out of `setup` into its own group.
 
-## Phase R5 — The regression grid
+## Phase R5 — The regression grid — **DONE**
 
-Section 8's methodology, adapted: our API returns 403 rather than redirecting, so
-assert on status and the `Missing permission:` body. Build the 9-role × N-route
-table as an automated test, seeded from `DEFAULT_GRANTS` so the test and the
-model cannot silently drift apart.
+`apps/api/src/rbac/route-inventory.ts` reads every route and its guard from the
+metadata Nest actually recorded — not from the source text. That distinction is
+load-bearing: the text-scanning audit used in R3 first reported four unguarded
+handlers and was wrong, because a regex looking backwards from a method let one
+handler's decorator vouch for its neighbour. Metadata asks the framework what it
+will really enforce.
 
-## C. Anti-parity — deliberate divergence
+`access-matrix.spec.ts` then asserts two different kinds of thing:
 
-Recorded so these read as decisions, not oversights. We do **not** reproduce:
+**Invariants** — always true, never need updating, a failure is always a bug:
 
-1. **The unguarded permission editor.** Part I §7's privilege-escalation path.
-   Ours is guarded on read and write (R2).
-2. **The five server-side data leaks** (`/admin/charges`, `/admin/language`,
-   `/admin/contenttype/` and the two roles routes rendering real rows to
-   unauthorised roles).
-3. **The ~35 pages that render an empty shell** to roles with zero view grant.
-   Ours 403 at the API, so the page has nothing to render either way.
-4. **The sidebar/route disagreements** (Nurse's menu linking a denied
-   `/admin/expensehead`, etc.). Both our layers read one permission list, so
-   this class of bug cannot occur.
-5. **Super Admin as a hard-coded bypass with no permission row.** Ours holds a
-   real 116-row (soon 751-row) grant set. Same effective access, but auditable,
-   and it means the editor can display it.
+- every route declares a guard (the fail-closed contract, checked statically)
+- every declared feature key exists in the feature table
+- every declared action is one that feature actually exposes
+- **Admin can reach every statically-decidable route**
+- no duplicate method+route
 
-Where the spec's *intent* (section 6) and the reference's *behaviour* (section 4)
-disagree, we implement section 6.
+**Committed expectations** — meant to change, but only visibly:
+
+- the three exemption allowlists (`@Authenticated`, `@Public`, module-gated)
+- `docs/ACCESS_MATRIX.md`, the full 372 × 9 grid
+
+A permission change now fails the test until the grid is regenerated, so it
+arrives in review as a diff where `·` becoming `✓` is a widening of access.
+
+### It found a live bug on its first run
+
+`multi_branch.setting` is `10000000` — view only, like every row in the Multi
+Branch group. R1 gated branch create/edit/delete on `setting:add/edit/delete`,
+actions that feature does not expose, so **Admin could not create, edit or
+delete a branch at all**. That shipped in `bf773ad` and was live in production.
+
+The earlier verification missed it because the 108-route production sweep only
+probed GET. Two of the new invariants catch it independently — "Admin can reach
+every route" and "every declared action is one the feature exposes" — which is
+why both are there rather than just the first.
+
+Branch writes now hang off `setting:view`, the only toggle that exists, the same
+call already made for Lab Investigation and Live Consult.
