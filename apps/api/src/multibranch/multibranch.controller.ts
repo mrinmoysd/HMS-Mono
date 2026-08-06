@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } fr
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { branchSchema, branchUpdateSchema, type BranchInput, type BranchUpdateInput } from '@smart-hospital/shared';
 import { MultiBranchService } from './multibranch.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import type { RequestUser } from '../common/types/request-user';
@@ -14,32 +14,32 @@ export class MultiBranchController {
   constructor(private readonly mb: MultiBranchService) {}
 
   @Get('branches')
-  @RequirePermission('multi_branch', 'view')
+  @RequireFeature('multi_branch.setting', 'view')
   listBranches() {
     return this.mb.listBranches();
   }
 
   @Post('branches')
-  @RequirePermission('multi_branch', 'add')
+  @RequireFeature('multi_branch.setting', 'add')
   createBranch(@CurrentUser() user: RequestUser, @Body(new ZodValidationPipe(branchSchema)) body: BranchInput) {
     return this.mb.createBranch(user, body);
   }
 
   @Patch('branches/:id')
-  @RequirePermission('multi_branch', 'edit')
+  @RequireFeature('multi_branch.setting', 'edit')
   updateBranch(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body(new ZodValidationPipe(branchUpdateSchema)) body: BranchUpdateInput) {
     return this.mb.updateBranch(user, id, body);
   }
 
   @Delete('branches/:id')
   @HttpCode(204)
-  @RequirePermission('multi_branch', 'delete')
+  @RequireFeature('multi_branch.setting', 'delete')
   removeBranch(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.mb.removeBranch(user, id);
   }
 
   @Get('overview')
-  @RequirePermission('multi_branch', 'view')
+  @RequireFeature('multi_branch.overview', 'view')
   overview(@Query('from') from?: string, @Query('to') to?: string) {
     return this.mb.overview(from, to);
   }

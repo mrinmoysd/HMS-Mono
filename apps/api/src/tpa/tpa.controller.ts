@@ -23,7 +23,7 @@ import {
   type TpaInput,
 } from '@smart-hospital/shared';
 import { TpaService, type TpaReportFilters } from './tpa.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -36,13 +36,13 @@ export class TpaController {
   constructor(private readonly tpas: TpaService) {}
 
   @Get()
-  @RequirePermission('tpa', 'view')
+  @RequireFeature('tpa.organisation', 'view')
   list(@BranchId() branchId: string, @Query(new ZodValidationPipe(listQuerySchema)) query: ListQuery) {
     return this.tpas.list(branchId, query);
   }
 
   @Get('report')
-  @RequirePermission('tpa', 'view')
+  @RequireFeature('tpa.organisation', 'view')
   report(
     @BranchId() branchId: string,
     @Query('from') from?: string,
@@ -58,19 +58,19 @@ export class TpaController {
   }
 
   @Get(':id')
-  @RequirePermission('tpa', 'view')
+  @RequireFeature('tpa.organisation', 'view')
   detail(@BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.tpas.detail(branchId, id);
   }
 
   @Get(':id/charges')
-  @RequirePermission('tpa', 'view')
+  @RequireFeature('tpa.tpa_charges', 'view')
   listCharges(@BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string, @Query('module') module?: string) {
     return this.tpas.listCharges(branchId, id, module || undefined);
   }
 
   @Post()
-  @RequirePermission('tpa', 'add')
+  @RequireFeature('tpa.organisation', 'add')
   create(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -80,7 +80,7 @@ export class TpaController {
   }
 
   @Put(':id/charges/:chargeId')
-  @RequirePermission('tpa', 'edit')
+  @RequireFeature('tpa.tpa_charges', 'edit')
   setCharge(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -93,7 +93,7 @@ export class TpaController {
 
   @Delete(':id/charges/:chargeId')
   @HttpCode(204)
-  @RequirePermission('tpa', 'edit')
+  @RequireFeature('tpa.tpa_charges', 'delete')
   async removeCharge(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -103,8 +103,12 @@ export class TpaController {
     await this.tpas.removeCharge(user, branchId, id, chargeId);
   }
 
+  // TPA Charges is `dd100010` — view, edit and delete, with no add toggle.
+  // Importing a charge schedule overwrites the organisation's existing rates
+  // rather than creating a new kind of thing, so it takes `edit`, the same as
+  // setting one by hand.
   @Post(':id/charges/import')
-  @RequirePermission('tpa', 'edit')
+  @RequireFeature('tpa.tpa_charges', 'edit')
   importCharges(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -115,7 +119,7 @@ export class TpaController {
   }
 
   @Patch(':id')
-  @RequirePermission('tpa', 'edit')
+  @RequireFeature('tpa.organisation', 'edit')
   update(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -127,7 +131,7 @@ export class TpaController {
 
   @Delete(':id')
   @HttpCode(204)
-  @RequirePermission('tpa', 'delete')
+  @RequireFeature('tpa.organisation', 'delete')
   async remove(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,

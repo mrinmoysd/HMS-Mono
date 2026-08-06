@@ -1,9 +1,12 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { REPORT_CATEGORIES } from '@smart-hospital/shared';
 import { ReportsService } from './reports.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeatureFor } from '../rbac/require-feature.decorator';
+import { reportFeature, visibleReportCategories } from './reports-features';
+import { abilityOf } from '../rbac/ability-of';
 import { BranchId } from '../common/decorators/branch-id.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { RequestUser } from '../common/types/request-user';
 
 @ApiTags('reports')
 @ApiBearerAuth()
@@ -11,14 +14,18 @@ import { BranchId } from '../common/decorators/branch-id.decorator';
 export class ReportsController {
   constructor(private readonly reports: ReportsService) {}
 
+  /**
+   * The catalogue, narrowed to the reports this user may run. There is no
+   * single feature meaning "may see the reports menu" — each report is its own
+   * feature — so the filter is the gate.
+   */
   @Get('categories')
-  @RequirePermission('reports', 'view')
-  categories() {
-    return REPORT_CATEGORIES;
+  categories(@CurrentUser() user: RequestUser) {
+    return visibleReportCategories(abilityOf(user));
   }
 
   @Get(':key')
-  @RequirePermission('reports', 'view')
+  @RequireFeatureFor((c) => reportFeature(c.params.key))
   run(
     @BranchId() branchId: string,
     @Param('key') key: string,

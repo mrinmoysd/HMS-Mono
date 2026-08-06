@@ -2,7 +2,7 @@ import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { generateCertificateSchema, type GenerateCertificateInput } from '@smart-hospital/shared';
 import { CertificateService } from './certificate.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 
@@ -14,7 +14,7 @@ export class CertificateController {
 
   @Post('generate')
   @HttpCode(200)
-  @RequirePermission('certificate', 'view')
+  @RequireFeature('certificate.generate_certificate', 'view')
   generate(
     @BranchId() branchId: string,
     @Body(new ZodValidationPipe(generateCertificateSchema)) body: GenerateCertificateInput,

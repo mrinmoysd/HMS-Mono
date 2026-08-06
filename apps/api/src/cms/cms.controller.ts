@@ -5,7 +5,7 @@ import {
   type CmsBannerInput, type CmsMenuInput, type CmsPageInput, type ListQuery,
 } from '@smart-hospital/shared';
 import { CmsService } from './cms.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
@@ -19,34 +19,34 @@ export class CmsController {
   constructor(private readonly cms: CmsService) {}
 
   @Get('pages')
-  @RequirePermission('front_cms', 'view')
+  @RequireFeature('front_cms.pages', 'view')
   listPages(@BranchId() b: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.cms.listPages(b, q);
   }
   @Post('pages')
-  @RequirePermission('front_cms', 'add')
+  @RequireFeature('front_cms.pages', 'add')
   createPage(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(cmsPageSchema)) body: CmsPageInput) {
     return this.cms.createPage(u, b, body);
   }
 
   @Get('banners')
-  @RequirePermission('front_cms', 'view')
+  @RequireFeature('front_cms.banner_images', 'view')
   listBanners(@BranchId() b: string) {
     return this.cms.listBanners(b);
   }
   @Post('banners')
-  @RequirePermission('front_cms', 'add')
+  @RequireFeature('front_cms.banner_images', 'add')
   createBanner(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(cmsBannerSchema)) body: CmsBannerInput) {
     return this.cms.createBanner(u, b, body);
   }
 
   @Get('menus')
-  @RequirePermission('front_cms', 'view')
+  @RequireFeature('front_cms.menus', 'view')
   listMenus(@BranchId() b: string) {
     return this.cms.listMenus(b);
   }
   @Post('menus')
-  @RequirePermission('front_cms', 'add')
+  @RequireFeature('front_cms.menus', 'add')
   createMenu(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(cmsMenuSchema)) body: CmsMenuInput) {
     return this.cms.createMenu(u, b, body);
   }

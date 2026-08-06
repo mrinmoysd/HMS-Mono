@@ -9,7 +9,7 @@ import {
   type ListQuery,
 } from '@smart-hospital/shared';
 import { AmbulanceService } from './ambulance.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -23,13 +23,13 @@ export class AmbulanceController {
 
   // ── Fleet ────────────────────────────────────────────────────
   @Get('vehicles')
-  @RequirePermission('ambulance', 'view')
+  @RequireFeature('ambulance.ambulance', 'view')
   listVehicles(@BranchId() branchId: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.ambulance.listVehicles(branchId, q);
   }
 
   @Post('vehicles')
-  @RequirePermission('ambulance', 'add')
+  @RequireFeature('ambulance.ambulance', 'add')
   createVehicle(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -39,7 +39,7 @@ export class AmbulanceController {
   }
 
   @Patch('vehicles/:id')
-  @RequirePermission('ambulance', 'edit')
+  @RequireFeature('ambulance.ambulance', 'edit')
   updateVehicle(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -51,26 +51,26 @@ export class AmbulanceController {
 
   @Delete('vehicles/:id')
   @HttpCode(204)
-  @RequirePermission('ambulance', 'delete')
+  @RequireFeature('ambulance.ambulance', 'delete')
   async removeVehicle(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.ambulance.removeVehicle(user, branchId, id);
   }
 
   // ── Calls ────────────────────────────────────────────────────
   @Get('calls')
-  @RequirePermission('ambulance', 'view')
+  @RequireFeature('ambulance.ambulance_call', 'view')
   listCalls(@BranchId() branchId: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.ambulance.listCalls(branchId, q);
   }
 
   @Get('calls/:id')
-  @RequirePermission('ambulance', 'view')
+  @RequireFeature('ambulance.ambulance_call', 'view')
   getCall(@BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.ambulance.getCall(branchId, id);
   }
 
   @Post('calls')
-  @RequirePermission('ambulance', 'add')
+  @RequireFeature('ambulance.ambulance_call', 'add')
   createCall(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,

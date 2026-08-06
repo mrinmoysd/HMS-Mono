@@ -27,7 +27,12 @@ export class CustomFieldController {
 
   /** Definitions for an entity — needed by any module's Add/Edit form, so this
    *  read is available to all authenticated users (no setup permission gate). */
+  // Custom Fields have no feature in the spec at all — it models fields as a
+  // System Settings screen with no permission row — so these four stay
+  // module-level. This one carried no decorator, which meant any authenticated
+  // user could enumerate a branch's custom field definitions.
   @Get()
+  @RequirePermission('setup', 'view')
   listByEntity(@BranchId() branchId: string, @Query('entity') entity: string) {
     return this.fields.listByEntity(branchId, entity);
   }

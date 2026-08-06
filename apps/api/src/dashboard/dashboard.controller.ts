@@ -2,7 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { PermissionKey } from '@smart-hospital/shared';
 import { DashboardService } from './dashboard.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import type { RequestUser } from '../common/types/request-user';
@@ -21,8 +21,11 @@ export class DashboardController {
    * doctor's response simply has no revenue figures in it — they are never
    * queried rather than queried and hidden.
    */
+  // Notification Center is `11111111` — every role has it — which makes it the
+  // right gate for the dashboard shell. The payload itself is already scoped
+  // per widget inside the service; this only says "you have a dashboard".
   @Get('overview')
-  @RequirePermission('dashboard', 'view')
+  @RequireFeature('dashboard.notification_center', 'view')
   overview(@BranchId() branchId: string, @CurrentUser() user: RequestUser) {
     return this.dashboard.overview(branchId, (user.permissions ?? []) as PermissionKey[]);
   }

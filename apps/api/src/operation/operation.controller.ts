@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { listQuerySchema, type ListQuery } from '@smart-hospital/shared';
 import { PrismaService } from '../prisma/prisma.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -26,8 +26,12 @@ export class OperationController {
     private readonly audit: AuditService,
   ) {}
 
+  // The Operation master list, not the per-encounter record. Same call as
+  // `operation-category` in masters/catalog-features.ts: the spec has no
+  // Operation master feature, so whoever manages Operation Theatre manages
+  // the list of operations. Flagged there and here.
   @Get()
-  @RequirePermission('setup', 'view')
+  @RequireFeature('ipd.operation_theatre', 'view')
   async list(@BranchId() branchId: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     const { skip, take, orderBy } = toPrismaPage(q);
     const where = {
@@ -53,7 +57,7 @@ export class OperationController {
   }
 
   @Post()
-  @RequirePermission('setup', 'add')
+  @RequireFeature('ipd.operation_theatre', 'add')
   async create(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
