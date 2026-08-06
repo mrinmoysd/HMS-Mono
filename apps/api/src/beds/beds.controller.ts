@@ -9,7 +9,7 @@ import {
   type ListQuery,
 } from '@smart-hospital/shared';
 import { BedsService } from './beds.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -22,26 +22,29 @@ export class BedsController {
   constructor(private readonly beds: BedsService) {}
 
   // Live occupancy grid — used by the header Bed Status overlay (view via ipd).
+  // Bed Status is its own view-only feature, separate from Bed. The ward
+  // board and the bed master are different questions: `ipd.bed_status` says
+  // who may see which beds are occupied, `ipd.bed` says who may add one.
   @Get('beds/status')
-  @RequirePermission('ipd', 'view')
+  @RequireFeature('ipd.bed_status', 'view')
   status(@BranchId() branchId: string) {
     return this.beds.status(branchId);
   }
 
   @Get('beds/available')
-  @RequirePermission('ipd', 'view')
+  @RequireFeature('ipd.bed', 'view')
   available(@BranchId() branchId: string, @Query('bedGroupId') bedGroupId?: string) {
     return this.beds.availableBeds(branchId, bedGroupId);
   }
 
   @Get('beds')
-  @RequirePermission('setup', 'view')
+  @RequireFeature('ipd.bed', 'view')
   listBeds(@BranchId() branchId: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.beds.listBeds(branchId, q);
   }
 
   @Post('beds')
-  @RequirePermission('setup', 'add')
+  @RequireFeature('ipd.bed', 'add')
   createBed(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -51,7 +54,7 @@ export class BedsController {
   }
 
   @Patch('beds/:id')
-  @RequirePermission('setup', 'edit')
+  @RequireFeature('ipd.bed', 'edit')
   updateBed(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -63,19 +66,19 @@ export class BedsController {
 
   @Delete('beds/:id')
   @HttpCode(204)
-  @RequirePermission('setup', 'delete')
+  @RequireFeature('ipd.bed', 'delete')
   async removeBed(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.beds.removeBed(user, branchId, id);
   }
 
   @Get('bed-groups')
-  @RequirePermission('setup', 'view')
+  @RequireFeature('ipd.bed_group', 'view')
   listGroups(@BranchId() branchId: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.beds.listGroups(branchId, q);
   }
 
   @Post('bed-groups')
-  @RequirePermission('setup', 'add')
+  @RequireFeature('ipd.bed_group', 'add')
   createGroup(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -85,7 +88,7 @@ export class BedsController {
   }
 
   @Patch('bed-groups/:id')
-  @RequirePermission('setup', 'edit')
+  @RequireFeature('ipd.bed_group', 'edit')
   updateGroup(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -97,7 +100,7 @@ export class BedsController {
 
   @Delete('bed-groups/:id')
   @HttpCode(204)
-  @RequirePermission('setup', 'delete')
+  @RequireFeature('ipd.bed_group', 'delete')
   async removeGroup(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.beds.removeGroup(user, branchId, id);
   }
