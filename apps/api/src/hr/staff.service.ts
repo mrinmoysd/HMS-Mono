@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import * as argon2 from 'argon2';
 import type { ListQuery, Paginated, StaffDetailDto, StaffDto, StaffInput, StaffUpdateInput } from '@smart-hospital/shared';
@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit/audit.service';
 import { SequenceService } from '../common/sequence/sequence.service';
 import { paginate, toPrismaPage } from '../common/pagination';
+import { abilityOf } from '../rbac/ability-of';
 import type { RequestUser } from '../common/types/request-user';
 
 type StaffPayload = Prisma.StaffGetPayload<{ include: { department: true; designation: true; specialization: true } }>;
@@ -74,6 +75,24 @@ export class StaffService {
       this.prisma.user.count({ where }),
     ]);
     return paginate(rows.map(toListDto), total, query);
+  }
+
+  /**
+   * Opening somebody else's profile is its own feature — `Can See Other Users
+   * Profile`, `10000000`, Admin alone — separate from `Staff`, which every role
+   * holds at view. So the directory stays open and the profile does not, unless
+   * it is your own.
+   *
+   * The guard cannot make this call: it never sees who the row belongs to.
+   */
+  async getProfileForUser(requester: RequestUser, branchId: string, userId: string): Promise<StaffDetailDto> {
+    if (
+      userId !== requester.id &&
+      !abilityOf(requester).canFeature('human_resource.can_see_other_users_profile', 'view')
+    ) {
+      throw new ForbiddenException('Missing permission: human_resource.can_see_other_users_profile:view');
+    }
+    return this.getProfile(branchId, userId);
   }
 
   async getProfile(branchId: string, userId: string): Promise<StaffDetailDto> {

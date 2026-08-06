@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post, Qu
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { holidaySchema, listQuerySchema, type HolidayInput, type ListQuery } from '@smart-hospital/shared';
 import { CalendarService } from './calendar.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -15,7 +15,7 @@ export class CalendarController {
   constructor(private readonly calendar: CalendarService) {}
 
   @Get('holidays')
-  @RequirePermission('annual_calendar', 'view')
+  @RequireFeature('annual_calendar.annual_calendar', 'view')
   list(
     @BranchId() branchId: string,
     @Query('type') type: string | undefined,
@@ -25,7 +25,7 @@ export class CalendarController {
   }
 
   @Post('holidays')
-  @RequirePermission('annual_calendar', 'add')
+  @RequireFeature('annual_calendar.annual_calendar', 'add')
   create(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -36,7 +36,7 @@ export class CalendarController {
 
   @Delete('holidays/:id')
   @HttpCode(204)
-  @RequirePermission('annual_calendar', 'delete')
+  @RequireFeature('annual_calendar.annual_calendar', 'delete')
   async remove(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,

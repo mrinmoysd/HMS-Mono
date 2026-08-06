@@ -14,7 +14,7 @@ import {
   type StaffUpdateInput,
 } from '@smart-hospital/shared';
 import { StaffService } from './staff.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -28,13 +28,13 @@ export class StaffController {
 
   /** Staff-assignable roles (everything except the patient portal role). */
   @Get('roles')
-  @RequirePermission('human_resource', 'view')
+  @RequireFeature('human_resource.staff', 'view')
   roles() {
     return ROLES.filter((r) => r !== 'patient').map((slug) => ({ slug, label: ROLE_META[slug as RoleKey].label }));
   }
 
   @Get()
-  @RequirePermission('human_resource', 'view')
+  @RequireFeature('human_resource.staff', 'view')
   list(
     @BranchId() branchId: string,
     @Query('role') role: string | undefined,
@@ -44,13 +44,13 @@ export class StaffController {
   }
 
   @Get(':userId')
-  @RequirePermission('human_resource', 'view')
-  get(@BranchId() branchId: string, @Param('userId', ParseUUIDPipe) userId: string) {
-    return this.staff.getProfile(branchId, userId);
+  @RequireFeature('human_resource.staff', 'view')
+  get(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('userId', ParseUUIDPipe) userId: string) {
+    return this.staff.getProfileForUser(user, branchId, userId);
   }
 
   @Post()
-  @RequirePermission('human_resource', 'add')
+  @RequireFeature('human_resource.staff', 'add')
   create(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -60,7 +60,7 @@ export class StaffController {
   }
 
   @Patch(':userId')
-  @RequirePermission('human_resource', 'edit')
+  @RequireFeature('human_resource.staff', 'edit')
   update(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -71,7 +71,7 @@ export class StaffController {
   }
 
   @Post(':userId/change-password')
-  @RequirePermission('human_resource', 'edit')
+  @RequireFeature('human_resource.staff', 'edit')
   @HttpCode(204)
   async changePassword(
     @CurrentUser() user: RequestUser,
@@ -84,7 +84,7 @@ export class StaffController {
 
   @Delete(':userId')
   @HttpCode(204)
-  @RequirePermission('human_resource', 'delete')
+  @RequireFeature('human_resource.staff', 'delete')
   async remove(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('userId', ParseUUIDPipe) userId: string) {
     await this.staff.remove(user, branchId, userId);
   }

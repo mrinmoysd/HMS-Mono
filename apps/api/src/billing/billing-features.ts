@@ -1,6 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import { Ability } from '@smart-hospital/shared';
-import type { ActionKey, FeaturePermissionKey, PermissionKey } from '@smart-hospital/shared';
+import type { ActionKey } from '@smart-hospital/shared';
 import type { RequiredFeature } from '../rbac/require-feature.decorator';
 
 /**
@@ -95,10 +95,5 @@ export function assertCanAddBillingPayment(ability: Ability, module: string | nu
   }
 }
 
-/** Build an ability from the request user, both levels. */
-export function abilityOf(user: { permissions?: string[]; features?: string[] }): Ability {
-  return new Ability(
-    (user.permissions ?? []) as PermissionKey[],
-    (user.features ?? []) as FeaturePermissionKey[],
-  );
-}
+// abilityOf now lives in ../rbac/ability-of.ts — HR needs it too.
+export { abilityOf } from '../rbac/ability-of';

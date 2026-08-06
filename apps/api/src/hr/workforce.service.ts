@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type {
   AttendanceDto,
@@ -22,6 +22,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit/audit.service';
 import { paginate, toPrismaPage } from '../common/pagination';
 import { startOfToday } from '../common/dates';
+import { abilityOf } from '../rbac/ability-of';
 import type { RequestUser } from '../common/types/request-user';
 
 type StaffUser = Prisma.UserGetPayload<{
@@ -246,9 +247,20 @@ export class WorkforceService {
     await this.audit.record({ branchId, userId: user.id, action: 'delete', entity: 'leave_type', entityId: id });
   }
 
-  async listLeaveRequests(branchId: string, query: ListQuery): Promise<Paginated<LeaveRequestDto>> {
+  /**
+   * Apply Leave (`bbbbbbbb`) lets every role reach this list; Approve Leave
+   * Request (`f0000000`) is Admin's alone. So the route is open and the rows
+   * are not — without the approver grant you see your own requests only.
+   *
+   * This is not decoration. Before the feature split the whole endpoint sat
+   * behind `human_resource:view`, which no clinical role held; opening it to
+   * everyone without narrowing here would have handed every nurse the branch's
+   * complete leave history.
+   */
+  async listLeaveRequests(user: RequestUser, branchId: string, query: ListQuery): Promise<Paginated<LeaveRequestDto>> {
     const { skip, take } = toPrismaPage(query);
     const where: Prisma.LeaveRequestWhereInput = { branchId };
+    if (!this.canApproveLeave(user, 'view')) where.staffUserId = user.id;
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.leaveRequest.findMany({ where, skip, take, orderBy: { fromDate: 'desc' }, include: { leaveType: true } }),
       this.prisma.leaveRequest.count({ where }),
@@ -266,6 +278,20 @@ export class WorkforceService {
     return this.toLeave(r, nameMap, roleMap);
   }
 
+  /** Same rule as the list, for one row. */
+  async getLeaveRequestForUser(user: RequestUser, branchId: string, id: string): Promise<LeaveRequestDto> {
+    const r = await this.prisma.leaveRequest.findFirst({ where: { id, branchId }, select: { staffUserId: true } });
+    if (!r) throw new NotFoundException('Leave request not found');
+    if (r.staffUserId !== user.id && !this.canApproveLeave(user, 'view')) {
+      throw new ForbiddenException('Missing permission: human_resource.approve_leave_request:view');
+    }
+    return this.getLeaveRequest(branchId, id);
+  }
+
+  private canApproveLeave(user: RequestUser, action: 'view' | 'add' | 'delete'): boolean {
+    return abilityOf(user).canFeature('human_resource.approve_leave_request', action);
+  }
+
   private async roleLabels(userIds: string[]): Promise<Map<string, string>> {
     const unique = [...new Set(userIds)];
     if (unique.length === 0) return new Map();
@@ -274,7 +300,16 @@ export class WorkforceService {
   }
 
   async createLeaveRequest(user: RequestUser, branchId: string, input: LeaveRequestInput): Promise<LeaveRequestDto> {
+    // Applying is your own act. Filing leave in someone else's name is an
+    // approver's power, and setting a non-pending status on the way in is
+    // approving it — both need the approver grant.
+    if (input.staffUserId !== user.id && !this.canApproveLeave(user, 'add')) {
+      throw new ForbiddenException('You may only apply for your own leave');
+    }
     const status = input.status ?? 'pending';
+    if (status !== 'pending' && !this.canApproveLeave(user, 'add')) {
+      throw new ForbiddenException('Missing permission: human_resource.approve_leave_request:add');
+    }
     const r = await this.prisma.leaveRequest.create({
       data: {
         branchId,
@@ -309,6 +344,11 @@ export class WorkforceService {
   async removeLeaveRequest(user: RequestUser, branchId: string, id: string): Promise<void> {
     const existing = await this.prisma.leaveRequest.findFirst({ where: { id, branchId } });
     if (!existing) throw new NotFoundException('Leave request not found');
+    // Apply Leave carries a delete bit for every role — that is withdrawing
+    // your own application, not deleting anybody's.
+    if (existing.staffUserId !== user.id && !this.canApproveLeave(user, 'delete')) {
+      throw new ForbiddenException('You may only withdraw your own leave request');
+    }
     await this.prisma.leaveRequest.delete({ where: { id } });
     await this.audit.record({ branchId, userId: user.id, action: 'delete', entity: 'leave_request', entityId: id });
   }
