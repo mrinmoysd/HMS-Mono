@@ -7,6 +7,7 @@ import type { PayrollDto } from '@smart-hospital/shared';
 import { Button, IconButton } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { Field, Select } from '@/components/ui/field';
+import { DataTable, type Column } from '@/components/ui/data-table';
 import { useGeneratePayroll, usePayrollList, useStaffRoles } from '@/lib/hooks/use-hr';
 import { printDocument } from '@/lib/print';
 
@@ -32,6 +33,27 @@ export function PayrollView({ onBack }: { onBack: () => void }) {
   function search() { setQuery({ role, ym: `${year}-${String(month + 1).padStart(2, '0')}` }); }
   async function regenerate(r: PayrollDto) { await gen.mutateAsync({ staffUserId: r.staffUserId, month: query.ym }); }
 
+  // DataTable keys on `id`; PayrollDto's identifier here is staffUserId.
+  const listRows = rows.map((r) => ({ ...r, id: r.staffUserId }));
+
+  const columns: Column<PayrollDto & { id: string }>[] = [
+    { key: 'staffNo', header: 'Staff ID', className: 'font-medium', alwaysVisible: true, render: (r) => r.staffNo ?? '—' },
+    { key: 'staffName', header: 'Name' },
+    { key: 'roleLabel', header: 'Role' },
+    { key: 'departmentName', header: 'Department', render: (r) => r.departmentName ?? '—' },
+    { key: 'designationName', header: 'Designation', render: (r) => r.designationName ?? '—' },
+    { key: 'phone', header: 'Phone', render: (r) => r.phone ?? '—' },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (r) => (
+        <span className={`rounded-full px-2 py-0.5 text-xs ${r.status === 'paid' ? 'bg-success/10 text-success' : r.status === 'generated' ? 'bg-primary/10 text-primary' : 'bg-border/60 text-fg-muted'}`}>
+          {r.status === 'paid' ? 'Paid' : r.status === 'generated' ? 'Generated' : 'Not Generated'}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-4">
       <button onClick={onBack} className="flex items-center gap-1 text-sm text-fg-muted hover:text-fg"><ChevronLeft className="h-4 w-4" /> Staff Directory</button>
@@ -44,41 +66,26 @@ export function PayrollView({ onBack }: { onBack: () => void }) {
         <Button onClick={search}><Search className="h-4 w-4" /> Search</Button>
       </div>
 
-      <div className="overflow-x-auto rounded-md border border-border bg-surface">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-muted">
-              {['Staff ID', 'Name', 'Role', 'Department', 'Designation', 'Phone', 'Status', 'Action'].map((c) => <th key={c} className="px-3 py-2.5 font-semibold">{c}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.staffUserId} className="border-b border-border/60 last:border-0">
-                <td className="px-3 py-2.5 font-medium">{r.staffNo ?? '—'}</td>
-                <td className="px-3 py-2.5">{r.staffName}</td>
-                <td className="px-3 py-2.5">{r.roleLabel}</td>
-                <td className="px-3 py-2.5">{r.departmentName ?? '—'}</td>
-                <td className="px-3 py-2.5">{r.designationName ?? '—'}</td>
-                <td className="px-3 py-2.5">{r.phone ?? '—'}</td>
-                <td className="px-3 py-2.5">
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${r.status === 'paid' ? 'bg-success/10 text-success' : r.status === 'generated' ? 'bg-primary/10 text-primary' : 'bg-border/60 text-fg-muted'}`}>
-                    {r.status === 'paid' ? 'Paid' : r.status === 'generated' ? 'Generated' : 'Not Generated'}
-                  </span>
-                </td>
-                <td className="px-3 py-2.5">
-                  <div className="flex gap-1">
-                    <button onClick={() => regenerate(r)} aria-label="Generate" title="Generate / Regenerate" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary"><RefreshCw className="h-4 w-4" /></button>
-                    <button onClick={() => setViewId(r.staffUserId)} aria-label="View" title="View Payslip" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary"><Eye className="h-4 w-4" /></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {list.isLoading && <p className="py-8 text-center text-sm text-fg-muted">Loading…</p>}
-        {!list.isLoading && rows.length === 0 && <p className="py-10 text-center text-sm text-fg-muted">No staff found</p>}
-        {list.data && <p className="px-3 py-2.5 text-xs text-fg-muted">Records: 1 to {rows.length} of {rows.length}</p>}
-      </div>
+      {/* Was a hand-rolled <table>. The payslip modal below keeps its own
+          markup on purpose: it is a document layout with paired
+          Earning/Deduction columns, not a data list, and DataTable's row model
+          does not describe it. */}
+      <DataTable
+        columns={columns}
+        rows={listRows}
+        loading={list.isLoading}
+        search=""
+        onSearch={() => {}}
+        onPage={() => {}}
+        onSize={() => {}}
+        hideSearch
+        rowActions={(r) => (
+          <div className="flex gap-1">
+            <button onClick={() => regenerate(r)} aria-label="Generate" title="Generate / Regenerate" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary"><RefreshCw className="h-4 w-4" /></button>
+            <button onClick={() => setViewId(r.staffUserId)} aria-label="View" title="View Payslip" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary"><Eye className="h-4 w-4" /></button>
+          </div>
+        )}
+      />
 
       {viewing && <PayslipModal payroll={viewing} monthLabel={monthLabel} onClose={() => setViewId(null)} />}
     </div>

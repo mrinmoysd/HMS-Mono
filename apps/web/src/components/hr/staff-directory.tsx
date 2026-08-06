@@ -6,6 +6,7 @@ import { LayoutGrid, List, Phone, Pencil, Eye, Plus, CalendarCheck, Wallet, Plan
 import type { StaffDto } from '@smart-hospital/shared';
 import { Button } from '@/components/ui/button';
 import { Field, Select, TextInput } from '@/components/ui/field';
+import { DataTable, type Column } from '@/components/ui/data-table';
 import { useStaff, useStaffRoles } from '@/lib/hooks/use-hr';
 import { useAbility } from '@/lib/auth-store';
 import { StaffAvatar, roleBadgeClass } from './staff-shared';
@@ -32,6 +33,19 @@ export function StaffDirectory({ onAdd, onShow, onEdit, onAttendance, onPayroll,
 
   const staff = useStaff(roleFilter || undefined, { search, page: 1, size: 200 });
   const rows = staff.data?.data ?? [];
+
+  // DataTable keys on `id`; StaffDto's identifier is `userId`. Map rather than
+  // rename the DTO field — userId is what every callback here already passes.
+  const listRows = rows.map((s) => ({ ...s, id: s.userId }));
+
+  const listColumns: Column<StaffDto & { id: string }>[] = [
+    { key: 'staffNo', header: 'Staff ID', className: 'font-medium', alwaysVisible: true, render: (s) => s.staffNo ?? '—' },
+    { key: 'name', header: 'Name' },
+    { key: 'roleLabel', header: 'Role', render: (s) => <span className={`rounded-full px-2 py-0.5 text-xs ${roleBadgeClass(s.roleSlug)}`}>{s.roleLabel}</span> },
+    { key: 'designationName', header: 'Designation', render: (s) => s.designationName ?? '—' },
+    { key: 'specialistName', header: 'Specialist', render: (s) => s.specialistName ?? '—' },
+    { key: 'phone', header: 'Contact', render: (s) => s.phone ?? '—' },
+  ];
 
   return (
     <div className="space-y-4">
@@ -77,38 +91,31 @@ export function StaffDirectory({ onAdd, onShow, onEdit, onAttendance, onPayroll,
 
       {staff.isLoading && <p className="py-10 text-center text-sm text-fg-muted">Loading…</p>}
 
+      {/* DataTable keys on `id`; StaffDto's identifier is userId. */}
       {view === 'card' ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {rows.map((s) => <StaffCard key={s.userId} s={s} canEdit={canEdit} onShow={onShow} onEdit={onEdit} />)}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-border bg-surface">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-muted">
-                {['Staff ID', 'Name', 'Role', 'Designation', 'Specialist', 'Contact', 'Action'].map((c) => <th key={c} className="px-3 py-2.5 font-semibold">{c}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((s) => (
-                <tr key={s.userId} className="border-b border-border/60 last:border-0">
-                  <td className="px-3 py-2.5 font-medium">{s.staffNo ?? '—'}</td>
-                  <td className="px-3 py-2.5">{s.name}</td>
-                  <td className="px-3 py-2.5"><span className={`rounded-full px-2 py-0.5 text-xs ${roleBadgeClass(s.roleSlug)}`}>{s.roleLabel}</span></td>
-                  <td className="px-3 py-2.5">{s.designationName ?? '—'}</td>
-                  <td className="px-3 py-2.5">{s.specialistName ?? '—'}</td>
-                  <td className="px-3 py-2.5">{s.phone ?? '—'}</td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex gap-1">
-                      <button onClick={() => onShow(s.userId)} aria-label="Show" title="Show" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary"><Eye className="h-4 w-4" /></button>
-                      {canEdit && <button onClick={() => onEdit(s.userId)} aria-label="Edit" title="Edit" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary"><Pencil className="h-4 w-4" /></button>}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        /* Was a hand-rolled <table>. DataTable gives this list the same
+           sorting, column chooser and empty state as every other list in the
+           app; the card view above stays bespoke because it is not a table. */
+        <DataTable
+          columns={listColumns}
+          rows={listRows}
+          loading={staff.isLoading}
+          search=""
+          onSearch={() => {}}
+          onPage={() => {}}
+          onSize={() => {}}
+          hideSearch
+          rowActions={(s) => (
+            <div className="flex gap-1">
+              <button onClick={() => onShow(s.userId)} aria-label="Show" title="Show" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary"><Eye className="h-4 w-4" /></button>
+              {canEdit && <button onClick={() => onEdit(s.userId)} aria-label="Edit" title="Edit" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary"><Pencil className="h-4 w-4" /></button>}
+            </div>
+          )}
+        />
       )}
 
       {!staff.isLoading && rows.length === 0 && <p className="py-12 text-center text-sm text-fg-muted">No staff found</p>}

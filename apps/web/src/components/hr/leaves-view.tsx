@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Field, Select, TextArea, TextInput } from '@/components/ui/field';
+import { DataTable, type Column } from '@/components/ui/data-table';
 import { useStaff, useStaffRoles, useCreateLeave, useDeleteLeave, useLeaves, useLeave, useLeaveTypes, useSetLeaveStatus } from '@/lib/hooks/use-hr';
 import { useAbility } from '@/lib/auth-store';
 import { ApiRequestError } from '@/lib/api';
@@ -35,6 +36,32 @@ export function LeavesView({ mode, onBack, onSwitch }: { mode: 'my' | 'approve';
   const rows = leaves.data?.data ?? [];
   const approveMode = mode === 'approve';
 
+  // The Status Date column exists only when approving — the same conditional
+  // the hand-rolled header carried, expressed as a column instead of a spread.
+  const columns: Column<LeaveRequestDto>[] = [
+    { key: 'staffName', header: 'Staff', alwaysVisible: true, render: (l) => `${l.staffName}${l.staffNo ? ` (${l.staffNo})` : ''}` },
+    { key: 'leaveTypeName', header: 'Leave Type', render: (l) => l.leaveTypeName ?? '—' },
+    { key: 'leaveDate', header: 'Leave Date', render: (l) => `${new Date(l.fromDate).toLocaleDateString()} - ${new Date(l.toDate).toLocaleDateString()}` },
+    { key: 'days', header: 'Days', className: 'tabular' },
+    { key: 'applyDate', header: 'Apply Date', render: (l) => new Date(l.applyDate).toLocaleDateString() },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (l) =>
+        approveMode ? (
+          <span className="text-xs">
+            {l.status === 'approved' ? 'Approve' : l.status === 'disapprove' ? 'Disapprove' : 'Pending'}
+            {l.statusByName ? ` By ${l.statusByName}${l.statusByNo ? ` (${l.statusByNo})` : ''}` : ''}
+          </span>
+        ) : (
+          statusPill(l.status)
+        ),
+    },
+    ...(approveMode
+      ? [{ key: 'statusAt', header: 'Status Date', render: (l: LeaveRequestDto) => (l.statusAt ? new Date(l.statusAt).toLocaleDateString() : '') }]
+      : []),
+  ];
+
   return (
     <div className="space-y-4">
       <button onClick={onBack} className="flex items-center gap-1 text-sm text-fg-muted hover:text-fg"><ChevronLeft className="h-4 w-4" /> Staff Directory</button>
@@ -49,64 +76,46 @@ export function LeavesView({ mode, onBack, onSwitch }: { mode: 'my' | 'approve';
         }
       />
 
-      <div className="overflow-x-auto rounded-md border border-border bg-surface">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-muted">
-              {['Staff', 'Leave Type', 'Leave Date', 'Days', 'Apply Date', 'Status', ...(approveMode ? ['Status Date'] : []), 'Action'].map((c) => <th key={c} className="px-3 py-2.5 font-semibold">{c}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((l) => (
-              <tr key={l.id} className="border-b border-border/60 last:border-0">
-                <td className="px-3 py-2.5">{l.staffName}{l.staffNo ? ` (${l.staffNo})` : ''}</td>
-                <td className="px-3 py-2.5">{l.leaveTypeName ?? '—'}</td>
-                <td className="px-3 py-2.5">{new Date(l.fromDate).toLocaleDateString()} - {new Date(l.toDate).toLocaleDateString()}</td>
-                <td className="px-3 py-2.5 tabular">{l.days}</td>
-                <td className="px-3 py-2.5">{new Date(l.applyDate).toLocaleDateString()}</td>
-                <td className="px-3 py-2.5">
-                  {approveMode
-                    ? <span className="text-xs">{l.status === 'approved' ? 'Approve' : l.status === 'disapprove' ? 'Disapprove' : 'Pending'}{l.statusByName ? ` By ${l.statusByName}${l.statusByNo ? ` (${l.statusByNo})` : ''}` : ''}</span>
-                    : statusPill(l.status)}
-                </td>
-                {approveMode && <td className="px-3 py-2.5">{l.statusAt ? new Date(l.statusAt).toLocaleDateString() : ''}</td>}
-                <td className="px-3 py-2.5">
-                  <div className="flex gap-1">
-                    <button onClick={() => setDetailId(l.id)} aria-label="Details" title="Details" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary"><Eye className="h-4 w-4" /></button>
-                    {canDelete && (
-                      <button
-                        onClick={async () => {
-                          const ok = await confirm({
-                            title: `Delete leave request for ${l.staffName}?`,
-                            description: 'The request and its approval history will be removed. This cannot be undone.',
-                            confirmLabel: 'Delete request',
-                            tone: 'danger',
-                          });
-                          if (!ok) return;
-                          try {
-                            await del.mutateAsync(l.id);
-                            toast.success('Leave request deleted');
-                          } catch (e) {
-                            toast.error('Could not delete leave request', { description: (e as Error).message });
-                          }
-                        }}
-                        aria-label="Delete"
-                        title="Delete"
-                        className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {leaves.isLoading && <p className="py-8 text-center text-sm text-fg-muted">Loading…</p>}
-        {!leaves.isLoading && rows.length === 0 && <p className="py-10 text-center text-sm text-fg-muted">No leave requests</p>}
-        {leaves.data && <p className="px-3 py-2.5 text-xs text-fg-muted">Records: 1 to {rows.length} of {leaves.data.meta.total}</p>}
-      </div>
+      <DataTable
+        columns={columns}
+        rows={rows}
+        meta={leaves.data?.meta}
+        loading={leaves.isLoading}
+        search=""
+        onSearch={() => {}}
+        onPage={() => {}}
+        onSize={() => {}}
+        hideSearch
+        rowActions={(l) => (
+          <div className="flex gap-1">
+            <button onClick={() => setDetailId(l.id)} aria-label="Details" title="Details" className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-primary/10 hover:text-primary"><Eye className="h-4 w-4" /></button>
+            {canDelete && (
+              <button
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: `Delete leave request for ${l.staffName}?`,
+                    description: 'The request and its approval history will be removed. This cannot be undone.',
+                    confirmLabel: 'Delete request',
+                    tone: 'danger',
+                  });
+                  if (!ok) return;
+                  try {
+                    await del.mutateAsync(l.id);
+                    toast.success('Leave request deleted');
+                  } catch (e) {
+                    toast.error('Could not delete leave request', { description: (e as Error).message });
+                  }
+                }}
+                aria-label="Delete"
+                title="Delete"
+                className="flex h-7 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-danger/10 hover:text-danger"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        )}
+      />
 
       <ApplyLeaveModal open={applyOpen} onClose={() => setApplyOpen(false)} />
       <LeaveDetailModal id={detailId} onClose={() => setDetailId(null)} />
