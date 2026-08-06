@@ -771,17 +771,51 @@ column-level select-all. Plus what the reference lacks:
 - Super Admin's row is not editable and not rendered as editable;
 - an audit record per change (we already have `AuditService`).
 
-## Phase R3 — Close our own holes (Part II §E)
+## Phase R3 — Close our own holes (Part II §E) — **DONE**
 
-Three of the four unguarded handlers were closed during R1 (`custom-field`'s
-read, `workforce`'s attendance-mark, and the catalog reads); `meta` and
-`directory` remain. Close those, then flip `PermissionsGuard` to
-**fail-closed**, teaching
-it to honour the existing `@Public()` metadata and adding that decorator to
-auth, health and the two `cms/public/*` routes. Portal keeps its own boundary —
-`requirePatient` — and needs no permission key.
+`PermissionsGuard` now fails **closed**. A handler that declares nothing is
+denied, with a message naming the fix rather than the symptom. Every one of the
+372 route handlers must now say which of four kinds it is:
 
-The flip is the durable fix; the four decorations are only the symptom.
+| Decorator | Count | Meaning |
+| --- | --- | --- |
+| `@RequireFeature` | 307 | a named feature and action |
+| `@RequireFeatureFor` | 34 | the feature depends on the request |
+| `@RequirePermission` | 13 | legacy module gate; the documented exceptions |
+| `@Authenticated` | 12 | signed in is the whole check |
+| `@Public` | 6 | no authentication at all |
+| *nothing* | **0** | — |
+
+### The audit found thirteen, not four
+
+The earlier count of four came from a grep that could let one handler's
+decorator vouch for the handler next to it. Reading decorators forward-only —
+attributing them to the handler that follows, never the one before — found
+thirteen. Two were genuinely forgotten (`meta/modules`, `directory/doctors`);
+`directory/doctors` now takes `human_resource.staff:view`, which is what a
+doctor lookup is. The other eleven were legitimate and now say so with
+`@Authenticated`: your own profile and password, the patient portal's eight
+endpoints, and the reports catalogue.
+
+`@Authenticated` exists so that "no permission needed" is a decision on the
+record instead of an absence. Before the flip, a deliberate exemption and a
+forgotten decorator were the same thing to both the reader and the runtime.
+
+### Verified
+
+- The guard spec asserts the default is deny; flipping the branch back to
+  `return true` makes exactly those assertions fail, so the test is load-bearing.
+- Login, health and the CMS marketing routes still answer unauthenticated —
+  `@Public` had to be honoured here too, or the flip would have broken sign-in.
+- All 114 parameterless GET routes probed as Admin: zero "declares no
+  permission" denials. The only 403s are the patient portal's own
+  `requirePatient` boundary correctly refusing a staff account.
+
+The one thing R3 does not do is remove `Ability.canFeature`'s module fallback.
+It still exists, and it still means a token carrying no feature keys silently
+degrades to module granularity. That was deliberate for R0.4 and is now the
+last thing standing between us and a fully feature-level system — but removing
+it is its own change, with a session-invalidation cost, and belongs with R2.
 
 ## Phase R4 — The five missing modules
 

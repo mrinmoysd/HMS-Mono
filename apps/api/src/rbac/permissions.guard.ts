@@ -9,6 +9,8 @@ import {
   type FeatureResolverContext,
   type RequiredFeature,
 } from './require-feature.decorator';
+import { NO_PERMISSION_KEY } from './authenticated.decorator';
+import { IS_PUBLIC_KEY } from '../auth/jwt-auth.guard';
 import type { AuthenticatedRequest } from '../common/types/request-user';
 import type { FeaturePermissionKey } from '@smart-hospital/shared';
 
@@ -18,9 +20,22 @@ import type { FeaturePermissionKey } from '@smart-hospital/shared';
  * populated. This is the REAL access boundary — UI hiding is cosmetic only
  * (docs/PERMISSION_MATRIX §5).
  *
- * Both decorators are honoured because R1 migrates one module at a time and a
- * half-migrated codebase has to keep working. A handler carrying both must
- * satisfy both.
+ * Both decorators are honoured because R1 migrated one module at a time and a
+ * handful of endpoints have no feature key to move to.
+ *
+ * **This guard fails closed.** A handler that declares nothing is denied. It
+ * used to be allowed, which meant a forgotten decorator was indistinguishable
+ * from a deliberate one — and the audit that found this turned up thirteen
+ * undecorated handlers, of which two (`meta/modules`, `directory/doctors`) were
+ * genuinely forgotten. Now every route must say which of the four it is:
+ *
+ *   @Public()          no authentication at all — login, health, the CMS site
+ *   @Authenticated()   signed in is the whole check — your own profile, portal
+ *   @RequireFeature    a named feature and action
+ *   @RequirePermission legacy module gate, for the few with no feature key
+ *
+ * Nothing else reaches a handler. Adding a route without one of these fails
+ * immediately and loudly, which is the entire point.
  */
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -28,12 +43,28 @@ export class PermissionsGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const targets = [context.getHandler(), context.getClass()];
+
+    // @Public routes never reached JwtAuthGuard's user lookup, so there is no
+    // ability to check and nothing to check it against. Let them through here
+    // too — otherwise flipping this guard closed would break login itself.
+    if (this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, targets)) return true;
+    if (this.reflector.getAllAndOverride<boolean>(NO_PERMISSION_KEY, targets)) return true;
+
     const declared = this.reflector.getAllAndOverride<RequiredFeature[] | undefined>(FEATURE_KEY, targets);
     const resolver = this.reflector.getAllAndOverride<
       ((ctx: FeatureResolverContext) => RequiredFeature[] | RequiredFeature | null) | undefined
     >(FEATURE_RESOLVER_KEY, targets);
     const required = this.reflector.getAllAndOverride<RequiredPermission | undefined>(PERMISSION_KEY, targets);
-    if (!declared?.length && !resolver && !required) return true; // nothing declared → allowed (still authenticated)
+
+    if (!declared?.length && !resolver && !required) {
+      // Fail closed. The message names the fix rather than the symptom, because
+      // the person who sees it is almost always the person who just added the
+      // route.
+      throw new ForbiddenException(
+        'This endpoint declares no permission. Add @RequireFeature, @RequirePermission, ' +
+          '@Authenticated or @Public to it.',
+      );
+    }
 
     const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const ability = new Ability(

@@ -7,6 +7,7 @@ import { abilityOf } from '../rbac/ability-of';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { RequestUser } from '../common/types/request-user';
+import { Authenticated } from '../rbac/authenticated.decorator';
 
 @ApiTags('reports')
 @ApiBearerAuth()
@@ -19,6 +20,7 @@ export class ReportsController {
    * single feature meaning "may see the reports menu" — each report is its own
    * feature — so the filter is the gate.
    */
+  @Authenticated()
   @Get('categories')
   categories(@CurrentUser() user: RequestUser) {
     return visibleReportCategories(abilityOf(user));

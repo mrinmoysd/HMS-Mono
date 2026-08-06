@@ -9,9 +9,13 @@ Usage:  python3 scripts/rbac-probe.py GET /hr/leaves
         python3 scripts/rbac-probe.py POST /hr/leaves '{}'
 Never point a DELETE at a real seeded id — use the GHOST uuid below.
 """
-import json, sys, urllib.request, urllib.error
+import json, os, sys, urllib.request, urllib.error
 
-BASE = 'http://localhost:4000/api/v1'
+# Override to probe another environment, e.g.
+#   RBAC_PROBE_BASE=http://130.210.38.184/api/v1 python3 scripts/rbac-probe.py GET /opd
+# Against production, use GET only. Nothing in this script is read-only by
+# construction — that is the operator's responsibility.
+BASE = os.environ.get('RBAC_PROBE_BASE', 'http://localhost:4000/api/v1')
 GHOST = '00000000-0000-4000-8000-000000000000'
 ROLES = ['admin', 'accountant', 'doctor', 'pharmacist',
          'pathologist', 'radiologist', 'receptionist', 'nurse']

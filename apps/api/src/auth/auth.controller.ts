@@ -13,6 +13,7 @@ import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import type { RequestUser } from '../common/types/request-user';
+import { Authenticated } from '../rbac/authenticated.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -35,11 +36,16 @@ export class AuthController {
     return this.auth.refresh(body.refreshToken);
   }
 
+  // Your own token's user. Every signed-in role, by definition.
+  @Authenticated()
   @Get('me')
   me(@CurrentUser() user: RequestUser) {
     return user;
   }
 
+  // Your own password. Changing somebody else's is human_resource.staff:edit,
+  // which is a different endpoint on StaffController.
+  @Authenticated()
   @Post('change-password')
   @HttpCode(204)
   @UsePipes(new ZodValidationPipe(changePasswordSchema))
