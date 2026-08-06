@@ -24,8 +24,12 @@ const DEFAULT_PREFIXES: Record<string, string> = {
   income: 'INC',
   expense: 'EXP',
   staff: 'STF',
-  birth: 'BR',
-  death: 'DR',
+  // BREF/DREF match the reference and PREFIX_FIELDS. Only new branches pick
+  // these up: a branch that already has a counter keeps the prefix its existing
+  // records were issued with, because renumbering would invalidate every
+  // certificate already printed. An admin can change it in Prefix Setting.
+  birth: 'BREF',
+  death: 'DREF',
 };
 
 @Injectable()

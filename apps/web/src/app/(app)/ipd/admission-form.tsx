@@ -11,6 +11,7 @@ import { SymptomsBlock } from '@/components/emr/symptoms-block';
 import { useDoctors } from '@/lib/hooks/use-clinical';
 import { useBedGroups, useAvailableBeds, useCreateAdmission } from '@/lib/hooks/use-ipd';
 import { ApiRequestError } from '@/lib/api';
+import { hospitalSettings } from '@/lib/hospital-settings';
 
 export function AdmissionForm({
   open,
@@ -42,7 +43,8 @@ export function AdmissionForm({
   const [caseNo, setCaseNo] = useState('');
   const [bedGroupId, setBedGroupId] = useState('');
   const [bedId, setBedId] = useState('');
-  const [creditLimit, setCreditLimit] = useState('20000');
+  // The branch default from Setup ▸ Settings ▸ General, not a magic number.
+  const [creditLimit, setCreditLimit] = useState(String(hospitalSettings().creditLimit));
   const [symptomType, setSymptomType] = useState('');
   const [symptoms, setSymptoms] = useState('');
   const [symptomDescription, setSymptomDescription] = useState('');
@@ -69,7 +71,7 @@ export function AdmissionForm({
     setCaseNo('');
     setBedGroupId('');
     setBedId('');
-    setCreditLimit('20000');
+    setCreditLimit(String(hospitalSettings().creditLimit));
     setSymptomType('');
     setSymptoms('');
     setSymptomDescription('');

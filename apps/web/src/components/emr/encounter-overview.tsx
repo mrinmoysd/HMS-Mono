@@ -1,7 +1,7 @@
 'use client';
 
 import type { BillingSummaryRow } from '@smart-hospital/shared';
-import { Barcode } from '@/components/ui/barcode';
+import { ScanCode } from '@/components/ui/scan-code';
 import { QrCode } from '@/components/ui/qr-code';
 import { BillingSummaryBars } from './billing-summary-bars';
 
@@ -61,7 +61,7 @@ export function EncounterOverview({
           </dl>
           <div className="flex shrink-0 items-end gap-4">
             <div className="text-center">
-              <Barcode value={barcodeValue} height={40} />
+              <ScanCode value={barcodeValue} height={40} />
               <p className="mt-1 text-2xs text-fg-muted">Barcode</p>
             </div>
             <div className="text-center">

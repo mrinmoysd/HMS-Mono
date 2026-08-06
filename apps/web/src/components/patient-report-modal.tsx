@@ -6,7 +6,7 @@ import { Printer, Loader2 } from 'lucide-react';
 import type { PatientReportDto, PatientReportVisit } from '@smart-hospital/shared';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
-import { Barcode } from '@/components/ui/barcode';
+import { ScanCode } from '@/components/ui/scan-code';
 import { usePatientReport } from '@/lib/hooks/use-emr';
 import { printDocument, type PrintSection } from '@/lib/print';
 import { formatAge } from '@/lib/utils';
@@ -114,7 +114,7 @@ export function PatientReportModal({ patientId, open, onClose }: { patientId: st
                 </tbody>
               </table>
             </div>
-            <Barcode value={data.header.patientNo} height={40} />
+            <ScanCode value={data.header.patientNo} height={40} />
           </div>
 
           <VisitTable title="OPD Details" rows={data.opd} noLabel="OPD No" hrefBase="/opd" onNavigate={onClose} showCheckups />

@@ -10,14 +10,24 @@ import type {
   PhoneCallInput, PostalComplaintDto, PostalComplaintInput, VisitorDto, VisitorInput,
 } from '@smart-hospital/shared';
 import { api } from '@/lib/api';
+import { hospitalSettings } from '@/lib/hospital-settings';
 
 function qs(p: Record<string, string | number | undefined>): string {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(p)) if (v !== undefined && v !== '') sp.set(k, String(v));
   return sp.toString();
 }
-function useList<T>(key: string, path: string, params: Record<string, string | number | undefined>) {
-  return useQuery({ queryKey: [key, params], queryFn: () => api.get<Paginated<T>>(`${path}?${qs(params)}`) });
+function useList<T>(
+  key: string,
+  path: string,
+  params: Record<string, string | number | undefined>,
+  opts: { refetchInterval?: number } = {},
+) {
+  return useQuery({
+    queryKey: [key, params],
+    queryFn: () => api.get<Paginated<T>>(`${path}?${qs(params)}`),
+    ...opts,
+  });
 }
 function useCreator<TIn, TOut>(path: string, invalidate: string) {
   const qc = useQueryClient();
@@ -74,7 +84,16 @@ export function useDeleteDeath() {
 }
 
 // Messaging
-export const useNotifications = (p: Partial<ListQuery>) => useList<NotificationDto>('notifications', '/notifications', p);
+/**
+ * Notifications refetch on the interval from Setup ▸ Settings ▸ General.
+ *
+ * There was no polling at all before, so `notificationPollSeconds` was a
+ * setting an admin could change with no observable effect whatsoever.
+ */
+export const useNotifications = (p: Partial<ListQuery>) =>
+  useList<NotificationDto>('notifications', '/notifications', p, {
+    refetchInterval: hospitalSettings().notificationPollSeconds * 1000,
+  });
 export const useCreateNotification = () => useCreator<NotificationInput, NotificationDto>('/notifications', 'notifications');
 
 // Download center

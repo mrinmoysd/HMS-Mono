@@ -6,7 +6,7 @@ import { Printer } from 'lucide-react';
 import type { AddFindingRecordInput, AddSymptomRecordInput } from '@smart-hospital/shared';
 import { Tabs } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Barcode } from '@/components/ui/barcode';
+import { ScanCode } from '@/components/ui/scan-code';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { DescriptionList } from '@/components/ui/description-list';
@@ -165,7 +165,7 @@ export default function PatientProfilePage() {
                   ]}
                 />
                 <div className="mt-3">
-                  <Barcode value={h.patientNo} height={40} />
+                  <ScanCode value={h.patientNo} height={40} />
                 </div>
               </div>
             </div>

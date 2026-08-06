@@ -6,7 +6,7 @@ import type { StaffDetailDto } from '@smart-hospital/shared';
 import { Button } from '@/components/ui/button';
 import { Field, TextInput } from '@/components/ui/field';
 import { FormDrawer } from '@/components/ui/form-drawer';
-import { Barcode } from '@/components/ui/barcode';
+import { ScanCode } from '@/components/ui/scan-code';
 import { useChangeStaffPassword, useStaffProfile } from '@/lib/hooks/use-hr';
 import { StaffAvatar, roleBadgeClass } from './staff-shared';
 import { formatDate } from '@/lib/format';
@@ -50,7 +50,7 @@ export function StaffDetails({ userId, onBack, onEdit }: { userId: string; onBac
           </div>
           {s.staffNo && (
             <div className="flex flex-col items-center gap-1">
-              <Barcode value={s.staffNo} height={40} />
+              <ScanCode value={s.staffNo} height={40} />
               <span className="text-xs text-fg-muted">{s.staffNo}</span>
             </div>
           )}

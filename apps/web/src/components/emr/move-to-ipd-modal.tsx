@@ -12,6 +12,7 @@ import { formatAge } from '@/lib/utils';
 import { useOpdVisitDetail, useMoveToIpd, useDoctors } from '@/lib/hooks/use-clinical';
 import { useBedGroups, useAvailableBeds } from '@/lib/hooks/use-ipd';
 import { ApiRequestError } from '@/lib/api';
+import { hospitalSettings } from '@/lib/hospital-settings';
 
 /** "Move Patient to IPD" — admits via the existing IPD engine, prefilled from the OPD visit (V4). */
 export function MoveToIpdModal({ id, open, onClose }: { id: string | null; open: boolean; onClose: () => void }) {
@@ -25,7 +26,8 @@ export function MoveToIpdModal({ id, open, onClose }: { id: string | null; open:
   const [admissionDate, setAdmissionDate] = useState(new Date().toISOString().slice(0, 10));
   const [bedGroupId, setBedGroupId] = useState('');
   const [bedId, setBedId] = useState('');
-  const [creditLimit, setCreditLimit] = useState('20000');
+  // The branch default from Setup ▸ Settings ▸ General, not a magic number.
+  const [creditLimit, setCreditLimit] = useState(String(hospitalSettings().creditLimit));
   const [reference, setReference] = useState('');
   const [casualty, setCasualty] = useState(false);
   const [oldPatient, setOldPatient] = useState(false);
@@ -50,7 +52,7 @@ export function MoveToIpdModal({ id, open, onClose }: { id: string | null; open:
     if (!open) {
       setBedGroupId('');
       setBedId('');
-      setCreditLimit('20000');
+      setCreditLimit(String(hospitalSettings().creditLimit));
       setAdmissionDate(new Date().toISOString().slice(0, 10));
       setErrors({});
       setApiError(null);
