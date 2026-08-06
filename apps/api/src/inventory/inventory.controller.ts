@@ -13,7 +13,7 @@ import {
   type ListQuery,
 } from '@smart-hospital/shared';
 import { InventoryService } from './inventory.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeature } from '../rbac/require-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -26,67 +26,72 @@ export class InventoryController {
   constructor(private readonly inventory: InventoryService) {}
 
   @Get('items')
-  @RequirePermission('inventory', 'view')
+  @RequireFeature('inventory.item', 'view')
   listItems(@BranchId() b: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.inventory.listItems(b, q);
   }
   @Post('items')
-  @RequirePermission('inventory', 'add')
+  @RequireFeature('inventory.item', 'add')
   createItem(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(inventoryItemSchema)) body: InventoryItemInput) {
     return this.inventory.createItem(u, b, body);
   }
   @Patch('items/:id')
-  @RequirePermission('inventory', 'edit')
+  @RequireFeature('inventory.item', 'edit')
   updateItem(@CurrentUser() u: RequestUser, @BranchId() b: string, @Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(inventoryItemSchema)) body: InventoryItemInput) {
     return this.inventory.updateItem(u, b, id, body);
   }
   @Delete('items/:id')
   @HttpCode(204)
-  @RequirePermission('inventory', 'delete')
+  @RequireFeature('inventory.item', 'delete')
   async removeItem(@CurrentUser() u: RequestUser, @BranchId() b: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.inventory.removeItem(u, b, id);
   }
 
   @Get('stock')
-  @RequirePermission('inventory', 'view')
+  @RequireFeature('inventory.item_stock', 'view')
   listStock(@BranchId() b: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.inventory.listStock(b, q);
   }
   @Post('stock')
-  @RequirePermission('inventory', 'add')
+  @RequireFeature('inventory.item_stock', 'add')
   addStock(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(itemStockSchema)) body: ItemStockInput) {
     return this.inventory.addStock(u, b, body);
   }
   @Patch('stock/:id')
-  @RequirePermission('inventory', 'edit')
+  @RequireFeature('inventory.item_stock', 'edit')
   updateStock(@CurrentUser() u: RequestUser, @BranchId() b: string, @Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(itemStockSchema)) body: ItemStockInput) {
     return this.inventory.updateStock(u, b, id, body);
   }
   @Delete('stock/:id')
   @HttpCode(204)
-  @RequirePermission('inventory', 'delete')
+  @RequireFeature('inventory.item_stock', 'delete')
   async removeStock(@CurrentUser() u: RequestUser, @BranchId() b: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.inventory.removeStock(u, b, id);
   }
 
   @Get('issues')
-  @RequirePermission('inventory', 'view')
+  @RequireFeature('inventory.issue_item', 'view')
   listIssues(@BranchId() b: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.inventory.listIssues(b, q);
   }
   @Post('issues')
-  @RequirePermission('inventory', 'add')
+  @RequireFeature('inventory.issue_item', 'add')
   issueItem(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(itemIssueSchema)) body: ItemIssueInput) {
     return this.inventory.issueItem(u, b, body);
   }
+  // Issue Item is `bb000010` — view, add and delete, with no edit toggle at
+  // all. Returning an issued item reverses the issue, so it takes `delete`;
+  // amending one takes `add`. Both roles that may write here (Admin,
+  // Accountant) hold add and delete identically, so the split narrows nobody —
+  // it is about naming which act each handler is.
   @Post('issues/:id/return')
   @HttpCode(200)
-  @RequirePermission('inventory', 'edit')
+  @RequireFeature('inventory.issue_item', 'delete')
   returnItem(@CurrentUser() u: RequestUser, @BranchId() b: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.inventory.returnItem(u, b, id);
   }
   @Patch('issues/:id')
-  @RequirePermission('inventory', 'edit')
+  @RequireFeature('inventory.issue_item', 'add')
   updateIssue(
     @CurrentUser() user: RequestUser,
     @BranchId() branchId: string,
@@ -98,26 +103,26 @@ export class InventoryController {
 
   @Delete('issues/:id')
   @HttpCode(204)
-  @RequirePermission('inventory', 'delete')
+  @RequireFeature('inventory.issue_item', 'delete')
   async removeIssue(@CurrentUser() u: RequestUser, @BranchId() b: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.inventory.removeIssue(u, b, id);
   }
 
   // Suppliers
   @Get('suppliers')
-  @RequirePermission('inventory', 'view')
+  @RequireFeature('inventory.supplier', 'view')
   listSuppliers(@BranchId() b: string, @Query(new ZodValidationPipe(listQuerySchema)) q: ListQuery) {
     return this.inventory.listSuppliers(b, q);
   }
 
   @Post('suppliers')
-  @RequirePermission('inventory', 'add')
+  @RequireFeature('inventory.supplier', 'add')
   createSupplier(@CurrentUser() u: RequestUser, @BranchId() b: string, @Body(new ZodValidationPipe(itemSupplierSchema)) body: ItemSupplierInput) {
     return this.inventory.createSupplier(u, b, body);
   }
 
   @Patch('suppliers/:id')
-  @RequirePermission('inventory', 'edit')
+  @RequireFeature('inventory.supplier', 'edit')
   updateSupplier(
     @CurrentUser() u: RequestUser,
     @BranchId() b: string,
@@ -129,7 +134,7 @@ export class InventoryController {
 
   @Delete('suppliers/:id')
   @HttpCode(204)
-  @RequirePermission('inventory', 'delete')
+  @RequireFeature('inventory.supplier', 'delete')
   async removeSupplier(@CurrentUser() u: RequestUser, @BranchId() b: string, @Param('id', ParseUUIDPipe) id: string) {
     await this.inventory.removeSupplier(u, b, id);
   }
