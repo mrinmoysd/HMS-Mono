@@ -712,13 +712,53 @@ feature, and Billing has no edit or delete anywhere. No controller guards any of
 those 14 absent pairs, so nothing fails closed — but a future call site needing
 one has to change the feature table, not the guard.
 
-## Phase R1 — Migrate call sites to feature keys
+## Phase R1 — Migrate call sites to feature keys — **DONE**
 
-Re-decorate the 383 guarded handlers from module granularity to feature
-granularity. Mechanical but large; do it module by module, following the same
+Re-decorate the guarded handlers from module granularity to feature
+granularity. Mechanical but large; done module by module, following the same
 order as the blueprint work (OPD, IPD, Patient, Appointment first).
 
-**Runs before R0.4** — see the finding above.
+**Ran before R0.4** — see the finding above.
+
+### What R1 actually turned up
+
+It was not mechanical. Three kinds of thing came out of it:
+
+1. **Rights nobody had.** Every clinical record was gated on `patient:edit`,
+   which no operational role holds, so a nurse could not write a nurse note.
+   `ipd.nurse_note` is `f0f0000f` and now she can.
+2. **Rights everybody had.** `/masters/:catalog` served 25 masters behind one
+   `setup:*` switch; `reports:view` was one switch over the whole reporting
+   suite. Both are now per-feature, and the per-role answers differ sharply —
+   the reports menu went from 24 items for everyone to 24/15/11/5/1/14/4.
+3. **Data-dependent authorisation a decorator cannot express.** Billing rows by
+   module, leave requests by owner, staff profiles by self-vs-other. These live
+   in the services, using `abilityOf(user)` from `rbac/ability-of.ts`.
+
+Three of the four unguarded handlers from Part II §E were closed in passing:
+`POST /hr/attendance/mark`, `GET /custom-fields`, and the catalog reads. The
+guard is still fail-open, which is what R3 fixes.
+
+### Deliberately left module-level
+
+There is no feature key to migrate these to, and inventing one would be worse
+than leaving them visible:
+
+| Handler | Why |
+| --- | --- |
+| `DELETE /invoices/:id/payments/:paymentId` | No Billing feature has a delete toggle. Now a soft delete (`payment_void`). |
+| `/invoices` reads and payment add | Coarse gate here, per-module assertion in `InvoiceService`. |
+| `clinical/findings`, `clinical/symptoms` | The spec has Findings and Symptoms Type as System Settings *masters*; no feature covers recorded values. |
+| `/custom-fields` (4) | Custom Fields have no permission row in the spec at all. |
+
+### Two inferred mappings, flagged for review
+
+Both concern Operations, and both are recorded in code as well as here:
+`operation-category` (in `masters/catalog-features.ts`) and the Operations
+master list (in `operation.controller.ts`) take `ipd.operation_theatre`, on the
+reading that whoever manages operations manages the list of them. The spec
+models Operation Theatre only as an encounter record and never exposes its
+masters.
 
 ## Phase R2 — The permission editor
 
@@ -733,8 +773,10 @@ column-level select-all. Plus what the reference lacks:
 
 ## Phase R3 — Close our own holes (Part II §E)
 
-Decorate the four genuinely unguarded handlers (`custom-field`, `workforce`,
-`meta`, `directory`), then flip `PermissionsGuard` to **fail-closed**, teaching
+Three of the four unguarded handlers were closed during R1 (`custom-field`'s
+read, `workforce`'s attendance-mark, and the catalog reads); `meta` and
+`directory` remain. Close those, then flip `PermissionsGuard` to
+**fail-closed**, teaching
 it to honour the existing `@Public()` metadata and adding that decorator to
 auth, health and the two `cms/public/*` routes. Portal keeps its own boundary —
 `requirePatient` — and needs no permission key.
