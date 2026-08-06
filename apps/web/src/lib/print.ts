@@ -6,9 +6,32 @@
 
 import type { AmbulanceCallDto, BirthRecordDto, BloodIssueDto, DeathRecordDto, EncounterBillingDto, InvoiceDto, IpdAdmissionDetailDto, OpdVisitDetailDto, OpdVisitDto, PrescriptionDto } from '@smart-hospital/shared';
 import { formatAge } from './utils';
+import { hospitalSettings } from './hospital-settings';
+import { formatDate, formatDateTime } from './format';
 
-const HOSPITAL = 'Smart Hospital & Research Center';
-const HOSPITAL_SUB = 'Your Health, Our Responsibility';
+/**
+ * The letterhead comes from Setup ▸ Settings ▸ General, not a constant.
+ *
+ * It used to be hard-coded here, which meant an admin could change the hospital
+ * name in Settings, save it, and still have every bill, prescription and report
+ * print somebody else's name. That is the single most visible way this product
+ * could contradict itself on paper.
+ */
+function letterhead(): string {
+  const s = hospitalSettings();
+  const contact = [s.address, s.phone, s.email].filter((v) => v && v.trim()).join(' · ');
+  const logo = s.logoUrl?.trim()
+    ? `<img src="${esc(s.logoUrl)}" alt="" style="height:48px;margin-right:12px" />`
+    : '';
+  return `<div style="display:flex;align-items:center">
+      ${logo}
+      <div>
+        <h1>${esc(s.hospitalName)}</h1>
+        ${contact ? `<p>${esc(contact)}</p>` : ''}
+        ${s.hospitalCode?.trim() ? `<p>${esc(s.hospitalCode)}</p>` : ''}
+      </div>
+    </div>`;
+}
 
 export interface PrintSection {
   heading?: string;
@@ -79,8 +102,8 @@ export function printDocument(doc: PrintDoc): void {
     </style></head>
     <body>
       <div class="letterhead">
-        <div><h1>${esc(HOSPITAL)}</h1><p>${esc(HOSPITAL_SUB)}</p></div>
-        <div style="text-align:right;color:#64748b;font-size:12px">${new Date().toLocaleString()}</div>
+        ${letterhead()}
+        <div style="text-align:right;color:#64748b;font-size:12px">${esc(formatDateTime(new Date()))}</div>
       </div>
       <div class="doc-title">${esc(doc.heading)}</div>
       ${meta}
@@ -96,7 +119,7 @@ export function printDocument(doc: PrintDoc): void {
 export function printPrescriptionRx(rx: PrescriptionDto, patientName?: string): void {
   const meta: [string, string][] = [
     ['Patient', patientName ?? '—'],
-    ['Date', new Date(rx.createdAt).toLocaleDateString()],
+    ['Date', formatDate(rx.createdAt)],
     ['Prescribed By', rx.prescribedByName ?? '—'],
   ];
   if (rx.symptoms) meta.push(['Symptoms', rx.symptoms]);
@@ -137,7 +160,7 @@ export function opdPrescriptionMeta(v: OpdVisitDetailDto): [string, string][] {
   return [
     ['OPD No', v.opdNo],
     ['OPD Checkup ID', v.opdNo],
-    ['Date', new Date(v.appointmentDate).toLocaleDateString()],
+    ['Date', formatDate(v.appointmentDate)],
     ['Patient Name', v.patientName],
     ['Age', formatAge(v.age)],
     ['Gender', v.gender ?? '—'],
@@ -168,7 +191,7 @@ export function printOpdVisitSlip(v: OpdVisitDto): void {
       ['Patient', v.patientName],
       ['Case ID', v.caseNo ?? '—'],
       ['Consultant', v.consultantName],
-      ['Date', new Date(v.appointmentDate).toLocaleString()],
+      ['Date', formatDateTime(v.appointmentDate)],
     ],
     sections: [
       { heading: 'Symptoms', text: v.symptoms || 'None recorded' },
@@ -192,7 +215,7 @@ export function printPharmacyBill(inv: InvoiceDto): void {
     heading: 'Pharmacy Bill',
     meta: [
       ['Bill No', inv.billNo],
-      ['Date', new Date(inv.billDate).toLocaleString()],
+      ['Date', formatDateTime(inv.billDate)],
       ['Name', inv.patientName],
       ['Phone', inv.patientPhone ?? '—'],
       ['Doctor', inv.consultantName ?? '—'],
@@ -231,7 +254,7 @@ export function printDiagnosticBill(title: string, inv: InvoiceDto): void {
     meta: [
       ['Bill No', inv.billNo],
       ['Prescription No', inv.prescriptionNo ?? '—'],
-      ['Date', new Date(inv.billDate).toLocaleString()],
+      ['Date', formatDateTime(inv.billDate)],
       ['Name', inv.patientName],
       ['Age', formatAge(inv.patientAge)],
       ['Gender', inv.patientGender ?? '—'],
@@ -272,7 +295,7 @@ export function printBloodIssueBill(title: string, iss: BloodIssueDto): void {
     meta: [
       ['Bill No', iss.billNo],
       ['Case ID', iss.caseNo ?? '—'],
-      ['Date', new Date(iss.issueDate).toLocaleString()],
+      ['Date', formatDateTime(iss.issueDate)],
       ['Received To', iss.patientName],
       ['Blood Group', iss.bloodGroup ?? '—'],
       ['Donor Name', iss.donorName ?? '—'],
@@ -314,7 +337,7 @@ export function printAmbulanceBill(call: AmbulanceCallDto): void {
     meta: [
       ['Bill No', call.billNo],
       ['Case ID', call.caseNo ?? '—'],
-      ['Date', new Date(call.date).toLocaleString()],
+      ['Date', formatDateTime(call.date)],
       ['Patient Name', call.patientName],
       ['Driver Name', call.driverName ?? '—'],
       ['Vehicle Number', call.vehicleNo],
@@ -369,7 +392,7 @@ export function printEncounterBill(data: EncounterBillingDto, kindLabel: string)
       heading: 'Payments',
       table: {
         headers: ['Date', 'Mode', 'Reference', 'Amount'],
-        rows: data.payments.map((p) => [new Date(p.paidAt).toLocaleString(), p.mode.toUpperCase(), p.reference ?? '—', p.amount.toFixed(2)]),
+        rows: data.payments.map((p) => [formatDateTime(p.paidAt), p.mode.toUpperCase(), p.reference ?? '—', p.amount.toFixed(2)]),
       },
     });
   }
@@ -380,7 +403,7 @@ export function printEncounterBill(data: EncounterBillingDto, kindLabel: string)
       ['Patient', data.header.patientName],
       ['Case ID', data.header.caseNo ?? '—'],
       ['Consultant', data.header.consultantName],
-      ['Date', new Date(data.header.date).toLocaleDateString()],
+      ['Date', formatDate(data.header.date)],
     ],
     sections,
     footer: 'Authorised Signatory',
@@ -395,7 +418,7 @@ export function printBirthRecord(b: BirthRecordDto): void {
     meta: [
       ['Reference No', b.referenceNo],
       ['Case ID', b.caseNo ?? '—'],
-      ['Birth Date', new Date(b.birthDate).toLocaleString()],
+      ['Birth Date', formatDateTime(b.birthDate)],
       ['Weight', b.weight ?? '—'],
       ['Gender', b.gender ?? '—'],
       ['Phone', b.phone ?? '—'],
@@ -419,7 +442,7 @@ export function printDeathRecord(d: DeathRecordDto): void {
     meta: [
       ['Reference No', d.referenceNo],
       ['Case ID', d.caseNo ?? '—'],
-      ['Death Date', new Date(d.deathDate).toLocaleString()],
+      ['Death Date', formatDateTime(d.deathDate)],
       ['Gender', d.gender ?? '—'],
       ['Patient Name', d.patientName],
       ['Age', d.age ?? '—'],
@@ -466,8 +489,8 @@ export function printDischargeCard(a: IpdAdmissionDetailDto): void {
       ['Address', a.address ?? '—'],
       ['Consultant', a.consultantName],
       ['Bed', a.bedLabel],
-      ['Admission Date', new Date(a.admissionDate).toLocaleString()],
-      ['Discharge Date', a.dischargeDate ? new Date(a.dischargeDate).toLocaleString() : '—'],
+      ['Admission Date', formatDateTime(a.admissionDate)],
+      ['Discharge Date', a.dischargeDate ? formatDateTime(a.dischargeDate) : '—'],
       ['Discharge Status', a.dischargeStatus ? DISCHARGE_STATUS_LABEL[a.dischargeStatus] ?? a.dischargeStatus : '—'],
     ],
     sections: [

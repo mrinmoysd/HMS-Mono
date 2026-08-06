@@ -10,12 +10,7 @@ import { ExportMenu } from '@/components/ui/export-menu';
 import { useTpaList, useTpaReport, type TpaReportQuery } from '@/lib/hooks/use-tpa';
 import { useCharges, useCatalog } from '@/lib/hooks/use-masters';
 import { useDoctors } from '@/lib/hooks/use-clinical';
-
-function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('en-GB');
-}
+import { currencySymbol, formatDate } from '@/lib/format';
 
 export default function TpaReportPage() {
   const tpas = useTpaList();
@@ -55,16 +50,16 @@ export default function TpaReportPage() {
     { header: 'TPA ID', render: (r) => r.tpaIdNo || '—' },
     { header: 'TPA Name', render: (r) => r.tpaName || '—' },
     { header: 'Patient Name', render: (r) => r.patientName || '—' },
-    { header: 'Appointment Date', render: (r) => fmtDate(r.appointmentDate) },
+    { header: 'Appointment Date', render: (r) => formatDate(r.appointmentDate) },
     { header: 'Doctor', render: (r) => r.doctor || '—' },
     { header: 'Charge Name', render: (r) => r.chargeName || '—' },
     { header: 'Charge Category', render: (r) => r.chargeCategory || '—' },
     { header: 'Charge Type', render: (r) => r.chargeType || '—' },
-    { header: 'Standard Charge ($)', render: (r) => r.standardCharge.toFixed(2), num: true },
-    { header: 'Applied Charge ($)', render: (r) => r.appliedCharge.toFixed(2), num: true },
-    { header: 'TPA Charge ($)', render: (r) => r.tpaCharge.toFixed(2), num: true },
+    { header: `Standard Charge (${currencySymbol()})`, render: (r) => r.standardCharge.toFixed(2), num: true },
+    { header: `Applied Charge (${currencySymbol()})`, render: (r) => r.appliedCharge.toFixed(2), num: true },
+    { header: `TPA Charge (${currencySymbol()})`, render: (r) => r.tpaCharge.toFixed(2), num: true },
     { header: 'Tax', render: (r) => r.tax.toFixed(2), num: true },
-    { header: 'Amount ($)', render: (r) => r.amount.toFixed(2), num: true },
+    { header: `Amount (${currencySymbol()})`, render: (r) => r.amount.toFixed(2), num: true },
   ];
 
   return (

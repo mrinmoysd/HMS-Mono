@@ -5,6 +5,7 @@ import { IconButton } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { useDeath } from '@/lib/hooks/use-office';
 import { printDeathRecord } from '@/lib/print';
+import { formatDateTime } from '@/lib/format';
 
 /** "Death Record Details" — field grid with computed Age + Address resolved from the linked patient. */
 export function DeathRecordDetailsModal({ id, open, onClose, onEdit }: { id: string | null; open: boolean; onClose: () => void; onEdit: () => void }) {
@@ -40,7 +41,7 @@ export function DeathRecordDetailsModal({ id, open, onClose, onEdit }: { id: str
               <div className="grid grid-cols-1 gap-x-8 gap-y-1 text-sm sm:grid-cols-4">
                 <Row label="Reference No" value={data.referenceNo} />
                 <Row label="Case ID" value={data.caseNo ?? '—'} />
-                <Row label="Death Date" value={new Date(data.deathDate).toLocaleString()} />
+                <Row label="Death Date" value={formatDateTime(data.deathDate)} />
                 <Row label="Gender" value={data.gender ?? '—'} />
                 <Row label="Patient Name" value={data.patientName} />
                 <Row label="Age" value={data.age ?? '—'} />

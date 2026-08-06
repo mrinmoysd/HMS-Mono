@@ -5,6 +5,7 @@ import type { InvoiceDto } from '@smart-hospital/shared';
 import { useInvoice } from '@/lib/hooks/use-clinical';
 import { Modal } from '@/components/ui/modal';
 import { printPharmacyBill } from '@/lib/print';
+import { formatDateTime } from '@/lib/format';
 
 /** "12.50%" — the rate a money row represents, as the reference prints it. */
 function pct(part: number, whole: number): string {
@@ -65,7 +66,7 @@ export function PharmacyBillDetailsModal({
           </div>
           <div className="mt-3 flex justify-between text-sm">
             <span>Bill No <b>{data.billNo}</b></span>
-            <span>Date: {new Date(data.billDate).toLocaleString()}</span>
+            <span>Date: {formatDateTime(data.billDate)}</span>
           </div>
           <div className="mt-3 grid grid-cols-1 gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
             <Row label="Name" value={data.patientName} />

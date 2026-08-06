@@ -15,6 +15,7 @@ import { printDocument } from '@/lib/print';
 import { PatientForm } from '../patient/patient-form';
 import { ApiRequestError } from '@/lib/api';
 import { nowLocalDateTimeInput, toLocalDateInput, localInputToIso } from '@/lib/datetime';
+import { currencySymbol, formatDateTime } from '@/lib/format';
 
 const PAYMENT_MODES = ['cash', 'card', 'upi', 'tpa', 'cheque'] as const;
 const STATUSES = ['pending', 'approved', 'cancelled', 'completed'] as const;
@@ -122,7 +123,7 @@ export function AppointmentForm({ open, onClose }: { open: boolean; onClose: () 
           <Field label="Doctor" required error={errors.doctorId}>
             <Select value={doctorId} onChange={(e) => setDoctorId(e.target.value)} placeholder="Select…" options={doctors.map((d) => ({ value: d.id, label: d.name }))} />
           </Field>
-          <Field label="Doctor Fees ($)" required>
+          <Field label={`Doctor Fees (${currencySymbol()})`} required>
             <TextInput value={fees.toFixed(2)} readOnly className="bg-bg/60" />
           </Field>
           <Field label="Shift" required>
@@ -184,7 +185,7 @@ export function printAppointmentSlip(a: AppointmentDto) {
     heading: `Appointment Slip — ${a.apptNo}`,
     meta: [
       ['Patient', a.patientName], ['Phone', a.patientPhone ?? '—'], ['Doctor', a.doctorName],
-      ['Date', new Date(a.apptDate).toLocaleString()], ['Shift', a.shift ?? '—'], ['Slot', a.slot ?? '—'],
+      ['Date', formatDateTime(a.apptDate)], ['Shift', a.shift ?? '—'], ['Slot', a.slot ?? '—'],
       ['Priority', a.priority], ['Status', a.status],
     ],
     sections: [{

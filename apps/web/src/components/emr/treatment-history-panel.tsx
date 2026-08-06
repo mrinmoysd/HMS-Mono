@@ -10,6 +10,7 @@ import type { ExportTable } from '@/lib/export';
 import { VisitDetailsModal } from './visit-details-modal';
 import { useOpdVisitDetail } from '@/lib/hooks/use-clinical';
 import { printOpdPrescription } from '@/lib/print';
+import { formatDate } from '@/lib/format';
 
 const PAGE_SIZE_DEFAULT = 25;
 
@@ -44,7 +45,7 @@ export function TreatmentHistoryPanel({ rows }: { rows: ProfileVisitRow[] }) {
       rows: filtered.map((r) => [
         r.opdNo,
         r.caseNo ?? '',
-        new Date(r.appointmentDate).toLocaleDateString(),
+        formatDate(r.appointmentDate),
         r.symptoms ?? '',
         r.symptomDescription ?? '',
         r.consultantName,
@@ -64,7 +65,7 @@ export function TreatmentHistoryPanel({ rows }: { rows: ProfileVisitRow[] }) {
       ),
     },
     { key: 'caseNo', header: 'Case ID', render: (r) => r.caseNo ?? '—' },
-    { key: 'appointmentDate', header: 'Appointment Date', render: (r) => new Date(r.appointmentDate).toLocaleDateString() },
+    { key: 'appointmentDate', header: 'Appointment Date', render: (r) => formatDate(r.appointmentDate) },
     {
       key: 'symptoms',
       header: 'Symptoms',

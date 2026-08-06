@@ -7,6 +7,7 @@ import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput, TextArea } from '@/components/ui/field';
 import { useConsultantRegister, useAddConsultantRegister } from '@/lib/hooks/use-ipd-clinical';
 import type { EncounterScope } from '@/lib/hooks/use-diagnostics-clinical';
+import { formatDate } from '@/lib/format';
 
 /** Consultant Register tab (IPD): consultant visits + instructions. */
 export function ConsultantRegisterTab({ scope, canEdit }: { scope: EncounterScope; canEdit: boolean }) {
@@ -55,9 +56,9 @@ export function ConsultantRegisterTab({ scope, canEdit }: { scope: EncounterScop
             {rows.length === 0 && <tr><td colSpan={4} className="px-3 py-10 text-center text-fg-muted">No consultant entries</td></tr>}
             {rows.map((r) => (
               <tr key={r.id} className="border-b border-border/60 last:border-0">
-                <td className="px-3 py-2.5">{new Date(r.appliedDate).toLocaleDateString()}</td>
+                <td className="px-3 py-2.5">{formatDate(r.appliedDate)}</td>
                 <td className="px-3 py-2.5 font-medium">{r.doctorName}</td>
-                <td className="px-3 py-2.5">{r.consultantDate ? new Date(r.consultantDate).toLocaleDateString() : '—'}</td>
+                <td className="px-3 py-2.5">{r.consultantDate ? formatDate(r.consultantDate) : '—'}</td>
                 <td className="px-3 py-2.5 text-fg-muted">{r.instruction ?? '—'}</td>
               </tr>
             ))}

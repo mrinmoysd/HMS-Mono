@@ -12,6 +12,7 @@ import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput, TextArea, Select } from '@/components/ui/field';
 import { useLive, useCreateLive } from '@/lib/hooks/use-office';
 import { useAbility } from '@/lib/auth-store';
+import { formatDate } from '@/lib/format';
 
 type Tab = 'consultation' | 'meeting';
 
@@ -30,7 +31,7 @@ export default function LiveConsultationPage() {
 
   const cols: Column<LiveConsultationDto>[] = [
     { key: 'title', header: 'Title', className: 'font-medium' },
-    { key: 'date', header: 'Date', render: (l) => new Date(l.date).toLocaleDateString() },
+    { key: 'date', header: 'Date', render: (l) => formatDate(l.date) },
     ...(tab === 'meeting' ? [{ key: 'durationMin', header: 'Duration', render: (l: LiveConsultationDto) => (l.durationMin ? `${l.durationMin} min` : '—') }] : [{ key: 'createdFor', header: 'For', render: (l: LiveConsultationDto) => l.createdFor ?? '—' }]),
     { key: 'apiUsed', header: 'API', render: (l) => l.apiUsed ?? '—' },
     { key: 'status', header: 'Status', render: (l) => <StatusPill status={l.status === 'scheduled' ? 'pending' : l.status} /> },

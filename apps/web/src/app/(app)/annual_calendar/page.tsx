@@ -11,6 +11,7 @@ import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput, TextArea, Select } from '@/components/ui/field';
 import { useHolidays, useCreateHoliday } from '@/lib/hooks/use-hr';
 import { useAbility } from '@/lib/auth-store';
+import { formatDate } from '@/lib/format';
 
 const TYPE_TONE: Record<string, string> = {
   holiday: 'bg-danger/10 text-danger',
@@ -37,8 +38,8 @@ export default function AnnualCalendarPage() {
   const cols: Column<HolidayDto>[] = [
     { key: 'type', header: 'Type', render: (h) => <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${TYPE_TONE[h.type] ?? ''}`}>{h.type}</span> },
     { key: 'title', header: 'Title', className: 'font-medium' },
-    { key: 'fromDate', header: 'From', render: (h) => new Date(h.fromDate).toLocaleDateString() },
-    { key: 'toDate', header: 'To', render: (h) => (h.toDate ? new Date(h.toDate).toLocaleDateString() : '—') },
+    { key: 'fromDate', header: 'From', render: (h) => formatDate(h.fromDate) },
+    { key: 'toDate', header: 'To', render: (h) => (h.toDate ? formatDate(h.toDate) : '—') },
     { key: 'frontSite', header: 'Front Site', render: (h) => (h.frontSite ? 'Yes' : 'No') },
   ];
 

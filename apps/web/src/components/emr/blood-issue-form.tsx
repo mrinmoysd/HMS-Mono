@@ -14,6 +14,7 @@ import { useCharges } from '@/lib/hooks/use-masters';
 import { useBloodBags, useIssueBlood, useNextBloodIssueNo } from '@/lib/hooks/use-departments';
 import { ApiRequestError } from '@/lib/api';
 import { toLocalDateInput } from '@/lib/datetime';
+import { currencySymbol } from '@/lib/format';
 
 type IssueKind = 'blood' | 'component';
 
@@ -202,7 +203,7 @@ export function BloodIssueForm({ open, kind, title, initialBloodGroup, onClose }
                 options={(charges?.data ?? []).map((c) => ({ value: c.id, label: c.categoryName ? `${c.categoryName} — ${c.name}` : c.name }))}
               />
             </Field>
-            <Field label="Standard Charge ($)">
+            <Field label={`Standard Charge (${currencySymbol()})`}>
               <TextInput type="number" value={standardCharge} onChange={(e) => setStandardCharge(e.target.value)} />
             </Field>
           </div>
@@ -213,19 +214,19 @@ export function BloodIssueForm({ open, kind, title, initialBloodGroup, onClose }
 
           <div className="flex justify-end">
             <div className="w-full max-w-sm space-y-2 rounded-md border border-border p-4 text-sm">
-              <SummaryRow label="Total (#)" value={totals.subtotal.toFixed(2)} />
+              <SummaryRow label={`Total (${currencySymbol()})`} value={totals.subtotal.toFixed(2)} />
               <div className="flex items-center justify-between gap-2">
                 <span className="text-fg-muted">Discount (%)</span>
                 <input type="number" value={discountPct} onChange={(e) => setDiscountPct(e.target.value)} className="h-8 w-28 rounded-sm border border-border bg-surface px-2 text-right text-sm tabular" />
               </div>
-              <SummaryRow label="Discount (#)" value={totals.discount.toFixed(2)} />
-              <SummaryRow label="Tax (#)" value={totals.tax.toFixed(2)} />
-              <SummaryRow label="Net Amount (#)" value={totals.netAmount.toFixed(2)} bold />
+              <SummaryRow label={`Discount (${currencySymbol()})`} value={totals.discount.toFixed(2)} />
+              <SummaryRow label={`Tax (${currencySymbol()})`} value={totals.tax.toFixed(2)} />
+              <SummaryRow label={`Net Amount (${currencySymbol()})`} value={totals.netAmount.toFixed(2)} bold />
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <Field label="Payment Mode">
                   <Select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} options={['cash', 'card', 'upi', 'tpa', 'cheque'].map((m) => ({ value: m, label: m.toUpperCase() }))} />
                 </Field>
-                <Field label="Amount (#)">
+                <Field label={`Amount (${currencySymbol()})`}>
                   <TextInput type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} />
                 </Field>
               </div>

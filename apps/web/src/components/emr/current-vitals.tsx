@@ -2,6 +2,7 @@
 
 import type { CurrentVitalDto } from '@smart-hospital/shared';
 import { cn } from '@/lib/utils';
+import { formatDateTime } from '@/lib/format';
 
 const TONE: Record<string, string> = {
   low: 'bg-info/10 text-info',
@@ -25,7 +26,7 @@ export function CurrentVitals({ vitals, bmi }: { vitals: CurrentVitalDto[]; bmi:
               {v.status}
             </span>
           )}
-          <span className="ml-auto text-xs text-fg-muted">{new Date(v.recordedAt).toLocaleString()}</span>
+          <span className="ml-auto text-xs text-fg-muted">{formatDateTime(v.recordedAt)}</span>
         </div>
       ))}
       {bmi != null && (

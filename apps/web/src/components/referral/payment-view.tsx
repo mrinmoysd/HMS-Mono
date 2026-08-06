@@ -17,6 +17,7 @@ import {
   useReferralPayments, useReferralPersons, useReferralPatient,
   useCreateReferralPayment, useUpdateReferralPayment, useDeleteReferralPayment,
 } from '@/lib/hooks/use-finance';
+import { currencySymbol, formatDate } from '@/lib/format';
 
 export function PaymentView({ onManagePersons }: { onManagePersons: () => void }) {
   const ability = useAbility();
@@ -56,9 +57,9 @@ export function PaymentView({ onManagePersons }: { onManagePersons: () => void }
     { key: 'payeeName', header: 'Payee', className: 'font-medium text-primary' },
     { key: 'patientName', header: 'Patient Name', render: (r) => r.patientName ?? '—' },
     { key: 'billNo', header: 'Bill No', render: (r) => r.billNo ?? '—' },
-    { key: 'billAmount', header: 'Bill Amount ($)', className: 'tabular text-right', render: (r) => r.billAmount.toFixed(2) },
+    { key: 'billAmount', header: `Bill Amount (${currencySymbol()})`, className: 'tabular text-right', render: (r) => r.billAmount.toFixed(2) },
     { key: 'commissionPct', header: 'Commission Percentage (%)', className: 'tabular text-right', render: (r) => r.commissionPct.toFixed(2) },
-    { key: 'commissionAmount', header: 'Commission Amount ($)', className: 'tabular text-right', render: (r) => r.commissionAmount.toFixed(2) },
+    { key: 'commissionAmount', header: `Commission Amount (${currencySymbol()})`, className: 'tabular text-right', render: (r) => r.commissionAmount.toFixed(2) },
   ];
 
   return (
@@ -198,7 +199,7 @@ function PaymentModal({ editing, onClose }: { editing: ReferralPaymentDto | null
               {kv('Any Known Allergies', d?.allergies)}
               {kv('Remarks', d?.remarks)}
               {kv('TPA ID', d?.tpaIdNo)}
-              {kv('TPA Validity', d?.tpaValidity ? new Date(d.tpaValidity).toLocaleDateString('en-GB') : null)}
+              {kv('TPA Validity', d?.tpaValidity ? formatDate(d.tpaValidity) : null)}
               {kv('National Identification Number', d?.nationalId)}
             </div>
           </div>
@@ -212,12 +213,12 @@ function PaymentModal({ editing, onClose }: { editing: ReferralPaymentDto | null
                 <Select value={invoiceId} onChange={(e) => pickBill(e.target.value)} placeholder="Select"
                   options={(d?.bills ?? []).map((b) => ({ value: b.invoiceId, label: `${b.billNo} (${b.module.toUpperCase()})` }))} disabled={!d} />
               </Field>
-              <Field label="Patient Bill Amount ($)" required><TextInput type="number" step="0.01" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} /></Field>
+              <Field label={`Patient Bill Amount (${currencySymbol()})`} required><TextInput type="number" step="0.01" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} /></Field>
               <Field label="Payee" required>
                 <Select value={payeeId} onChange={(e) => setPayeeId(e.target.value)} placeholder="Select Payee" options={(persons.data?.data ?? []).map((p) => ({ value: p.id, label: p.name }))} />
               </Field>
               <Field label="Commission Percentage (%)" required><TextInput type="number" step="0.01" value={pct} onChange={(e) => setPct(e.target.value)} /></Field>
-              <Field label="Commission Amount ($)" required><TextInput type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
+              <Field label={`Commission Amount (${currencySymbol()})`} required><TextInput type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
             </div>
           </div>
         </div>

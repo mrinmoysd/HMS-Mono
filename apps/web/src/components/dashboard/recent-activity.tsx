@@ -5,6 +5,7 @@ import { Card, CardHeader, CardBody } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { History } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { money } from '@/lib/format';
 
 /**
  * Audit trail, most recent first.
@@ -72,7 +73,7 @@ export function RecentActivity({ rows }: { rows: ActivityRow[] }) {
                 </div>
                 {r.amount != null && (
                   <span className="tabular text-xs font-medium">
-                    $ {Math.round(r.amount).toLocaleString()}
+                    {money(Math.round(r.amount))}
                   </span>
                 )}
                 <span className="shrink-0 text-xs text-fg-subtle">{timeAgo(r.at)}</span>

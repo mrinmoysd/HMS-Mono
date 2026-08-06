@@ -13,6 +13,7 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useAbility } from '@/lib/auth-store';
 import { PurchaseMedicineForm } from './purchase-medicine-form';
 import { PurchaseDetailsModal } from './purchase-details-modal';
+import { currencySymbol, formatDateTime } from '@/lib/format';
 
 /** Medicine Purchase List tab: purchase history + Add/Details actions. TPA rate scheduling opens per-batch from the details modal in a follow-up click. */
 export function MedicinePurchasePanel() {
@@ -41,7 +42,7 @@ export function MedicinePurchasePanel() {
       filename: 'medicine-purchases',
       headers: ['Purchase No', 'Purchase Date', 'Bill No', 'Supplier', 'Total', 'Discount', 'Tax', 'Net Amount'],
       rows: rows.map((p) => [
-        p.purchaseNo, new Date(p.purchaseDate).toLocaleString(), p.billNo ?? '', p.supplierName ?? '',
+        p.purchaseNo, formatDateTime(p.purchaseDate), p.billNo ?? '', p.supplierName ?? '',
         p.total.toFixed(2), p.discount.toFixed(2), p.tax.toFixed(2), p.netAmount.toFixed(2),
       ]),
     };
@@ -49,13 +50,13 @@ export function MedicinePurchasePanel() {
 
   const columns: Column<MedicinePurchaseDto>[] = [
     { key: 'purchaseNo', sortable: true, header: 'Pharmacy Purchase No', className: 'font-medium' },
-    { key: 'purchaseDate', sortable: true, header: 'Purchase Date', render: (p) => new Date(p.purchaseDate).toLocaleString() },
+    { key: 'purchaseDate', sortable: true, header: 'Purchase Date', render: (p) => formatDateTime(p.purchaseDate) },
     { key: 'billNo', sortable: true, header: 'Bill No', render: (p) => p.billNo ?? '—' },
     { key: 'supplierName', header: 'Supplier Name', render: (p) => p.supplierName ?? '—' },
-    { key: 'total', sortable: true, header: 'Total ($)', className: 'tabular', render: (p) => p.total.toFixed(2) },
-    { key: 'discount', sortable: true, header: 'Discount ($)', className: 'tabular', render: (p) => p.discount.toFixed(2) },
-    { key: 'tax', sortable: true, header: 'Tax ($)', className: 'tabular', render: (p) => p.tax.toFixed(2) },
-    { key: 'netAmount', sortable: true, header: 'Net Amount ($)', className: 'tabular', render: (p) => p.netAmount.toFixed(2) },
+    { key: 'total', sortable: true, header: `Total (${currencySymbol()})`, className: 'tabular', render: (p) => p.total.toFixed(2) },
+    { key: 'discount', sortable: true, header: `Discount (${currencySymbol()})`, className: 'tabular', render: (p) => p.discount.toFixed(2) },
+    { key: 'tax', sortable: true, header: `Tax (${currencySymbol()})`, className: 'tabular', render: (p) => p.tax.toFixed(2) },
+    { key: 'netAmount', sortable: true, header: `Net Amount (${currencySymbol()})`, className: 'tabular', render: (p) => p.netAmount.toFixed(2) },
   ];
 
   return (

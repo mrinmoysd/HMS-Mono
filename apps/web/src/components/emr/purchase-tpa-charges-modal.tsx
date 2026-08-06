@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { useBatchTpaDetail, useUpdateBatchTpaSchedule } from '@/lib/hooks/use-departments';
 import { useAbility } from '@/lib/auth-store';
+import { formatDateTime } from '@/lib/format';
 
 /** "Medicine TPA Charges" — per-batch TPA rate scheduling (mirrors Hospital Charges' schedule panel). */
 export function PurchaseTpaChargesModal({ purchaseItemId, open, onClose }: { purchaseItemId: string | null; open: boolean; onClose: () => void }) {
@@ -59,7 +60,7 @@ export function PurchaseTpaChargesModal({ purchaseItemId, open, onClose }: { pur
             <div className="grid grid-cols-1 gap-x-8 gap-y-1 text-sm sm:grid-cols-3">
               <Row label="Pharmacy Purchase No" value={data.purchase.purchaseNo} />
               <Row label="Bill No" value={data.purchase.billNo ?? '—'} />
-              <Row label="Purchase Date" value={new Date(data.purchase.purchaseDate).toLocaleString()} />
+              <Row label="Purchase Date" value={formatDateTime(data.purchase.purchaseDate)} />
               <Row label="Supplier Name" value={data.purchase.supplierName ?? '—'} />
               <Row label="Supplier Contact" value={data.purchase.supplierContact ?? '—'} />
               <Row label="Contact Person" value={data.purchase.supplierContactPerson ?? '—'} />

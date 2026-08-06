@@ -8,6 +8,7 @@ import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput, TextArea } from '@/components/ui/field';
 import { useOperations, useCreateOperation } from '@/lib/hooks/use-operations-clinical';
 import type { EncounterScope } from '@/lib/hooks/use-diagnostics-clinical';
+import { formatDate } from '@/lib/format';
 
 /** Operations (OT) tab: OT records with staff + anesthesia. Reused by OPD & IPD. */
 export function OperationsTab({ scope, canEdit }: { scope: EncounterScope; canEdit: boolean }) {
@@ -67,7 +68,7 @@ export function OperationsTab({ scope, canEdit }: { scope: EncounterScope; canEd
             {ops.length === 0 && <tr><td colSpan={6} className="px-3 py-10 text-center text-fg-muted">No operations recorded</td></tr>}
             {ops.map((o) => (
               <tr key={o.id} className="border-b border-border/60 last:border-0">
-                <td className="px-3 py-2.5">{new Date(o.date).toLocaleDateString()}</td>
+                <td className="px-3 py-2.5">{formatDate(o.date)}</td>
                 <td className="px-3 py-2.5 font-medium">{o.name}</td>
                 <td className="px-3 py-2.5">{o.category ?? '—'}</td>
                 <td className="px-3 py-2.5">{o.consultant ?? '—'}</td>
@@ -101,7 +102,7 @@ export function OperationsTab({ scope, canEdit }: { scope: EncounterScope; canEd
         {detail && (
           <div className="space-y-1.5 text-sm">
             {([
-              ['Operation', detail.name], ['Category', detail.category], ['Date', new Date(detail.date).toLocaleDateString()],
+              ['Operation', detail.name], ['Category', detail.category], ['Date', formatDate(detail.date)],
               ['Consultant', detail.consultant], ['Assistant 1', detail.assistant1], ['Assistant 2', detail.assistant2],
               ['Anesthetist', detail.anesthetist], ['Anaesthesia Type', detail.anesthesiaType], ['OT Technician', detail.otTechnician],
               ['OT Assistant', detail.otAssistant], ['Result', detail.result], ['Reference No.', detail.refNo], ['Remark', detail.remark],

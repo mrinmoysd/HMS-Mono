@@ -5,6 +5,7 @@ import { IconButton } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { useAmbulanceCall } from '@/lib/hooks/use-finance';
 import { printAmbulanceBill } from '@/lib/print';
+import { formatDateTime } from '@/lib/format';
 
 /** "Bill Details" for an Ambulance Call — full field grid matching the demo. */
 export function AmbulanceCallDetailsModal({ id, open, onClose }: { id: string | null; open: boolean; onClose: () => void }) {
@@ -32,7 +33,7 @@ export function AmbulanceCallDetailsModal({ id, open, onClose }: { id: string | 
           ) : (
             <div className="grid grid-cols-1 gap-x-8 gap-y-1 text-sm sm:grid-cols-3">
               <Row label="Bill No" value={data.billNo} />
-              <Row label="Date" value={new Date(data.date).toLocaleString()} />
+              <Row label="Date" value={formatDateTime(data.date)} />
               <Row label="Total" value={`#${data.subtotal.toFixed(2)}`} />
 
               <Row label="Patient Name" value={data.patientName} />

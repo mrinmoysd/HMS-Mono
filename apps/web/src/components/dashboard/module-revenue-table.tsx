@@ -5,6 +5,7 @@ import type { IncomeByModuleDto } from '@smart-hospital/shared';
 import { MODULE_META, type ModuleKey } from '@smart-hospital/shared';
 import { Card, CardHeader, CardBody } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { money } from '@/lib/format';
 
 /**
  * Module revenue, this month against last.
@@ -15,7 +16,7 @@ import { cn } from '@/lib/utils';
  * would lose one or the other.
  */
 
-const money = (n: number): string => `$ ${Math.round(n).toLocaleString()}`;
+
 
 function moduleLabel(key: string): string {
   const meta = MODULE_META[key as ModuleKey];

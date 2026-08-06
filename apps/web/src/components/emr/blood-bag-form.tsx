@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/modal';
 import { useCharges } from '@/lib/hooks/use-masters';
 import { useBloodDonors, useCreateBloodBag } from '@/lib/hooks/use-departments';
 import { ApiRequestError } from '@/lib/api';
+import { currencySymbol } from '@/lib/format';
 
 const EMPTY = { bagNo: '', donateDate: new Date().toISOString().slice(0, 10), volume: '', unitType: '', lot: '', institution: '', chargeId: '', standardCharge: '0', discountPct: '0', taxPct: '0', note: '' };
 
@@ -126,29 +127,29 @@ export function BloodBagForm({ open, donorId, onClose, onSaved }: { open: boolea
                 options={(charges?.data ?? []).map((c) => ({ value: c.id, label: c.categoryName ? `${c.categoryName} — ${c.name}` : c.name }))}
               />
             </Field>
-            <Field label="Standard Charge ($)"><TextInput type="number" value={form.standardCharge} onChange={(e) => set('standardCharge', e.target.value)} /></Field>
+            <Field label={`Standard Charge (${currencySymbol()})`}><TextInput type="number" value={form.standardCharge} onChange={(e) => set('standardCharge', e.target.value)} /></Field>
           </div>
           <Field label="Note"><TextInput value={form.note} onChange={(e) => set('note', e.target.value)} /></Field>
 
           <div className="flex justify-end">
             <div className="w-full max-w-sm space-y-2 rounded-md border border-border p-4 text-sm">
-              <SummaryRow label="Total ($)" value={totals.subtotal.toFixed(2)} />
+              <SummaryRow label={`Total (${currencySymbol()})`} value={totals.subtotal.toFixed(2)} />
               <div className="flex items-center justify-between gap-2">
                 <span className="text-fg-muted">Discount (%)</span>
                 <input type="number" value={form.discountPct} onChange={(e) => set('discountPct', e.target.value)} className="h-8 w-28 rounded-sm border border-border bg-surface px-2 text-right text-sm tabular" />
               </div>
-              <SummaryRow label="Discount ($)" value={totals.discount.toFixed(2)} />
+              <SummaryRow label={`Discount (${currencySymbol()})`} value={totals.discount.toFixed(2)} />
               <div className="flex items-center justify-between gap-2">
                 <span className="text-fg-muted">Tax (%)</span>
                 <input type="number" value={form.taxPct} onChange={(e) => set('taxPct', e.target.value)} className="h-8 w-28 rounded-sm border border-border bg-surface px-2 text-right text-sm tabular" />
               </div>
-              <SummaryRow label="Tax ($)" value={totals.tax.toFixed(2)} />
-              <SummaryRow label="Net Amount ($)" value={totals.netAmount.toFixed(2)} bold />
+              <SummaryRow label={`Tax (${currencySymbol()})`} value={totals.tax.toFixed(2)} />
+              <SummaryRow label={`Net Amount (${currencySymbol()})`} value={totals.netAmount.toFixed(2)} bold />
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <Field label="Payment Mode">
                   <Select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} options={['cash', 'card', 'upi', 'cheque'].map((m) => ({ value: m, label: m.toUpperCase() }))} />
                 </Field>
-                <Field label="Amount ($)">
+                <Field label={`Amount (${currencySymbol()})`}>
                   <TextInput type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} />
                 </Field>
               </div>

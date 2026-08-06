@@ -3,6 +3,7 @@
 import { UserRound } from 'lucide-react';
 import { formatAge } from '@/lib/utils';
 import { usePatient } from '@/lib/hooks/use-patients';
+import { formatDate } from '@/lib/format';
 
 /**
  * Read-only patient card on the OPD New Visit and IPD Admission forms
@@ -38,7 +39,7 @@ export function PatientInfoCard({ patientId }: { patientId: string }) {
     ['Address', p.address],
     ['TPA', p.tpaName],
     ['TPA ID', p.tpaIdNo],
-    ['TPA Validity', p.tpaValidity ? new Date(p.tpaValidity).toLocaleDateString() : null],
+    ['TPA Validity', p.tpaValidity ? formatDate(p.tpaValidity) : null],
     ['National ID', p.nationalId],
     ['Any Known Allergies', p.allergies],
     ['Remarks', p.remarks],

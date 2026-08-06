@@ -12,6 +12,7 @@ import { useOpdPatientView } from '@/lib/hooks/use-clinical';
 import { usePatientProfile } from '@/lib/hooks/use-emr';
 import { PatientReportModal } from '@/components/patient-report-modal';
 import { VisitsPanel } from './visits-panel';
+import { formatDate } from '@/lib/format';
 
 /**
  * OPD "Patient View" (blueprint §7.1) — a roll-up *per patient*, not per visit.
@@ -48,7 +49,7 @@ export function PatientViewPanel({ initialPatientId }: { initialPatientId?: stri
       rows: rows.map((r) => [
         r.patientNo, r.name, r.gender ?? '', formatAge(r.age), r.phone ?? '',
         String(r.totalVisits), String(r.totalRecheckups),
-        r.lastVisitDate ? new Date(r.lastVisitDate).toLocaleDateString() : '',
+        r.lastVisitDate ? formatDate(r.lastVisitDate) : '',
         r.lastConsultantName ?? '',
       ]),
     };
@@ -80,7 +81,7 @@ export function PatientViewPanel({ initialPatientId }: { initialPatientId?: stri
     {
       key: 'lastVisitDate',
       header: 'Last Visit',
-      render: (r) => (r.lastVisitDate ? new Date(r.lastVisitDate).toLocaleDateString() : '—'),
+      render: (r) => (r.lastVisitDate ? formatDate(r.lastVisitDate) : '—'),
     },
     { key: 'lastConsultantName', header: 'Last Consultant', render: (r) => r.lastConsultantName ?? '—' },
   ];

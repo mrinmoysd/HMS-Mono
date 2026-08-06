@@ -8,6 +8,7 @@ import { Field, Select } from '@/components/ui/field';
 import { ApiRequestError } from '@/lib/api';
 import { useBedGroups, useAvailableBeds } from '@/lib/hooks/use-ipd';
 import { useBedHistory, useTransferBed } from '@/lib/hooks/use-ipd-clinical';
+import { formatDateTime } from '@/lib/format';
 
 /** Bed History tab (IPD): occupancy timeline + Transfer Bed action. */
 export function BedHistoryTab({ admissionId, canEdit }: { admissionId: string; canEdit: boolean }) {
@@ -54,8 +55,8 @@ export function BedHistoryTab({ admissionId, canEdit }: { admissionId: string; c
             {history.map((h) => (
               <tr key={h.id} className="border-b border-border/60 last:border-0">
                 <td className="px-3 py-2.5 font-medium">{h.bedLabel}</td>
-                <td className="px-3 py-2.5">{new Date(h.fromDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                <td className="px-3 py-2.5">{h.toDate ? new Date(h.toDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—'}</td>
+                <td className="px-3 py-2.5">{formatDateTime(h.fromDate)}</td>
+                <td className="px-3 py-2.5">{h.toDate ? formatDateTime(h.toDate) : '—'}</td>
                 <td className="px-3 py-2.5">
                   <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${h.active ? 'bg-success/15 text-success' : 'bg-border/60 text-fg-muted'}`}>{h.active ? 'Current' : 'Past'}</span>
                 </td>

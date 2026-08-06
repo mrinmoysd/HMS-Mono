@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useCatalog } from '@/lib/hooks/use-masters';
 import { usePharmaSuppliers, useMedicines, useCreateMedicinePurchase } from '@/lib/hooks/use-departments';
 import { ApiRequestError } from '@/lib/api';
+import { currencySymbol } from '@/lib/format';
 
 type Line = Omit<MedicinePurchaseItemInput, 'expiryMonth'> & { expiryMonth: string };
 
@@ -185,14 +186,14 @@ export function PurchaseMedicineForm({ open, onClose }: { open: boolean; onClose
               </Field>
             </div>
             <div className="space-y-2 rounded-md border border-border p-4 text-sm">
-              <SummaryRow label="Total ($)" value={subtotal.toFixed(2)} />
+              <SummaryRow label={`Total (${currencySymbol()})`} value={subtotal.toFixed(2)} />
               <div className="flex items-center justify-between gap-2">
                 <span className="text-fg-muted">Discount (%)</span>
                 <input type="number" value={discountPct} onChange={(e) => setDiscountPct(e.target.value)} className="h-8 w-28 rounded-sm border border-border bg-surface px-2 text-right text-sm tabular" />
               </div>
-              <SummaryRow label="Discount ($)" value={discount.toFixed(2)} />
-              <SummaryRow label="Tax ($)" value={tax.toFixed(2)} />
-              <SummaryRow label="Net Amount ($)" value={netAmount.toFixed(2)} bold />
+              <SummaryRow label={`Discount (${currencySymbol()})`} value={discount.toFixed(2)} />
+              <SummaryRow label={`Tax (${currencySymbol()})`} value={tax.toFixed(2)} />
+              <SummaryRow label={`Net Amount (${currencySymbol()})`} value={netAmount.toFixed(2)} bold />
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <Field label="Payment Mode">
                   <Select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} options={['cash', 'card', 'upi', 'cheque', 'bank_transfer'].map((m) => ({ value: m, label: m }))} />

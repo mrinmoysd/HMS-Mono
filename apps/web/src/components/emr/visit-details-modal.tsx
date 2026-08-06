@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/ui/toast';
 import { useOpdVisitDetail, useDeleteOpdVisit } from '@/lib/hooks/use-clinical';
 import { VisitEditForm } from './visit-edit-form';
+import { formatDateTime } from '@/lib/format';
 
 /** Read-only OPD Visit Details modal, with an inline Edit mode (Patient Visit parity V0/V1). */
 export function VisitDetailsModal({
@@ -97,7 +98,7 @@ export function VisitDetailsModal({
           <Row label="Age" value={formatAge(data.age)} />
           <Row label="Blood Group" value={data.bloodGroup ?? '—'} />
           <Row label="Known Allergies" value={data.knownAllergies ?? '—'} />
-          <Row label="Appointment Date" value={new Date(data.appointmentDate).toLocaleString()} />
+          <Row label="Appointment Date" value={formatDateTime(data.appointmentDate)} />
           <Row label="Casualty" value={data.casualty ? 'Yes' : 'No'} />
           <Row label="Reference" value={data.reference ?? '—'} />
           <Row label="TPA" value={data.tpaName ? `${data.tpaName}${data.tpaIdNo ? ` · ${data.tpaIdNo}` : ''}` : '—'} />

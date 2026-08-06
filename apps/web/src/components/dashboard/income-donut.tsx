@@ -4,6 +4,7 @@ import type { IncomeByModuleDto } from '@smart-hospital/shared';
 import { MODULE_META, type ModuleKey } from '@smart-hospital/shared';
 import { Card, CardHeader, CardBody } from '@/components/ui/card';
 import { CHART_SERIES } from '@/lib/chart-colors';
+import { money } from '@/lib/format';
 
 /**
  * This month's income split by module.
@@ -17,7 +18,7 @@ import { CHART_SERIES } from '@/lib/chart-colors';
  * (`blood` vs `blood_bank`), so unknown values fall back to a tidied slug.
  */
 
-const money = (n: number): string => `$ ${Math.round(n).toLocaleString()}`;
+
 
 function moduleLabel(key: string): string {
   const meta = MODULE_META[key as ModuleKey];
@@ -36,6 +37,7 @@ export function IncomeDonut({ data }: { data: IncomeByModuleDto }) {
 
   const period = (() => {
     const [y, m] = data.period.split('-');
+    // A month caption, deliberately not the configured date format.
     return new Date(Number(y), Number(m) - 1, 1).toLocaleString(undefined, {
       month: 'long',
       year: 'numeric',

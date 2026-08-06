@@ -16,6 +16,7 @@ import { OpdForm } from '@/app/(app)/opd/opd-form';
 import { useAbility } from '@/lib/auth-store';
 import { useOpdVisitDetail } from '@/lib/hooks/use-clinical';
 import { printOpdPrescription } from '@/lib/print';
+import { formatDate } from '@/lib/format';
 
 const PAGE_SIZE_DEFAULT = 25;
 
@@ -67,7 +68,7 @@ export function VisitsPanel({
       rows: filtered.map((r) => [
         r.opdNo,
         r.caseNo ?? '',
-        new Date(r.appointmentDate).toLocaleDateString(),
+        formatDate(r.appointmentDate),
         r.consultantName,
         r.reference ?? '',
         r.symptoms ?? '',
@@ -91,7 +92,7 @@ export function VisitsPanel({
     {
       key: 'appointmentDate',
       header: 'Appointment Date',
-      render: (r) => new Date(r.appointmentDate).toLocaleDateString(),
+      render: (r) => formatDate(r.appointmentDate),
     },
     { key: 'consultantName', header: 'Consultant' },
     { key: 'reference', header: 'Reference', render: (r) => r.reference ?? '—' },

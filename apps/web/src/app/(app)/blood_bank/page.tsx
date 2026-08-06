@@ -31,6 +31,7 @@ import { BloodIssueForm } from '@/components/emr/blood-issue-form';
 import { BloodIssueDetailsModal } from '@/components/emr/blood-issue-details-modal';
 import { BloodIssueEditModal } from '@/components/emr/blood-issue-edit-modal';
 import { BloodIssuePaymentsModal } from '@/components/emr/blood-issue-payments-modal';
+import { currencySymbol, formatDateTime } from '@/lib/format';
 
 type Tab = 'status' | 'donors' | 'components' | 'blood-issues' | 'component-issues';
 
@@ -470,7 +471,7 @@ function IssuesPanel({ kind, title, canAdd, canEdit, canDelete }: {
       filename: `blood-${kind}-issues`,
       headers: ['Bill No', 'Case ID', 'Issue Date', 'Patient Name', 'Blood Group', 'Bags', 'Donor Name', 'Amount', 'Paid', 'Balance'],
       rows: rows.map((i) => [
-        i.billNo, i.caseNo ?? '', new Date(i.issueDate).toLocaleString(), i.patientName, i.bloodGroup ?? '', i.bagNo ?? '', i.donorName ?? '',
+        i.billNo, i.caseNo ?? '', formatDateTime(i.issueDate), i.patientName, i.bloodGroup ?? '', i.bagNo ?? '', i.donorName ?? '',
         i.subtotal.toFixed(2), i.paid.toFixed(2), i.balance.toFixed(2),
       ]),
     };
@@ -481,16 +482,16 @@ function IssuesPanel({ kind, title, canAdd, canEdit, canDelete }: {
   const cols: Column<BloodIssueDto>[] = [
     { key: 'billNo', header: 'Bill No', className: 'font-medium' },
     { key: 'caseNo', header: 'Case ID', render: (i) => i.caseNo ?? '—' },
-    { key: 'issueDate', header: 'Issue Date', sortable: true, render: (i) => new Date(i.issueDate).toLocaleString() },
+    { key: 'issueDate', header: 'Issue Date', sortable: true, render: (i) => formatDateTime(i.issueDate) },
     { key: 'patientName', header: 'Patient Name' },
     { key: 'bloodGroup', header: 'Blood Group', sortable: true, render: (i) => i.bloodGroup ?? '—' },
     { key: 'bagNo', header: 'Bags', sortable: true, render: (i) => i.bagNo ?? '—' },
     ...(kind === 'component' ? [{ key: 'component', header: 'Component', sortable: true, render: (i: BloodIssueDto) => i.component ?? '—' } as Column<BloodIssueDto>] : []),
     { key: 'donorName', header: 'Donor Name', sortable: true, render: (i) => i.donorName ?? '—' },
-    { key: 'subtotal', header: 'Amount (#)', className: 'tabular', render: (i) => i.subtotal.toFixed(2) },
-    { key: 'paid', header: 'Paid (#)', className: 'tabular', render: (i) => i.paid.toFixed(2) },
+    { key: 'subtotal', header: `Amount (${currencySymbol()})`, className: 'tabular', render: (i) => i.subtotal.toFixed(2) },
+    { key: 'paid', header: `Paid (${currencySymbol()})`, className: 'tabular', render: (i) => i.paid.toFixed(2) },
     {
-      key: 'balance', header: 'Balance (#)', className: 'tabular',
+      key: 'balance', header: `Balance (${currencySymbol()})`, className: 'tabular',
       render: (i) => <span className={i.balance > 0 ? 'text-warning' : 'text-success'}>{i.balance.toFixed(2)}</span>,
     },
   ];

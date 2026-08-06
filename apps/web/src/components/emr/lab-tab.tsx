@@ -13,6 +13,7 @@ import type { ExportTable } from '@/lib/export';
 import { useDiagnosticTests } from '@/lib/hooks/use-departments';
 import { useLabInvestigations, useOrderLab, useReportLab, type EncounterScope } from '@/lib/hooks/use-diagnostics-clinical';
 import { printDocument } from '@/lib/print';
+import { formatDate } from '@/lib/format';
 
 const STATUS_STYLE: Record<string, string> = {
   pending: 'bg-border/60 text-fg-muted',
@@ -56,8 +57,8 @@ export function LabTab({ scope, canEdit, patientName }: { scope: EncounterScope;
         l.testName,
         l.caseNo ?? '',
         l.modality,
-        l.sampleDate ? new Date(l.sampleDate).toLocaleDateString() : '',
-        l.expectedDate ? new Date(l.expectedDate).toLocaleDateString() : '',
+        l.sampleDate ? formatDate(l.sampleDate) : '',
+        l.expectedDate ? formatDate(l.expectedDate) : '',
         l.reportValue ? `${l.reportValue}${l.unit ? ` ${l.unit}` : ''}` : '',
         l.status,
         l.approvedByName ?? '',
@@ -69,7 +70,7 @@ export function LabTab({ scope, canEdit, patientName }: { scope: EncounterScope;
     printDocument({
       documentTitle: 'Lab Report',
       heading: 'Laboratory Investigation Report',
-      meta: [['Patient', patientName ?? '—'], ['Date', new Date().toLocaleDateString()], ['Tests', String(labs.length)]],
+      meta: [['Patient', patientName ?? '—'], ['Date', formatDate(new Date())], ['Tests', String(labs.length)]],
       sections: [{
         table: {
           headers: ['Test', 'Modality', 'Result', 'Reference', 'Status'],
@@ -151,11 +152,11 @@ export function LabTab({ scope, canEdit, patientName }: { scope: EncounterScope;
         <div className="text-xs">
           <p>{l.collectedByName ?? '—'}</p>
           <p className="text-fg-muted">{l.center ?? '—'}</p>
-          <p className="text-fg-muted">{l.sampleDate ? new Date(l.sampleDate).toLocaleDateString() : '—'}</p>
+          <p className="text-fg-muted">{l.sampleDate ? formatDate(l.sampleDate) : '—'}</p>
         </div>
       ),
     },
-    { key: 'expectedDate', header: 'Expected Date', render: (l) => (l.expectedDate ? new Date(l.expectedDate).toLocaleDateString() : '—') },
+    { key: 'expectedDate', header: 'Expected Date', render: (l) => (l.expectedDate ? formatDate(l.expectedDate) : '—') },
     { key: 'reportValue', header: 'Result', className: 'tabular', render: (l) => (l.reportValue ? `${l.reportValue}${l.unit ? ` ${l.unit}` : ''}` : '—') },
     {
       key: 'status',
@@ -168,7 +169,7 @@ export function LabTab({ scope, canEdit, patientName }: { scope: EncounterScope;
       render: (l) => (
         <div className="text-xs">
           <p>{l.approvedByName ?? '—'}</p>
-          {l.approvedAt && <p className="text-fg-muted">{new Date(l.approvedAt).toLocaleDateString()}</p>}
+          {l.approvedAt && <p className="text-fg-muted">{formatDate(l.approvedAt)}</p>}
         </div>
       ),
     },
@@ -255,8 +256,8 @@ export function LabTab({ scope, canEdit, patientName }: { scope: EncounterScope;
             <Detail label="Result" value={detail.reportValue ? `${detail.reportValue}${detail.unit ? ` ${detail.unit}` : ''}` : '—'} />
             <Detail label="Reference Range" value={detail.referenceRange ?? '—'} />
             <Detail label="Previous Value" value={detail.previousValue ?? '—'} />
-            <Detail label="Sample Date" value={detail.sampleDate ? new Date(detail.sampleDate).toLocaleDateString() : '—'} />
-            <Detail label="Expected Date" value={detail.expectedDate ? new Date(detail.expectedDate).toLocaleDateString() : '—'} />
+            <Detail label="Sample Date" value={detail.sampleDate ? formatDate(detail.sampleDate) : '—'} />
+            <Detail label="Expected Date" value={detail.expectedDate ? formatDate(detail.expectedDate) : '—'} />
             <Detail label="Center" value={detail.center ?? '—'} />
             <Detail label="Collected By" value={detail.collectedByName ?? '—'} />
             <Detail label="Status" value={detail.status} />

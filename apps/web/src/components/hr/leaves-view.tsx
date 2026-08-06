@@ -14,6 +14,7 @@ import { DataTable, type Column } from '@/components/ui/data-table';
 import { useStaff, useStaffRoles, useCreateLeave, useDeleteLeave, useLeaves, useLeave, useLeaveTypes, useSetLeaveStatus } from '@/lib/hooks/use-hr';
 import { useAbility } from '@/lib/auth-store';
 import { ApiRequestError } from '@/lib/api';
+import { formatDate } from '@/lib/format';
 
 function statusPill(status: string) {
   const cls = status === 'approved' ? 'bg-success/10 text-success' : status === 'disapprove' ? 'bg-danger/10 text-danger' : 'bg-warning/10 text-warning';
@@ -41,9 +42,9 @@ export function LeavesView({ mode, onBack, onSwitch }: { mode: 'my' | 'approve';
   const columns: Column<LeaveRequestDto>[] = [
     { key: 'staffName', header: 'Staff', alwaysVisible: true, render: (l) => `${l.staffName}${l.staffNo ? ` (${l.staffNo})` : ''}` },
     { key: 'leaveTypeName', header: 'Leave Type', render: (l) => l.leaveTypeName ?? '—' },
-    { key: 'leaveDate', header: 'Leave Date', render: (l) => `${new Date(l.fromDate).toLocaleDateString()} - ${new Date(l.toDate).toLocaleDateString()}` },
+    { key: 'leaveDate', header: 'Leave Date', render: (l) => `${formatDate(l.fromDate)} - ${formatDate(l.toDate)}` },
     { key: 'days', header: 'Days', className: 'tabular' },
-    { key: 'applyDate', header: 'Apply Date', render: (l) => new Date(l.applyDate).toLocaleDateString() },
+    { key: 'applyDate', header: 'Apply Date', render: (l) => formatDate(l.applyDate) },
     {
       key: 'status',
       header: 'Status',
@@ -58,7 +59,7 @@ export function LeavesView({ mode, onBack, onSwitch }: { mode: 'my' | 'approve';
         ),
     },
     ...(approveMode
-      ? [{ key: 'statusAt', header: 'Status Date', render: (l: LeaveRequestDto) => (l.statusAt ? new Date(l.statusAt).toLocaleDateString() : '') }]
+      ? [{ key: 'statusAt', header: 'Status Date', render: (l: LeaveRequestDto) => (l.statusAt ? formatDate(l.statusAt) : '') }]
       : []),
   ];
 
@@ -247,8 +248,8 @@ function LeaveDetailModal({ id, onClose }: { id: string | null; onClose: () => v
               <div className="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
                 <Row label="Name" value={`${data.staffName}${data.staffNo ? ` (${data.staffNo})` : ''}`} />
                 <Row label="Leave Type" value={data.leaveTypeName ?? '—'} />
-                <Row label="Apply Date" value={new Date(data.applyDate).toLocaleDateString()} />
-                <Row label="Leave" value={`${new Date(data.fromDate).toLocaleDateString()} – ${new Date(data.toDate).toLocaleDateString()} (${data.days} Days)`} />
+                <Row label="Apply Date" value={formatDate(data.applyDate)} />
+                <Row label="Leave" value={`${formatDate(data.fromDate)} – ${formatDate(data.toDate)} (${data.days} Days)`} />
                 <Row label="Reason" value={data.reason ?? '—'} />
                 <Row label="Download" value={data.attachmentUrl ? 'Attached' : '—'} />
               </div>

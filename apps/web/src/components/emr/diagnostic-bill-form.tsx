@@ -15,6 +15,7 @@ import { useDiagnosticTests, useGenerateDiagnosticBill, useNextBillNo, usePrevio
 import { useCharge } from '@/lib/hooks/use-masters';
 import { ApiRequestError } from '@/lib/api';
 import { toLocalDateInput } from '@/lib/datetime';
+import { currencySymbol, formatDate } from '@/lib/format';
 
 interface Line {
   testId: string;
@@ -257,9 +258,9 @@ export function DiagnosticBillForm({ open, modality, title, onClose }: { open: b
                   {previousReports.map((r) => (
                     <tr key={r.id} className="border-b border-border/60 last:border-0">
                       <td className="px-3 py-2 font-medium">{r.testName}</td>
-                      <td className="px-3 py-2">{r.sampleCollected ? new Date(r.sampleCollected).toLocaleDateString() : '—'}</td>
-                      <td className="px-3 py-2">{r.reportDate ? new Date(r.reportDate).toLocaleDateString() : '—'}</td>
-                      <td className="px-3 py-2">{r.approvedByName ? `${r.approvedByName}${r.approvedAt ? ' / ' + new Date(r.approvedAt).toLocaleDateString() : ''}` : '—'}</td>
+                      <td className="px-3 py-2">{r.sampleCollected ? formatDate(r.sampleCollected) : '—'}</td>
+                      <td className="px-3 py-2">{r.reportDate ? formatDate(r.reportDate) : '—'}</td>
+                      <td className="px-3 py-2">{r.approvedByName ? `${r.approvedByName}${r.approvedAt ? ' / ' + formatDate(r.approvedAt) : ''}` : '—'}</td>
                       <td className="px-3 py-2 tabular">{r.tax != null ? r.tax.toFixed(2) : '—'}</td>
                       <td className="px-3 py-2 text-right tabular">{r.netAmount != null ? r.netAmount.toFixed(2) : '—'}</td>
                     </tr>
@@ -272,19 +273,19 @@ export function DiagnosticBillForm({ open, modality, title, onClose }: { open: b
 
         <div className="flex justify-end">
           <div className="w-full max-w-sm space-y-2 rounded-md border border-border p-4 text-sm">
-            <SummaryRow label="Total (#)" value={subtotal.toFixed(2)} />
+            <SummaryRow label={`Total (${currencySymbol()})`} value={subtotal.toFixed(2)} />
             <div className="flex items-center justify-between gap-2">
               <span className="text-fg-muted">Discount (%)</span>
               <input type="number" value={discountPct} onChange={(e) => setDiscountPct(e.target.value)} className="h-8 w-28 rounded-sm border border-border bg-surface px-2 text-right text-sm tabular" />
             </div>
-            <SummaryRow label="Discount (#)" value={discount.toFixed(2)} />
-            <SummaryRow label="Tax (#)" value={tax.toFixed(2)} />
-            <SummaryRow label="Net Amount (#)" value={netAmount.toFixed(2)} bold />
+            <SummaryRow label={`Discount (${currencySymbol()})`} value={discount.toFixed(2)} />
+            <SummaryRow label={`Tax (${currencySymbol()})`} value={tax.toFixed(2)} />
+            <SummaryRow label={`Net Amount (${currencySymbol()})`} value={netAmount.toFixed(2)} bold />
             <div className="grid grid-cols-2 gap-3 pt-2">
               <Field label="Payment Mode">
                 <Select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} options={['cash', 'card', 'upi', 'tpa', 'cheque'].map((m) => ({ value: m, label: m.toUpperCase() }))} />
               </Field>
-              <Field label="Amount (#)">
+              <Field label={`Amount (${currencySymbol()})`}>
                 <TextInput type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} />
               </Field>
             </div>

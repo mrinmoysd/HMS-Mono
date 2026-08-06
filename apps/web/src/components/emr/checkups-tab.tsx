@@ -16,6 +16,7 @@ import {
   useUpdateOpdCheckup,
   useDeleteOpdCheckup,
 } from '@/lib/hooks/use-clinical';
+import { formatDate } from '@/lib/format';
 
 /**
  * The OPD visit's "Visits" tab (blueprint §7.3 tab 2).
@@ -145,7 +146,7 @@ export function CheckupsTab({
             {checkups.map((c) => (
               <tr key={c.id} className="border-b border-border/60 last:border-0">
                 <td className="px-3 py-2.5 font-medium">{c.checkupNo}</td>
-                <td className="px-3 py-2.5">{new Date(c.appointmentDate).toLocaleDateString()}</td>
+                <td className="px-3 py-2.5">{formatDate(c.appointmentDate)}</td>
                 <td className="px-3 py-2.5">{c.consultantName}</td>
                 <td className="px-3 py-2.5 text-fg-muted">{c.reference ?? '—'}</td>
                 <td className="px-3 py-2.5 text-fg-muted">{c.symptoms ?? '—'}</td>

@@ -5,6 +5,7 @@ import { IconButton } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { useBirth } from '@/lib/hooks/use-office';
 import { printBirthRecord } from '@/lib/print';
+import { formatDateTime } from '@/lib/format';
 
 /** "Birth Record Details" — full field grid + photo/initials Attachments row, matching the demo. */
 export function BirthRecordDetailsModal({ id, open, onClose, onEdit }: { id: string | null; open: boolean; onClose: () => void; onEdit: () => void }) {
@@ -40,7 +41,7 @@ export function BirthRecordDetailsModal({ id, open, onClose, onEdit }: { id: str
                 <h3 className="mb-2 text-sm font-semibold">Birth Record Details</h3>
                 <div className="grid grid-cols-1 gap-x-8 gap-y-1 text-sm sm:grid-cols-4">
                   <Row label="Case ID" value={data.caseNo ?? '—'} />
-                  <Row label="Birth Date" value={new Date(data.birthDate).toLocaleString()} />
+                  <Row label="Birth Date" value={formatDateTime(data.birthDate)} />
                   <Row label="Weight" value={data.weight ?? '—'} />
                   <Row label="Gender" value={data.gender ?? '—'} />
                   <Row label="Phone" value={data.phone ?? '—'} />

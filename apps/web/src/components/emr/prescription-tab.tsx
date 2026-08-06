@@ -9,6 +9,7 @@ import { Field, TextInput, TextArea } from '@/components/ui/field';
 import { useMedicines } from '@/lib/hooks/use-departments';
 import { usePrescriptions, useCreatePrescription, type EncounterScope } from '@/lib/hooks/use-diagnostics-clinical';
 import { printDocument } from '@/lib/print';
+import { formatDate, formatDateTime } from '@/lib/format';
 
 const EMPTY: PrescriptionItemInput = { medicineName: '', dosage: '', interval: '', duration: '', instruction: '' };
 
@@ -52,7 +53,7 @@ export function PrescriptionTab({ scope, canEdit, patientName }: { scope: Encoun
   function printRx(rx: PrescriptionDto) {
     const meta: [string, string][] = [
       ['Patient', patientName ?? '—'],
-      ['Date', new Date(rx.createdAt).toLocaleDateString()],
+      ['Date', formatDate(rx.createdAt)],
       ['Prescribed By', rx.prescribedByName ?? '—'],
     ];
     if (rx.symptoms) meta.push(['Symptoms', rx.symptoms]);
@@ -88,7 +89,7 @@ export function PrescriptionTab({ scope, canEdit, patientName }: { scope: Encoun
           <div key={rx.id} className="rounded-md border border-border bg-surface p-4">
             <div className="mb-2 flex items-start justify-between">
               <div className="text-sm">
-                <p className="font-medium">{new Date(rx.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                <p className="font-medium">{formatDateTime(rx.createdAt)}</p>
                 <p className="text-xs text-fg-muted">{rx.prescribedByName ?? '—'}{rx.symptoms ? ` · ${rx.symptoms}` : ''}</p>
               </div>
               <button onClick={() => printRx(rx)} className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-fg-muted hover:bg-border/50">

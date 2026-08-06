@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput, Select } from '@/components/ui/field';
 import { useVitalTypes, useVitalMatrix, useAddVitals, useUpdateVital, useDeleteVital } from '@/lib/hooks/use-emr';
+import { formatDate, formatTime } from '@/lib/format';
 
 interface Row {
   vitalTypeId: string;
@@ -81,7 +82,7 @@ export function VitalsTab({ patientId, canEdit }: { patientId: string; canEdit: 
             {matrix && matrix.rows.length === 0 && <tr><td colSpan={cols.length + 1} className="px-3 py-10 text-center text-fg-muted">No vitals recorded</td></tr>}
             {matrix?.rows.map((row) => (
               <tr key={row.date} className="border-b border-border/60 last:border-0">
-                <td className="px-3 py-2.5 font-medium">{new Date(row.date).toLocaleDateString()}</td>
+                <td className="px-3 py-2.5 font-medium">{formatDate(row.date)}</td>
                 {cols.map((c) => {
                   const cell = row.cells[c.vitalTypeId];
                   return (
@@ -91,7 +92,7 @@ export function VitalsTab({ patientId, canEdit }: { patientId: string; canEdit: 
                           <span>
                             {cell.value}{' '}
                             <span className="text-xs text-fg-muted">
-                              ({new Date(cell.recordedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                              ({formatTime(cell.recordedAt)})
                             </span>
                           </span>
                           {canEdit && (

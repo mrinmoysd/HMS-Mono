@@ -25,6 +25,7 @@ import { VisitsPanel } from '@/components/emr/visits-panel';
 import { TreatmentHistoryPanel } from '@/components/emr/treatment-history-panel';
 import { usePatientProfile, useAddFinding, useAddSymptom } from '@/lib/hooks/use-emr';
 import { useAbility } from '@/lib/auth-store';
+import { formatDate } from '@/lib/format';
 
 type Tab = 'overview' | 'visits' | 'lab' | 'treatment' | 'timeline' | 'vitals';
 
@@ -253,7 +254,7 @@ function VisitTable({
             <tr key={r.id} className="border-b border-line/60 last:border-0">
               <td className="px-cell py-cell font-medium text-primary">{r.opdNo}</td>
               <td className="px-cell py-cell">{r.caseNo ?? '—'}</td>
-              <td className="px-cell py-cell">{new Date(r.appointmentDate).toLocaleDateString()}</td>
+              <td className="px-cell py-cell">{formatDate(r.appointmentDate)}</td>
               <td className="px-cell py-cell">{r.consultantName}</td>
               <td className="px-cell py-cell text-fg-muted">{r.symptoms ?? '—'}</td>
             </tr>

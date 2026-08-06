@@ -7,6 +7,7 @@ import { SkeletonText } from '@/components/ui/skeleton';
 import type { BloodIssueDto } from '@smart-hospital/shared';
 import { useBloodIssue } from '@/lib/hooks/use-departments';
 import { printBloodIssueBill } from '@/lib/print';
+import { formatDateTime } from '@/lib/format';
 
 /** "Bill Details" for a Blood/Component Issue — full field grid matching the demo. */
 export function BloodIssueDetailsModal({
@@ -59,7 +60,7 @@ export function BloodIssueDetailsModal({
               <Row label="Received To" value={data.patientName} />
               <Row label="Total" value={`#${data.subtotal.toFixed(2)}`} />
 
-              <Row label="Issue Date" value={new Date(data.issueDate).toLocaleString()} />
+              <Row label="Issue Date" value={formatDateTime(data.issueDate)} />
               <Row label="Blood Group" value={data.bloodGroup ?? '—'} />
               <Row label="Bags" value={data.bagNo ?? '—'} />
               <Row label="Total Discount" value={`#${data.discount.toFixed(2)}`} />

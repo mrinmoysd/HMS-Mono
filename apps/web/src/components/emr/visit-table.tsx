@@ -1,6 +1,7 @@
 'use client';
 
 import type { ProfileVisitRow } from '@smart-hospital/shared';
+import { formatDate } from '@/lib/format';
 
 /** Shared visit/treatment table (Patient Profile + OPD/IPD detail pages). */
 export function EncounterVisitTable({ rows }: { rows: ProfileVisitRow[] }) {
@@ -22,7 +23,7 @@ export function EncounterVisitTable({ rows }: { rows: ProfileVisitRow[] }) {
             <tr key={r.id} className="border-b border-border/60 last:border-0">
               <td className="px-2 py-2 font-medium text-primary">{r.opdNo}</td>
               <td className="px-2 py-2">{r.caseNo ?? '—'}</td>
-              <td className="px-2 py-2">{new Date(r.appointmentDate).toLocaleDateString()}</td>
+              <td className="px-2 py-2">{formatDate(r.appointmentDate)}</td>
               <td className="px-2 py-2">{r.consultantName}</td>
               <td className="px-2 py-2 text-fg-muted">{r.symptoms ?? '—'}</td>
             </tr>

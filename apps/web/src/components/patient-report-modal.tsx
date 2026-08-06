@@ -10,6 +10,7 @@ import { Barcode } from '@/components/ui/barcode';
 import { usePatientReport } from '@/lib/hooks/use-emr';
 import { printDocument, type PrintSection } from '@/lib/print';
 import { formatAge } from '@/lib/utils';
+import { formatDate } from '@/lib/format';
 
 const MODULE_LABEL: Record<string, string> = {
   pharmacy: 'Pharmacy Details',
@@ -48,7 +49,7 @@ export function PatientReportModal({ patientId, open, onClose }: { patientId: st
         ],
         rows: rows.length
           ? rows.map((v) => [
-              v.no, v.caseNo ?? '', new Date(v.date).toLocaleDateString(),
+              v.no, v.caseNo ?? '', formatDate(v.date),
               ...(showCheckups ? [v.checkupNos ?? ''] : []),
               v.doctorName, v.symptoms ?? '', v.findings ?? '',
             ])
@@ -63,7 +64,7 @@ export function PatientReportModal({ patientId, open, onClose }: { patientId: st
         table: {
           headers: ['Bill No', 'Case ID', 'Date', 'Amount', 'Discount', 'Tax', 'Paid', 'Refund', 'Balance'],
           rows: [
-            ...g.rows.map((r) => [r.billNo, r.caseNo ?? '', new Date(r.date).toLocaleDateString(), r.amount.toFixed(2), r.discount.toFixed(2), r.tax.toFixed(2), r.paid.toFixed(2), r.refund.toFixed(2), r.balance.toFixed(2)]),
+            ...g.rows.map((r) => [r.billNo, r.caseNo ?? '', formatDate(r.date), r.amount.toFixed(2), r.discount.toFixed(2), r.tax.toFixed(2), r.paid.toFixed(2), r.refund.toFixed(2), r.balance.toFixed(2)]),
             ['Total', '', '', g.totals.amount.toFixed(2), g.totals.discount.toFixed(2), g.totals.tax.toFixed(2), g.totals.paid.toFixed(2), g.totals.refund.toFixed(2), g.totals.balance.toFixed(2)],
           ],
         },
@@ -134,7 +135,7 @@ export function PatientReportModal({ patientId, open, onClose }: { patientId: st
                   <tbody>
                     {g.rows.map((r) => (
                       <tr key={r.billNo} className="border-b border-border/60 last:border-0">
-                        <td className="px-3 py-2 font-medium">{r.billNo}</td><td className="px-3 py-2">{r.caseNo ?? '—'}</td><td className="px-3 py-2">{new Date(r.date).toLocaleDateString()}</td>
+                        <td className="px-3 py-2 font-medium">{r.billNo}</td><td className="px-3 py-2">{r.caseNo ?? '—'}</td><td className="px-3 py-2">{formatDate(r.date)}</td>
                         <td className="px-3 py-2 text-right tabular">{r.amount.toFixed(2)}</td><td className="px-3 py-2 text-right tabular">{r.discount.toFixed(2)}</td><td className="px-3 py-2 text-right tabular">{r.tax.toFixed(2)}</td>
                         <td className="px-3 py-2 text-right tabular">{r.paid.toFixed(2)}</td><td className="px-3 py-2 text-right tabular">{r.refund.toFixed(2)}</td><td className="px-3 py-2 text-right tabular">{r.balance.toFixed(2)}</td>
                       </tr>
@@ -201,7 +202,7 @@ function VisitTable({
                   <Link href={`${hrefBase}/${v.id}`} onClick={onNavigate} className="text-primary hover:underline">
                     {v.no}
                   </Link>
-                </td><td className="px-3 py-2">{v.caseNo ?? '—'}</td><td className="px-3 py-2 whitespace-nowrap">{new Date(v.date).toLocaleDateString()}</td>
+                </td><td className="px-3 py-2">{v.caseNo ?? '—'}</td><td className="px-3 py-2 whitespace-nowrap">{formatDate(v.date)}</td>
                 {showCheckups && <td className="px-3 py-2 text-fg-muted">{v.checkupNos ?? '—'}</td>}
                 <td className="px-3 py-2 whitespace-nowrap">{v.doctorName}</td><td className="px-3 py-2 text-fg-muted">{v.symptoms ?? '—'}</td><td className="px-3 py-2 text-fg-muted">{v.findings ?? '—'}</td>
               </tr>

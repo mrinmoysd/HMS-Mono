@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput, Select } from '@/components/ui/field';
 import { useAddEncounterPayment } from '@/lib/hooks/use-encounter-billing';
+import { formatDateTime } from '@/lib/format';
 
 const MODES = ['cash', 'card', 'upi', 'tpa', 'cheque'] as const;
 
@@ -76,7 +77,7 @@ export function PaymentsTab({
             )}
             {data.payments.map((p) => (
               <tr key={p.id} className="border-b border-border/60 last:border-0">
-                <td className="px-3 py-2.5">{new Date(p.paidAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                <td className="px-3 py-2.5">{formatDateTime(p.paidAt)}</td>
                 <td className="px-3 py-2.5 uppercase">{p.mode}</td>
                 <td className="px-3 py-2.5 text-fg-muted">{p.reference ?? '—'}</td>
                 <td className="px-3 py-2.5 text-right tabular font-medium">{p.amount.toFixed(2)}</td>

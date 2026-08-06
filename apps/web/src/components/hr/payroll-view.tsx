@@ -10,6 +10,7 @@ import { Field, Select } from '@/components/ui/field';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { useGeneratePayroll, usePayrollList, useStaffRoles } from '@/lib/hooks/use-hr';
 import { printDocument } from '@/lib/print';
+import { currencySymbol } from '@/lib/format';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const YEARS = Array.from({ length: 6 }, (_, i) => String(new Date().getFullYear() - 3 + i));
@@ -107,8 +108,8 @@ function PayslipModal({ payroll: p, monthLabel, onClose }: { payroll: PayrollDto
         ['Designation', p.designationName ?? '—'],
       ],
       sections: [
-        { heading: 'Earnings', table: { headers: ['Earning', 'Amount ($)'], rows: p.earnings.length ? p.earnings.map((e) => [e.label, e.amount.toFixed(2)]) : [['—', '0.00']] } },
-        { heading: 'Deductions', table: { headers: ['Deduction', 'Amount ($)'], rows: p.deductionItems.length ? p.deductionItems.map((d) => [d.label, d.amount.toFixed(2)]) : [['—', '0.00']] } },
+        { heading: 'Earnings', table: { headers: ['Earning', `Amount (${currencySymbol()})`], rows: p.earnings.length ? p.earnings.map((e) => [e.label, e.amount.toFixed(2)]) : [['—', '0.00']] } },
+        { heading: 'Deductions', table: { headers: ['Deduction', `Amount (${currencySymbol()})`], rows: p.deductionItems.length ? p.deductionItems.map((d) => [d.label, d.amount.toFixed(2)]) : [['—', '0.00']] } },
         { heading: 'Summary', rows: [['Total Earning', totalEarn.toFixed(2)], ['Total Deduction', totalDeduct.toFixed(2)], ['Payment Mode', p.paymentMode], ['Basic Salary', p.basicSalary.toFixed(2)], ['Net Pay', p.net.toFixed(2)]] },
       ],
       footer: 'This payslip is computer generated.',
@@ -138,7 +139,7 @@ function PayslipModal({ payroll: p, monthLabel, onClose }: { payroll: PayrollDto
               <Kv label="Designation" value={p.designationName ?? '—'} />
             </div>
             <table className="w-full border-t border-border text-sm">
-              <thead><tr className="bg-bg text-left text-xs uppercase text-fg-muted"><th className="px-4 py-2">Earning</th><th className="px-4 py-2 text-right">Amount ($)</th><th className="px-4 py-2">Deduction</th><th className="px-4 py-2 text-right">Amount ($)</th></tr></thead>
+              <thead><tr className="bg-bg text-left text-xs uppercase text-fg-muted"><th className="px-4 py-2">Earning</th><th className="px-4 py-2 text-right{`>Amount (${currencySymbol()})</th><th className=`}px-4 py-2">Deduction</th><th className="px-4 py-2 text-right">Amount ($)</th></tr></thead>
               <tbody>
                 <tr className="border-t border-border/60">
                   <td className="px-4 py-2">{p.earnings[0]?.label ?? ''}</td>
@@ -154,8 +155,8 @@ function PayslipModal({ payroll: p, monthLabel, onClose }: { payroll: PayrollDto
             </table>
             <div className="space-y-1 border-t border-border p-4 text-sm">
               <div className="flex justify-between"><span className="text-fg-muted">Payment Mode</span><span className="font-semibold">{p.paymentMode}</span></div>
-              <div className="flex justify-between"><span className="text-fg-muted">Basic Salary ($)</span><span className="font-semibold tabular">{p.basicSalary.toFixed(2)}</span></div>
-              <div className="flex justify-between border-t border-border pt-1"><span className="text-fg-muted">Net Pay ($)</span><span className="font-semibold tabular text-primary">{p.net.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span className="text-fg-muted{`>Basic Salary (${currencySymbol()})</span><span className=`}font-semibold tabular">{p.basicSalary.toFixed(2)}</span></div>
+              <div className="flex justify-between border-t border-border pt-1"><span className="text-fg-muted{`>Net Pay (${currencySymbol()})</span><span className=`}font-semibold tabular text-primary">{p.net.toFixed(2)}</span></div>
             </div>
           </div>
         </div>

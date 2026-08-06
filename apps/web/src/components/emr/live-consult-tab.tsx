@@ -7,6 +7,7 @@ import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput } from '@/components/ui/field';
 import { useLiveConsults, useCreateLiveConsult, useUpdateLiveConsultStatus } from '@/lib/hooks/use-operations-clinical';
 import type { EncounterScope } from '@/lib/hooks/use-diagnostics-clinical';
+import { formatDateTime } from '@/lib/format';
 
 const STATUS_STYLE: Record<string, string> = {
   awaited: 'bg-warning/15 text-warning',
@@ -64,7 +65,7 @@ export function LiveConsultTab({ scope, canEdit }: { scope: EncounterScope; canE
               <tr key={c.id} className="border-b border-border/60 last:border-0">
                 <td className="px-3 py-2.5 font-medium">{c.title}</td>
                 <td className="px-3 py-2.5">{c.doctorName ?? '—'}</td>
-                <td className="px-3 py-2.5">{c.scheduledAt ? new Date(c.scheduledAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—'}</td>
+                <td className="px-3 py-2.5">{c.scheduledAt ? formatDateTime(c.scheduledAt) : '—'}</td>
                 <td className="px-3 py-2.5"><span className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${STATUS_STYLE[c.status] ?? 'bg-border/60 text-fg-muted'}`}>{c.status}</span></td>
                 <td className="px-3 py-2.5">
                   <div className="flex items-center justify-end gap-3">

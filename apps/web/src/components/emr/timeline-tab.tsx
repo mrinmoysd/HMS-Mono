@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput, TextArea } from '@/components/ui/field';
 import { useAddTimeline, useUpdateTimeline, useDeleteTimeline } from '@/lib/hooks/use-emr';
+import { formatDateTime } from '@/lib/format';
 
 export function TimelineTab({ patientId, entries, canEdit, compact }: { patientId: string; entries: TimelineEntryDto[]; canEdit: boolean; compact?: boolean }) {
   const add = useAddTimeline(patientId);
@@ -82,7 +83,7 @@ export function TimelineTab({ patientId, entries, canEdit, compact }: { patientI
             <div className="rounded-md border border-border bg-surface p-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-xs text-fg-muted">{new Date(e.date).toLocaleString()}</p>
+                  <p className="text-xs text-fg-muted">{formatDateTime(e.date)}</p>
                   <p className="font-medium text-primary">{e.title}</p>
                   {e.description && <p className="mt-0.5 text-sm text-fg-muted">{e.description}</p>}
                   {e.fileUrl && (

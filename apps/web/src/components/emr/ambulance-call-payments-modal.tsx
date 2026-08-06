@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useAmbulanceCall } from '@/lib/hooks/use-finance';
 import { useInvoice, useAddPayment, useDeletePayment } from '@/lib/hooks/use-clinical';
 import { useAbility } from '@/lib/auth-store';
+import { formatDate, formatDateTime } from '@/lib/format';
 
 const MODES = ['cash', 'card', 'upi', 'tpa', 'cheque'] as const;
 
@@ -77,7 +78,7 @@ export function AmbulanceCallPaymentsModal({ id, open, onClose }: { id: string |
                   <Row label="Vehicle Model" value={callData.vehicleModel ?? '—'} />
                   <Row label="Driver Name" value={callData.driverName ?? '—'} />
                   <Row label="Driver Contact" value={callData.driverContact ?? '—'} />
-                  <Row label="Date" value={new Date(callData.date).toLocaleDateString()} />
+                  <Row label="Date" value={formatDate(callData.date)} />
                   <Row label="Patient Address" value={callData.patientAddress ?? '—'} />
                 </div>
                 <div className="space-y-1 text-sm">
@@ -127,7 +128,7 @@ export function AmbulanceCallPaymentsModal({ id, open, onClose }: { id: string |
                       {(data.payments ?? []).map((p) => (
                         <tr key={p.id} className="border-b border-border/60 last:border-0">
                           <td className="px-3 py-2 font-mono text-xs">{p.id.slice(0, 8).toUpperCase()}</td>
-                          <td className="px-3 py-2">{new Date(p.paidAt).toLocaleString()}</td>
+                          <td className="px-3 py-2">{formatDateTime(p.paidAt)}</td>
                           <td className="px-3 py-2 uppercase">{p.mode}</td>
                           <td className="px-3 py-2 text-fg-muted">{p.reference ?? '—'}</td>
                           <td className="px-3 py-2 text-right tabular">{p.amount.toFixed(2)}</td>

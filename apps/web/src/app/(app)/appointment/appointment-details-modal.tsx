@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/toast';
 import { formatAge } from '@/lib/utils';
 import { useAppointmentDetail, useDeleteAppointment } from '@/lib/hooks/use-appointment';
 import { printAppointmentSlip } from './appointment-form';
+import { formatDateTime } from '@/lib/format';
 
 /** Read-only Appointment Details modal (the demo's ☰ hamburger action). */
 export function AppointmentDetailsModal({ id, open, onClose }: { id: string | null; open: boolean; onClose: () => void }) {
@@ -58,7 +59,7 @@ export function AppointmentDetailsModal({ id, open, onClose }: { id: string | nu
           <Row label="Appointment No" value={data.apptNo} />
           <Row label="Age" value={formatAge(data.patientAge)} />
           <Row label="Appointment S.No." value={data.serialNo ?? '—'} />
-          <Row label="Appointment Date" value={new Date(data.apptDate).toLocaleString()} />
+          <Row label="Appointment Date" value={formatDateTime(data.apptDate)} />
           <Row label="Email" value={data.patientEmail ?? '—'} />
           <Row label="Appointment Priority" value={data.priority} />
           <Row label="Phone" value={data.patientPhone ?? '—'} />

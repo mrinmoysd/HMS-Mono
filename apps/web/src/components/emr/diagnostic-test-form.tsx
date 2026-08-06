@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useCatalog, useCharges } from '@/lib/hooks/use-masters';
 import { useDiagnosticCategories, useCreateDiagnosticTest, useUpdateDiagnosticTest } from '@/lib/hooks/use-departments';
 import { ApiRequestError } from '@/lib/api';
+import { currencySymbol } from '@/lib/format';
 
 interface Props {
   open: boolean;
@@ -168,10 +169,10 @@ export function DiagnosticTestForm({ open, modality, test, onClose }: Props) {
           <Field label="Tax (%)">
             <TextInput value={taxPercent.toFixed(2)} disabled className="bg-bg" />
           </Field>
-          <Field label="Standard Charge (#)">
+          <Field label={`Standard Charge (${currencySymbol()})`}>
             <TextInput value={standardCharge.toFixed(2)} disabled className="bg-bg" />
           </Field>
-          <Field label="Amount (#)" required>
+          <Field label={`Amount (${currencySymbol()})`} required>
             <TextInput type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </Field>
         </div>

@@ -9,6 +9,7 @@ import { FormDrawer } from '@/components/ui/form-drawer';
 import { Barcode } from '@/components/ui/barcode';
 import { useChangeStaffPassword, useStaffProfile } from '@/lib/hooks/use-hr';
 import { StaffAvatar, roleBadgeClass } from './staff-shared';
+import { formatDate } from '@/lib/format';
 
 type Tab = 'profile' | 'payroll' | 'leaves' | 'attendance' | 'documents' | 'timeline';
 
@@ -19,7 +20,7 @@ export function StaffDetails({ userId, onBack, onEdit }: { userId: string; onBac
 
   if (isLoading || !s) return <p className="py-16 text-center text-sm text-fg-muted">Loading…</p>;
 
-  const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString() : '—');
+  const fmt = (d: string | null) => (d ? formatDate(d) : '—');
 
   return (
     <div className="space-y-4">

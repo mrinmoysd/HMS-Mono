@@ -30,6 +30,7 @@ import { useEncounterBilling } from '@/lib/hooks/use-encounter-billing';
 import { usePatientProfile } from '@/lib/hooks/use-emr';
 import { useOpdVisits, useOpdVisitDetail, useDeleteOpdVisit } from '@/lib/hooks/use-clinical';
 import { useAbility } from '@/lib/auth-store';
+import { formatDate } from '@/lib/format';
 
 type Tab =
   | 'overview' | 'visits' | 'vitals' | 'lab' | 'prescription' | 'medication'
@@ -168,7 +169,7 @@ export default function OpdDetailPage() {
               { label: 'TPA ID', value: visit?.tpaIdNo },
               {
                 label: 'TPA Validity',
-                value: visit?.tpaValidity ? new Date(visit.tpaValidity).toLocaleDateString() : null,
+                value: visit?.tpaValidity ? formatDate(visit.tpaValidity) : null,
               },
             ]}
           />

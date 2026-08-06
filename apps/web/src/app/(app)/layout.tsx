@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth-store';
 import { Sidebar } from '@/components/app-shell/sidebar';
 import { HeaderBar } from '@/components/app-shell/header-bar';
+import { HospitalSettingsGate } from '@/components/app-shell/hospital-settings-gate';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -26,13 +27,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Inside the auth guard, so the settings request always carries a token.
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar mobileOpen={navOpen} onMobileClose={() => setNavOpen(false)} />
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <HeaderBar onMenuClick={() => setNavOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-page">{children}</main>
+    <HospitalSettingsGate>
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar mobileOpen={navOpen} onMobileClose={() => setNavOpen(false)} />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <HeaderBar onMenuClick={() => setNavOpen(true)} />
+          <main className="flex-1 overflow-y-auto p-page">{children}</main>
+        </div>
       </div>
-    </div>
+    </HospitalSettingsGate>
   );
 }

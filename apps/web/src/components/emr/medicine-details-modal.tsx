@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useMedicine, useCreateBadStock, useDeleteMedicines } from '@/lib/hooks/use-departments';
 import { MedicineForm } from './medicine-form';
 import { ApiRequestError } from '@/lib/api';
+import { formatDate } from '@/lib/format';
 
 type Tab = 'stock' | 'bad-stock';
 
@@ -123,7 +124,7 @@ export function MedicineDetailsModal({ id, open, onClose, canEdit, canDelete }: 
                     )}
                     {data.stockBatches.map((b) => (
                       <tr key={b.id} className="border-b border-border/60 last:border-0">
-                        <td className="px-3 py-2">{new Date(b.inwardDate).toLocaleDateString()}</td>
+                        <td className="px-3 py-2">{formatDate(b.inwardDate)}</td>
                         <td className="px-3 py-2">{b.batchNo}</td>
                         <td className="px-3 py-2">{b.purchaseNo}</td>
                         <td className="px-3 py-2">{new Date(b.expiryDate).toLocaleDateString([], { month: 'short', year: 'numeric' })}</td>
@@ -167,8 +168,8 @@ export function MedicineDetailsModal({ id, open, onClose, canEdit, canDelete }: 
                       {data.badStocks.map((b) => (
                         <tr key={b.id} className="border-b border-border/60 last:border-0">
                           <td className="px-3 py-2">{b.batchNo ?? '—'}</td>
-                          <td className="px-3 py-2">{b.expiryDate ? new Date(b.expiryDate).toLocaleDateString() : '—'}</td>
-                          <td className="px-3 py-2">{new Date(b.outwardDate).toLocaleDateString()}</td>
+                          <td className="px-3 py-2">{b.expiryDate ? formatDate(b.expiryDate) : '—'}</td>
+                          <td className="px-3 py-2">{formatDate(b.outwardDate)}</td>
                           <td className="px-3 py-2 tabular">{b.qty}</td>
                           <td className="px-3 py-2 text-fg-muted">{b.note ?? '—'}</td>
                         </tr>

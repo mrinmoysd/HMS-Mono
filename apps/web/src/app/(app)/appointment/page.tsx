@@ -20,6 +20,7 @@ import { OpdForm } from '../opd/opd-form';
 import { useToast } from '@/components/ui/toast';
 import { useAppointments, useSetAppointmentStatus } from '@/lib/hooks/use-clinical';
 import { useAbility } from '@/lib/auth-store';
+import { currencySymbol, formatDateTime } from '@/lib/format';
 
 const TABS: { value: AppointmentTab; label: string }[] = [
   { value: 'today', label: 'Today Appointment' },
@@ -58,7 +59,7 @@ export default function AppointmentPage() {
       render: (a) => <Link href={opdHref(a)} className="text-primary hover:underline">{a.apptNo}</Link>,
     },
     { key: 'createdByName', header: 'Created By', render: (a) => a.createdByName ?? '—' },
-    { key: 'apptDate', header: 'Appointment Date', sortable: true, render: (a) => new Date(a.apptDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) },
+    { key: 'apptDate', header: 'Appointment Date', sortable: true, render: (a) => formatDateTime(a.apptDate) },
     { key: 'patientPhone', header: 'Phone', sortable: true, render: (a) => a.patientPhone ?? '—' },
     { key: 'patientGender', header: 'Gender', sortable: true, render: (a) => a.patientGender ?? '—' },
     { key: 'doctorName', header: 'Doctor', sortable: true },
@@ -66,9 +67,9 @@ export default function AppointmentPage() {
     { key: 'priority', header: 'Priority', sortable: true, render: (a) => <span className="capitalize">{a.priority}</span> },
     { key: 'liveConsult', header: 'Live Consultant', sortable: true, render: (a) => (a.liveConsult ? 'Yes' : 'No') },
     { key: 'alternateAddress', header: 'Alternate Address', sortable: true, render: (a) => a.alternateAddress ?? '—' },
-    { key: 'fees', header: 'Fees ($)', sortable: true, className: 'tabular', render: (a) => a.fees.toFixed(2) },
+    { key: 'fees', header: `Fees (${currencySymbol()})`, sortable: true, className: 'tabular', render: (a) => a.fees.toFixed(2) },
     { key: 'discountPct', header: 'Discount (%)', sortable: true, className: 'tabular', render: (a) => `${discountAmt(a).toFixed(2)} (${a.discountPct}%)` },
-    { key: 'paid', header: 'Paid ($)', sortable: true, className: 'tabular', render: (a) => a.paid.toFixed(2) },
+    { key: 'paid', header: `Paid (${currencySymbol()})`, sortable: true, className: 'tabular', render: (a) => a.paid.toFixed(2) },
     {
       key: 'status', header: 'Status', sortable: true,
       // The reference shows a coloured pill. Editors additionally get a select
@@ -107,7 +108,7 @@ export default function AppointmentPage() {
       title: 'Appointments',
       filename: 'appointments',
       headers: ['Patient', 'Appt No', 'Created By', 'Date', 'Phone', 'Gender', 'Doctor', 'Source', 'Priority', 'Live', 'Fees', 'Discount %', 'Paid', 'Status'],
-      rows: rows.map((a) => [a.patientName, a.apptNo, a.createdByName ?? '', new Date(a.apptDate).toLocaleString(), a.patientPhone ?? '', a.patientGender ?? '', a.doctorName, a.source ?? '', a.priority, a.liveConsult ? 'Yes' : 'No', a.fees.toFixed(2), `${a.discountPct}%`, a.paid.toFixed(2), a.status]),
+      rows: rows.map((a) => [a.patientName, a.apptNo, a.createdByName ?? '', formatDateTime(a.apptDate), a.patientPhone ?? '', a.patientGender ?? '', a.doctorName, a.source ?? '', a.priority, a.liveConsult ? 'Yes' : 'No', a.fees.toFixed(2), `${a.discountPct}%`, a.paid.toFixed(2), a.status]),
     };
   }
 

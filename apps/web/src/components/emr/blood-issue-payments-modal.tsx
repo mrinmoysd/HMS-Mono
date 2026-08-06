@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/toast';
 import { useBloodIssue } from '@/lib/hooks/use-departments';
 import { useInvoice, useAddPayment, useDeletePayment } from '@/lib/hooks/use-clinical';
 import { useAbility } from '@/lib/auth-store';
+import { formatDateTime } from '@/lib/format';
 
 const MODES = ['cash', 'card', 'upi', 'tpa', 'cheque'] as const;
 
@@ -125,7 +126,7 @@ export function BloodIssuePaymentsModal({ id, open, onClose }: { id: string | nu
                       {(data.payments ?? []).map((p) => (
                         <tr key={p.id} className="border-b border-line/60 last:border-0">
                           <td className="px-3 py-2 font-mono text-xs">{p.id.slice(0, 8).toUpperCase()}</td>
-                          <td className="px-3 py-2">{new Date(p.paidAt).toLocaleString()}</td>
+                          <td className="px-3 py-2">{formatDateTime(p.paidAt)}</td>
                           <td className="px-3 py-2 uppercase">{p.mode}</td>
                           <td className="px-3 py-2 text-fg-muted">{p.reference ?? '—'}</td>
                           <td className="px-3 py-2 text-right tabular">{p.amount.toFixed(2)}</td>

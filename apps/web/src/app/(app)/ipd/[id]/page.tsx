@@ -35,6 +35,7 @@ import { useEncounterBilling } from '@/lib/hooks/use-encounter-billing';
 import { useIpdAdmissions, useIpdAdmissionDetail, useDeleteIpdAdmission } from '@/lib/hooks/use-ipd';
 import { usePatientProfile } from '@/lib/hooks/use-emr';
 import { useAbility } from '@/lib/auth-store';
+import { formatDateTime } from '@/lib/format';
 
 type Tab =
   | 'overview' | 'nursenotes' | 'medication' | 'prescription' | 'consultants'
@@ -223,12 +224,12 @@ export default function IpdDetailPage() {
             { label: 'Consultant', value: h.consultantName },
             {
               label: 'Admission Date',
-              value: admission ? new Date(admission.admissionDate).toLocaleString() : null,
+              value: admission ? formatDateTime(admission.admissionDate) : null,
             },
             { label: 'Bed', value: admission?.bedLabel },
             {
               label: 'Discharge Date',
-              value: admission?.dischargeDate ? new Date(admission.dischargeDate).toLocaleString() : null,
+              value: admission?.dischargeDate ? formatDateTime(admission.dischargeDate) : null,
             },
             { label: 'TPA', value: admission?.tpaName },
             { label: 'TPA ID', value: admission?.tpaIdNo },

@@ -14,6 +14,7 @@ import {
   useVisitors, useCreateVisitor, usePhoneCalls, useCreatePhoneCall, useComplaints, useCreateComplaint,
 } from '@/lib/hooks/use-office';
 import { useAbility } from '@/lib/auth-store';
+import { formatDate } from '@/lib/format';
 
 type Tab = 'visitors' | 'calls' | 'postal';
 
@@ -42,20 +43,20 @@ export default function FrontOfficePage() {
     { key: 'purposeName', header: 'Purpose', render: (v) => v.purposeName ?? '—' },
     { key: 'visitTo', header: 'Visit To', render: (v) => v.visitTo ?? '—' },
     { key: 'phone', header: 'Phone', render: (v) => v.phone ?? '—' },
-    { key: 'date', header: 'Date', render: (v) => new Date(v.date).toLocaleDateString() },
+    { key: 'date', header: 'Date', render: (v) => formatDate(v.date) },
   ];
   const callCols: Column<PhoneCallDto>[] = [
     { key: 'name', header: 'Name', className: 'font-medium' },
     { key: 'phone', header: 'Phone', render: (c) => c.phone ?? '—' },
     { key: 'type', header: 'Type' },
-    { key: 'date', header: 'Date', render: (c) => new Date(c.date).toLocaleDateString() },
+    { key: 'date', header: 'Date', render: (c) => formatDate(c.date) },
     { key: 'note', header: 'Note', render: (c) => c.note ?? '—' },
   ];
   const complaintCols: Column<PostalComplaintDto>[] = [
     { key: 'description', header: 'Description', className: 'font-medium' },
     { key: 'complaintTypeName', header: 'Type', render: (c) => c.complaintTypeName ?? '—' },
     { key: 'source', header: 'Source', render: (c) => c.source ?? '—' },
-    { key: 'date', header: 'Date', render: (c) => new Date(c.date).toLocaleDateString() },
+    { key: 'date', header: 'Date', render: (c) => formatDate(c.date) },
   ];
 
   async function save() {

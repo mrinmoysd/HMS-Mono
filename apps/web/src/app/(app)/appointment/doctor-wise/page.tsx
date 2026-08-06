@@ -12,6 +12,7 @@ import { ExportMenu } from '@/components/ui/export-menu';
 import type { ExportTable } from '@/lib/export';
 import { useDoctors } from '@/lib/hooks/use-clinical';
 import { useDoctorWise } from '@/lib/hooks/use-appointment';
+import { formatDate, formatTime } from '@/lib/format';
 
 export default function DoctorWisePage() {
   const { data: doctors = [] } = useDoctors();
@@ -28,8 +29,8 @@ export default function DoctorWisePage() {
     { key: 'patientName', header: 'Patient Name', render: (r) => <Link href={`/patient/${r.patientId}`} className="font-medium text-primary hover:underline">{r.patientName}</Link> },
     { key: 'phone', header: 'Phone', render: (r) => r.phone ?? '—' },
     { key: 'email', header: 'Email', render: (r) => r.email ?? '—' },
-    { key: 'date', header: 'Date', render: (r) => new Date(r.date).toLocaleDateString() },
-    { key: 'time', header: 'Time', render: (r) => new Date(r.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
+    { key: 'date', header: 'Date', render: (r) => formatDate(r.date) },
+    { key: 'time', header: 'Time', render: (r) => formatTime(r.date) },
     { key: 'source', header: 'Source', render: (r) => r.source ?? '—' },
   ];
 
@@ -37,7 +38,7 @@ export default function DoctorWisePage() {
     return {
       title: 'Doctor Wise Appointments', filename: 'doctor-wise-appointments',
       headers: ['Patient', 'Phone', 'Email', 'Date', 'Time', 'Source'],
-      rows: filtered.map((r) => [r.patientName, r.phone ?? '', r.email ?? '', new Date(r.date).toLocaleDateString(), new Date(r.date).toLocaleTimeString(), r.source ?? '']),
+      rows: filtered.map((r) => [r.patientName, r.phone ?? '', r.email ?? '', formatDate(r.date), formatTime(r.date), r.source ?? '']),
     };
   }
 

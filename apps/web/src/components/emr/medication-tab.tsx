@@ -8,6 +8,7 @@ import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput } from '@/components/ui/field';
 import { useMedicines } from '@/lib/hooks/use-departments';
 import { useMedication, useAddMedication, type EncounterScope } from '@/lib/hooks/use-diagnostics-clinical';
+import { formatDate, formatDateTime, formatTime } from '@/lib/format';
 
 /** Medication tab: OPD dose list or IPD MAR matrix (date × Dose 1..N). */
 export function MedicationTab({ scope, canEdit, mar }: { scope: EncounterScope; canEdit: boolean; mar?: boolean }) {
@@ -70,7 +71,7 @@ export function MedicationTab({ scope, canEdit, mar }: { scope: EncounterScope; 
               {mat.rows.length === 0 && <tr><td colSpan={mat.cols + 1} className="px-3 py-10 text-center text-fg-muted">No medication recorded</td></tr>}
               {mat.rows.map(([day, list]) => (
                 <tr key={day} className="border-b border-border/60 last:border-0 align-top">
-                  <td className="px-3 py-2.5 font-medium">{new Date(day).toLocaleDateString()}</td>
+                  <td className="px-3 py-2.5 font-medium">{formatDate(day)}</td>
                   {Array.from({ length: mat.cols }).map((_, i) => {
                     const d = list[i];
                     return (
@@ -78,7 +79,7 @@ export function MedicationTab({ scope, canEdit, mar }: { scope: EncounterScope; 
                         {d ? (
                           <div>
                             <p className="font-medium">{d.medicineName}</p>
-                            <p className="text-xs text-fg-muted">{d.dosage ?? ''} · {new Date(d.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                            <p className="text-xs text-fg-muted">{d.dosage ?? ''} · {formatTime(d.dateTime)}</p>
                           </div>
                         ) : <span className="text-fg-muted">—</span>}
                       </td>
@@ -103,7 +104,7 @@ export function MedicationTab({ scope, canEdit, mar }: { scope: EncounterScope; 
               {doses.length === 0 && <tr><td colSpan={5} className="px-3 py-10 text-center text-fg-muted">No medication recorded</td></tr>}
               {doses.map((d) => (
                 <tr key={d.id} className="border-b border-border/60 last:border-0">
-                  <td className="px-3 py-2.5">{new Date(d.dateTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                  <td className="px-3 py-2.5">{formatDateTime(d.dateTime)}</td>
                   <td className="px-3 py-2.5 font-medium">{d.medicineName}</td>
                   <td className="px-3 py-2.5">{d.dosage ?? '—'}</td>
                   <td className="px-3 py-2.5 text-fg-muted">{d.remarks ?? '—'}</td>

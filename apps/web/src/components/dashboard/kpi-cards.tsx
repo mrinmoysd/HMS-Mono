@@ -4,9 +4,11 @@ import type { DashboardOverviewDto, TrendPoint } from '@smart-hospital/shared';
 import { Sparkline } from '@/components/ui/sparkline';
 import { cn } from '@/lib/utils';
 import { hasWidget } from '@/lib/hooks/use-dashboard';
+import { currencySymbol } from '@/lib/format';
 
+// KPI tiles round to whole units; the symbol comes from Settings ▸ General.
 const money = (n: number): string =>
-  `$ ${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  `${currencySymbol()} ${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
 const values = (t: TrendPoint[] | undefined): number[] => (t ?? []).map((p) => p.value);
 

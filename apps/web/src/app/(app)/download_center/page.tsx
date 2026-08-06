@@ -11,6 +11,7 @@ import { Field, TextInput, TextArea, Select } from '@/components/ui/field';
 import { useCatalog } from '@/lib/hooks/use-masters';
 import { useContent, useCreateContent } from '@/lib/hooks/use-office';
 import { useAbility } from '@/lib/auth-store';
+import { formatDate } from '@/lib/format';
 
 export default function DownloadCenterPage() {
   const ability = useAbility();
@@ -27,7 +28,7 @@ export default function DownloadCenterPage() {
     { key: 'title', header: 'Title', className: 'font-medium' },
     { key: 'contentTypeName', header: 'Type', render: (c) => c.contentTypeName ?? '—' },
     { key: 'sendToGroup', header: 'Shared With', render: (c) => c.sendToGroup ?? '—' },
-    { key: 'shareDate', header: 'Date', render: (c) => new Date(c.shareDate).toLocaleDateString() },
+    { key: 'shareDate', header: 'Date', render: (c) => formatDate(c.shareDate) },
     { key: 'fileUrl', header: 'File', render: (c) => c.fileUrl ? <a href={c.fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary"><ExternalLink className="h-3.5 w-3.5" /> Open</a> : '—' },
   ];
 

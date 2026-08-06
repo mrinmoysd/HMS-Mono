@@ -11,6 +11,7 @@ import { PatientForm } from '@/app/(app)/patient/patient-form';
 import { useCatalog, useCharges } from '@/lib/hooks/use-masters';
 import { useAmbulanceVehicles, useCreateCall } from '@/lib/hooks/use-finance';
 import { ApiRequestError } from '@/lib/api';
+import { currencySymbol } from '@/lib/format';
 
 /** "Add Ambulance Call" — patient (+ inline New Patient), vehicle w/ driver auto-fill, two-step Charge Category/Name, payment. */
 export function AmbulanceCallForm({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -152,7 +153,7 @@ export function AmbulanceCallForm({ open, onClose }: { open: boolean; onClose: (
                 options={chargeOptions.map((c) => ({ value: c.id, label: c.name }))}
               />
             </Field>
-            <Field label="Standard Charge ($)" required>
+            <Field label={`Standard Charge (${currencySymbol()})`} required>
               <TextInput type="number" value={standardCharge} onChange={(e) => setStandardCharge(e.target.value)} />
             </Field>
           </div>
@@ -161,23 +162,23 @@ export function AmbulanceCallForm({ open, onClose }: { open: boolean; onClose: (
 
           <div className="flex justify-end">
             <div className="w-full max-w-sm space-y-2 rounded-md border border-border p-4 text-sm">
-              <SummaryRow label="Total ($)" value={totals.subtotal.toFixed(2)} />
+              <SummaryRow label={`Total (${currencySymbol()})`} value={totals.subtotal.toFixed(2)} />
               <div className="flex items-center justify-between gap-2">
                 <span className="text-fg-muted">Discount (%)</span>
                 <input type="number" value={discountPct} onChange={(e) => setDiscountPct(e.target.value)} className="h-8 w-28 rounded-sm border border-border bg-surface px-2 text-right text-sm tabular" />
               </div>
-              <SummaryRow label="Discount ($)" value={totals.discount.toFixed(2)} />
+              <SummaryRow label={`Discount (${currencySymbol()})`} value={totals.discount.toFixed(2)} />
               <div className="flex items-center justify-between gap-2">
                 <span className="text-fg-muted">Tax (%)</span>
                 <input type="number" value={taxPct} onChange={(e) => setTaxPct(e.target.value)} className="h-8 w-28 rounded-sm border border-border bg-surface px-2 text-right text-sm tabular" />
               </div>
-              <SummaryRow label="Tax ($)" value={totals.tax.toFixed(2)} />
-              <SummaryRow label="Net Amount ($)" value={totals.netAmount.toFixed(2)} bold />
+              <SummaryRow label={`Tax (${currencySymbol()})`} value={totals.tax.toFixed(2)} />
+              <SummaryRow label={`Net Amount (${currencySymbol()})`} value={totals.netAmount.toFixed(2)} bold />
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <Field label="Payment Mode">
                   <Select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} options={['cash', 'card', 'upi', 'tpa', 'cheque'].map((m) => ({ value: m, label: m.toUpperCase() }))} />
                 </Field>
-                <Field label="Amount ($)">
+                <Field label={`Amount (${currencySymbol()})`}>
                   <TextInput type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} />
                 </Field>
               </div>

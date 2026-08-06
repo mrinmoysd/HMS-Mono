@@ -10,6 +10,7 @@ import { SkeletonText } from '@/components/ui/skeleton';
 import { useBloodDonor } from '@/lib/hooks/use-departments';
 import { formatAge } from '@/lib/utils';
 import { BloodBagForm } from './blood-bag-form';
+import { formatDate } from '@/lib/format';
 
 /** Donor Details — header info + "Bag Stock Details" donation ledger with an Add Bag action. */
 export function BloodDonorDetailsModal({ donor, open, onClose }: { donor: BloodDonorDto | null; open: boolean; onClose: () => void }) {
@@ -31,7 +32,7 @@ export function BloodDonorDetailsModal({ donor, open, onClose }: { donor: BloodD
                 <Row label="Gender" value={data.gender ?? '—'} />
                 <Row label="Father Name" value={data.fatherName ?? '—'} />
                 <Row label="Contact No" value={data.phone ?? '—'} />
-                <Row label="Last Donation" value={data.lastDonation ? new Date(data.lastDonation).toLocaleDateString() : '—'} />
+                <Row label="Last Donation" value={data.lastDonation ? formatDate(data.lastDonation) : '—'} />
                 <Row label="Address" value={data.address ?? '—'} />
               </div>
 
@@ -62,7 +63,7 @@ export function BloodDonorDetailsModal({ donor, open, onClose }: { donor: BloodD
                       {data.bags.map((b) => (
                         <tr key={b.id} className="border-b border-line/60 last:border-0">
                           <td className="px-3 py-2 font-medium">{b.bagNo}</td>
-                          <td className="px-3 py-2">{b.donateDate ? new Date(b.donateDate).toLocaleDateString() : '—'}</td>
+                          <td className="px-3 py-2">{b.donateDate ? formatDate(b.donateDate) : '—'}</td>
                           <td className="px-3 py-2">{b.volume ?? '—'}</td>
                           <td className="px-3 py-2">{b.lot ?? '—'}</td>
                           <td className="px-3 py-2">{b.chargeName ?? '—'}</td>

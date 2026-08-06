@@ -18,6 +18,7 @@ import { AmbulanceVehicleForm } from '@/components/emr/ambulance-vehicle-form';
 import { AmbulanceCallForm } from '@/components/emr/ambulance-call-form';
 import { AmbulanceCallDetailsModal } from '@/components/emr/ambulance-call-details-modal';
 import { AmbulanceCallPaymentsModal } from '@/components/emr/ambulance-call-payments-modal';
+import { currencySymbol, formatDateTime } from '@/lib/format';
 
 type Tab = 'fleet' | 'calls';
 
@@ -154,7 +155,7 @@ function CallsPanel({ canAdd, onGoToFleet }: { canAdd: boolean; onGoToFleet: () 
       rows: rows.map((c) => [
         c.billNo, c.caseNo ?? '', `${c.patientName}${c.patientNo ? ` (${c.patientNo})` : ''}`, c.createdByName ?? '',
         c.vehicleNo, c.vehicleModel ?? '', c.driverName ?? '', c.driverContact ?? '', c.patientAddress ?? '',
-        new Date(c.date).toLocaleString(), c.subtotal.toFixed(2), c.discount.toFixed(2), c.tax.toFixed(2),
+        formatDateTime(c.date), c.subtotal.toFixed(2), c.discount.toFixed(2), c.tax.toFixed(2),
         c.netAmount.toFixed(2), c.paid.toFixed(2), c.balance.toFixed(2),
       ]),
     };
@@ -170,14 +171,14 @@ function CallsPanel({ canAdd, onGoToFleet }: { canAdd: boolean; onGoToFleet: () 
     { key: 'driverName', header: 'Driver Name', render: (c) => c.driverName ?? '—' },
     { key: 'driverContact', header: 'Driver Contact No', render: (c) => c.driverContact ?? '—' },
     { key: 'patientAddress', header: 'Patient Address', render: (c) => c.patientAddress ?? '—' },
-    { key: 'date', header: 'Date', render: (c) => new Date(c.date).toLocaleString() },
-    { key: 'subtotal', header: 'Amount ($)', className: 'tabular', render: (c) => c.subtotal.toFixed(2) },
+    { key: 'date', header: 'Date', render: (c) => formatDateTime(c.date) },
+    { key: 'subtotal', header: `Amount (${currencySymbol()})`, className: 'tabular', render: (c) => c.subtotal.toFixed(2) },
     { key: 'discount', header: 'Discount', className: 'tabular', render: (c) => c.discount.toFixed(2) },
     { key: 'tax', header: 'Tax', className: 'tabular', render: (c) => c.tax.toFixed(2) },
-    { key: 'netAmount', header: 'Net Amount ($)', className: 'tabular', render: (c) => c.netAmount.toFixed(2) },
-    { key: 'paid', header: 'Paid ($)', className: 'tabular', render: (c) => c.paid.toFixed(2) },
+    { key: 'netAmount', header: `Net Amount (${currencySymbol()})`, className: 'tabular', render: (c) => c.netAmount.toFixed(2) },
+    { key: 'paid', header: `Paid (${currencySymbol()})`, className: 'tabular', render: (c) => c.paid.toFixed(2) },
     {
-      key: 'balance', header: 'Balance ($)', className: 'tabular',
+      key: 'balance', header: `Balance (${currencySymbol()})`, className: 'tabular',
       render: (c) => <span className={c.balance > 0 ? 'text-warning' : 'text-success'}>{c.balance.toFixed(2)}</span>,
     },
   ];

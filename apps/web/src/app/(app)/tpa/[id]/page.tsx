@@ -12,6 +12,7 @@ import { Field, Select, TextInput } from '@/components/ui/field';
 import { ExportMenu } from '@/components/ui/export-menu';
 import { useAbility } from '@/lib/auth-store';
 import { useTpaDetail, useTpaCharges, useSetTpaCharge, useDeleteTpaCharge } from '@/lib/hooks/use-tpa';
+import { currencySymbol } from '@/lib/format';
 
 export default function TpaDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
@@ -83,14 +84,14 @@ export default function TpaDetailPage({ params }: { params: { id: string } }) {
 
           <div className="flex flex-wrap items-center justify-between gap-2">
             <TextInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" className="w-64" />
-            <ExportMenu table={() => ({ title: 'TPA Charges', filename: 'tpa-charges', headers: ['Charge Type', 'Charge Category', 'Charge Name', 'Description', 'Standard Charge ($)', 'TPA Charge ($)'], rows: rows.map((c) => [c.chargeType ?? '', c.chargeCategory ?? '', c.chargeName, c.description ?? '', c.standardCharge.toFixed(2), c.tpaCharge != null ? c.tpaCharge.toFixed(2) : '']) })} />
+            <ExportMenu table={() => ({ title: 'TPA Charges', filename: 'tpa-charges', headers: ['Charge Type', 'Charge Category', 'Charge Name', 'Description', `Standard Charge (${currencySymbol()})`, `TPA Charge (${currencySymbol()})`], rows: rows.map((c) => [c.chargeType ?? '', c.chargeCategory ?? '', c.chargeName, c.description ?? '', c.standardCharge.toFixed(2), c.tpaCharge != null ? c.tpaCharge.toFixed(2) : '']) })} />
           </div>
 
           <div className="overflow-x-auto rounded-md border border-border">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-bg text-left text-xs uppercase tracking-wide text-fg-muted">
-                  {['Charge Type', 'Charge Category', 'Charge Name', 'Description', 'Standard Charge ($)', 'TPA Charge ($)', 'Action'].map((c) => <th key={c} className={`px-3 py-2.5 font-semibold ${c.includes('$') ? 'text-right' : ''}`}>{c}</th>)}
+                  {['Charge Type', 'Charge Category', 'Charge Name', 'Description', `Standard Charge (${currencySymbol()})`, `TPA Charge (${currencySymbol()})`, 'Action'].map((c) => <th key={c} className={`px-3 py-2.5 font-semibold ${c.includes('$') ? 'text-right' : ''}`}>{c}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -154,7 +155,7 @@ function EditTpaChargeModal({ row, saving, onSave, onClose }: { row: TpaChargeRo
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-bg text-left text-xs uppercase tracking-wide text-fg-muted">
-                  {['Charge Type', 'Charge Category', 'Charge Name', 'Description', 'Standard Charge ($)', 'TPA Charge ($) *'].map((c) => <th key={c} className="px-3 py-2.5 font-semibold">{c}</th>)}
+                  {['Charge Type', 'Charge Category', 'Charge Name', 'Description', `Standard Charge (${currencySymbol()})`, `TPA Charge (${currencySymbol()}) *`].map((c) => <th key={c} className="px-3 py-2.5 font-semibold">{c}</th>)}
                 </tr>
               </thead>
               <tbody>

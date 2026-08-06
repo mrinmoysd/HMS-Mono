@@ -7,6 +7,7 @@ import { FormDrawer } from '@/components/ui/form-drawer';
 import { Field, TextInput, TextArea } from '@/components/ui/field';
 import { useNurseNotes, useAddNurseNote } from '@/lib/hooks/use-ipd-clinical';
 import type { EncounterScope } from '@/lib/hooks/use-diagnostics-clinical';
+import { formatDateTime } from '@/lib/format';
 
 /** Nurse Notes tab (IPD): chronological nurse observations. */
 export function NurseNotesTab({ scope, canEdit }: { scope: EncounterScope; canEdit: boolean }) {
@@ -37,7 +38,7 @@ export function NurseNotesTab({ scope, canEdit }: { scope: EncounterScope; canEd
           <div key={n.id} className="rounded-md border border-border bg-surface p-4">
             <div className="flex items-center justify-between text-xs text-fg-muted">
               <span className="font-medium text-fg">{n.nurseName || n.createdByName || 'Nurse'}</span>
-              <span>{new Date(n.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+              <span>{formatDateTime(n.createdAt)}</span>
             </div>
             <p className="mt-1 text-sm">{n.note}</p>
             {n.comment && <p className="mt-1 text-xs text-fg-muted">Comment: {n.comment}</p>}

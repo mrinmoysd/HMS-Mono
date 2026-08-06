@@ -5,6 +5,7 @@ import { CreditCard, Printer } from 'lucide-react';
 import { useMedicinePurchase } from '@/lib/hooks/use-departments';
 import { Modal } from '@/components/ui/modal';
 import { PurchaseTpaChargesModal } from './purchase-tpa-charges-modal';
+import { currencySymbol, formatDateTime } from '@/lib/format';
 
 /** Read-only "Purchase Details" view (Medicine Purchase List row action). Each line item can open its own "TPA Charges" schedule. */
 export function PurchaseDetailsModal({ id, open, onClose }: { id: string | null; open: boolean; onClose: () => void }) {
@@ -34,7 +35,7 @@ export function PurchaseDetailsModal({ id, open, onClose }: { id: string | null;
           <div className="grid grid-cols-1 gap-x-8 gap-y-1 text-sm sm:grid-cols-3">
             <Row label="Pharmacy Purchase No" value={data.purchaseNo} />
             <Row label="Bill No" value={data.billNo ?? '—'} />
-            <Row label="Purchase Date" value={new Date(data.purchaseDate).toLocaleString()} />
+            <Row label="Purchase Date" value={formatDateTime(data.purchaseDate)} />
             <Row label="Supplier Name" value={data.supplierName ?? '—'} />
             <Row label="Supplier Contact" value={data.supplierContact ?? '—'} />
             <Row label="Contact Person" value={data.supplierContactPerson ?? '—'} />
@@ -90,10 +91,10 @@ export function PurchaseDetailsModal({ id, open, onClose }: { id: string | null;
 
           <div className="mt-4 flex justify-end">
             <div className="w-full max-w-xs space-y-1 text-sm">
-              <SummaryRow label="Total ($)" value={data.total.toFixed(2)} />
+              <SummaryRow label={`Total (${currencySymbol()})`} value={data.total.toFixed(2)} />
               <SummaryRow label="Discount" value={`${data.discount.toFixed(2)}`} />
-              <SummaryRow label="Tax ($)" value={data.tax.toFixed(2)} />
-              <SummaryRow label="Net Amount ($)" value={data.netAmount.toFixed(2)} bold />
+              <SummaryRow label={`Tax (${currencySymbol()})`} value={data.tax.toFixed(2)} />
+              <SummaryRow label={`Net Amount (${currencySymbol()})`} value={data.netAmount.toFixed(2)} bold />
               <p className="pt-2 text-fg-muted">Payment Mode: <span className="font-medium text-fg">{data.paymentMode ?? '—'}</span></p>
             </div>
           </div>
