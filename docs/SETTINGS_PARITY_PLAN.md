@@ -231,24 +231,40 @@ are anti-parity — see below.
 
 ---
 
-## Two scope decisions to settle before G5/G6
+## Scope decisions — settled
 
-**How many providers, and how real?** There are ~11 SMS providers, 2 WhatsApp,
-several email engines and ~22 payment gateways. Two very different sizes of job:
+### Which providers we offer, and which actually work
 
-- *Configuration only* — store credentials, mark one active, and have the
-  existing send/charge stubs read them. All ~35 providers is then a day or so,
-  because they are the same form with different fields.
-- *Working integrations* — each provider needs its own client, error handling,
-  webhook handling for payments, and a way to test credentials. That is weeks,
-  and most of it is untestable without real accounts.
+Deliberately narrower than the reference, which lists ~11 SMS gateways and ~22
+payment gateways. We offer what the hospital will plausibly use, and we are
+honest in the UI about which are wired up.
 
-The honest recommendation is: build the configuration layer for all of them, and
-implement **one** provider per channel end to end (whichever the hospital
-actually uses), leaving the rest configurable but unimplemented — with the UI
-saying so rather than silently failing.
+Every provider below gets the full configuration layer — credential form,
+validation, encrypted storage, `Status`, and a place in the active-provider
+picker. The difference is whether sending/charging actually goes anywhere.
 
-**Where do the 5 missing modules land?** Chat, Calendar To-Do, Survey, WhatsApp
-Messaging and Two Factor (parity phase R4) all appear in the Modules list. G3
-will render toggles for modules that do not exist yet. They should be shown
-disabled with "not installed" rather than toggleable.
+| Channel | Implemented end to end | Configurable, shown **Coming soon** |
+| --- | --- | --- |
+| SMS | Clickatell · Twilio · MSG91 | Text Local · Bulk SMS |
+| WhatsApp | Twilio WhatsApp · Meta WhatsApp | — (both required) |
+| Email | SMTP · SendGrid | — (both required) |
+| Payments | Paypal · Razorpay · Stripe | PayU · CCAvenue · InstaMojo · Paytm |
+
+**"Coming soon" is a real state, not a label.** A provider marked so cannot be
+made the active provider, its `Status` cannot be set to Enabled, and the tab
+carries a visible badge. The alternative — letting an admin select a gateway
+that silently drops every payment — is the failure mode this exists to prevent.
+The flag lives in the provider registry next to the credential schema, so
+implementing one later is a one-line change plus the client.
+
+The 15 SMS and 15 payment providers the reference lists that are **not** in the
+table above are not offered at all. Adding one later is a registry entry.
+
+### Module toggles for modules that do not exist
+
+Chat, Calendar To-Do List, Survey Form, WhatsApp Messaging and Two Factor
+Authenticator appear in the reference's Modules list but are parity phase R4,
+unbuilt. They render in the list with the same **Coming soon** treatment: shown,
+not toggleable, labelled. Consistent with how unimplemented providers behave, and
+it keeps the Modules screen an honest inventory rather than a list with silent
+gaps.
