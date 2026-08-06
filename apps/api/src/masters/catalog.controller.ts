@@ -21,7 +21,8 @@ import {
   type NameCatalogKey,
 } from '@smart-hospital/shared';
 import { CatalogService } from './catalog.service';
-import { RequirePermission } from '../rbac/require-permission.decorator';
+import { RequireFeatureFor } from '../rbac/require-feature.decorator';
+import { catalogFeature } from './catalog-features';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BranchId } from '../common/decorators/branch-id.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -42,7 +43,7 @@ export class CatalogController {
   constructor(private readonly catalogs: CatalogService) {}
 
   @Get()
-  @RequirePermission('setup', 'view')
+  @RequireFeatureFor((c) => catalogFeature(c.params.catalog, 'view'))
   list(
     @Param('catalog') catalog: string,
     @BranchId() branchId: string,
@@ -52,7 +53,7 @@ export class CatalogController {
   }
 
   @Post()
-  @RequirePermission('setup', 'add')
+  @RequireFeatureFor((c) => catalogFeature(c.params.catalog, 'add'))
   create(
     @Param('catalog') catalog: string,
     @CurrentUser() user: RequestUser,
@@ -63,7 +64,7 @@ export class CatalogController {
   }
 
   @Patch(':id')
-  @RequirePermission('setup', 'edit')
+  @RequireFeatureFor((c) => catalogFeature(c.params.catalog, 'edit'))
   update(
     @Param('catalog') catalog: string,
     @Param('id', ParseUUIDPipe) id: string,
@@ -76,7 +77,7 @@ export class CatalogController {
 
   @Delete(':id')
   @HttpCode(204)
-  @RequirePermission('setup', 'delete')
+  @RequireFeatureFor((c) => catalogFeature(c.params.catalog, 'delete'))
   async remove(
     @Param('catalog') catalog: string,
     @Param('id', ParseUUIDPipe) id: string,
