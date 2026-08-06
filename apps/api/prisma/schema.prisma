@@ -15,14 +15,14 @@ datasource db {
 // Branch (multi-branch tenant dimension)
 // ─────────────────────────────────────────────────────────────
 model Branch {
-  id        String   @id @default(uuid()) @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
   name      String
-  code      String   @unique
+  code      String    @unique
   url       String?
-  isHome    Boolean  @default(false)
-  settings  Json     @default("{}")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isHome    Boolean   @default(false)
+  settings  Json      @default("{}")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   users     User[]
@@ -100,30 +100,30 @@ enum UserType {
 }
 
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  branchId     String   @db.Uuid
-  roleId       String   @db.Uuid
-  username     String   @unique
-  email        String?  @unique
+  id           String    @id @default(uuid()) @db.Uuid
+  branchId     String    @db.Uuid
+  roleId       String    @db.Uuid
+  username     String    @unique
+  email        String?   @unique
   phone        String?
   name         String
   passwordHash String
-  type         UserType @default(staff)
-  isActive     Boolean  @default(true)
+  type         UserType  @default(staff)
+  isActive     Boolean   @default(true)
   lastLoginAt  DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
-  branch              Branch        @relation(fields: [branchId], references: [id])
-  role                Role          @relation(fields: [roleId], references: [id])
-  auditLogs           AuditLog[]
-  doctorAppointments     Appointment[]  @relation("DoctorAppointments")
-  consultantOpdVisits    OpdVisit[]     @relation("ConsultantOpdVisits")
-  consultantOpdCheckups  OpdCheckup[]   @relation("ConsultantOpdCheckups")
+  branch                  Branch         @relation(fields: [branchId], references: [id])
+  role                    Role           @relation(fields: [roleId], references: [id])
+  auditLogs               AuditLog[]
+  doctorAppointments      Appointment[]  @relation("DoctorAppointments")
+  consultantOpdVisits     OpdVisit[]     @relation("ConsultantOpdVisits")
+  consultantOpdCheckups   OpdCheckup[]   @relation("ConsultantOpdCheckups")
   consultantIpdAdmissions IpdAdmission[] @relation("ConsultantIpdAdmissions")
-  staffProfile           Staff?         @relation("StaffProfile")
-  patientProfile         Patient?       @relation("PatientLogin")
+  staffProfile            Staff?         @relation("StaffProfile")
+  patientProfile          Patient?       @relation("PatientLogin")
 
   @@index([branchId, deletedAt])
   @@map("user")
@@ -136,8 +136,8 @@ model AuditLog {
   id        String   @id @default(uuid()) @db.Uuid
   branchId  String?  @db.Uuid
   userId    String?  @db.Uuid
-  action    String   // e.g. create, update, delete, login
-  entity    String   // table / aggregate name
+  action    String // e.g. create, update, delete, login
+  entity    String // table / aggregate name
   entityId  String?
   before    Json?
   after     Json?
@@ -186,22 +186,22 @@ enum Gender {
 }
 
 model Tpa {
-  id            String   @id @default(uuid()) @db.Uuid
-  branchId      String   @db.Uuid
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
   name          String
   code          String?
   phone         String?
   address       String?
   contactPerson String?
   contactPhone  String?
-  createdById   String?  @db.Uuid
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdById   String?   @db.Uuid
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
-  patients Patient[]
+  patients           Patient[]
   medicineBatchRates MedicineBatchTpaRate[]
-  chargeSchedules ChargeSchedule[]
+  chargeSchedules    ChargeSchedule[]
 
   @@index([branchId, deletedAt])
   @@map("tpa")
@@ -220,7 +220,7 @@ model Patient {
   maritalStatus    String?
   photoUrl         String?
   phone            String?
-  phoneNormalized  String?   // digits-only match key for shared-number lookup
+  phoneNormalized  String? // digits-only match key for shared-number lookup
   email            String?
   address          String?
   allergies        String?
@@ -240,23 +240,23 @@ model Patient {
   updatedAt        DateTime  @updatedAt
   deletedAt        DateTime?
 
-  tpa            Tpa?            @relation(fields: [tpaId], references: [id])
-  user           User?           @relation("PatientLogin", fields: [userId], references: [id])
-  cases          PatientCase[]
-  invoices       Invoice[]
-  appointments   Appointment[]
-  opdVisits      OpdVisit[]
-  ipdAdmissions  IpdAdmission[]
-  vitalReadings  VitalReading[]
-  findingRecords FindingRecord[]
-  symptomRecords SymptomRecord[]
-  timelineEntries TimelineEntry[]
-  labInvestigations LabInvestigation[]
-  prescriptions  Prescription[]
-  medicationDoses MedicationDose[]
-  operationRecords OperationRecord[]
-  liveConsultations LiveConsultation[]
-  nurseNotes NurseNote[]
+  tpa                 Tpa?                 @relation(fields: [tpaId], references: [id])
+  user                User?                @relation("PatientLogin", fields: [userId], references: [id])
+  cases               PatientCase[]
+  invoices            Invoice[]
+  appointments        Appointment[]
+  opdVisits           OpdVisit[]
+  ipdAdmissions       IpdAdmission[]
+  vitalReadings       VitalReading[]
+  findingRecords      FindingRecord[]
+  symptomRecords      SymptomRecord[]
+  timelineEntries     TimelineEntry[]
+  labInvestigations   LabInvestigation[]
+  prescriptions       Prescription[]
+  medicationDoses     MedicationDose[]
+  operationRecords    OperationRecord[]
+  liveConsultations   LiveConsultation[]
+  nurseNotes          NurseNote[]
   consultantRegisters ConsultantRegister[]
 
   @@unique([branchId, patientNo])
@@ -270,7 +270,7 @@ model PatientCase {
   id        String   @id @default(uuid()) @db.Uuid
   branchId  String   @db.Uuid
   patientId String   @db.Uuid
-  caseNo    String   // "Case ID" — links appointment/OPD/IPD/bills (later phases)
+  caseNo    String // "Case ID" — links appointment/OPD/IPD/bills (later phases)
   type      String   @default("general") // appointment | opd | ipd | general
   status    String   @default("open")
   openedAt  DateTime @default(now())
@@ -289,6 +289,31 @@ model PatientCase {
 
 /// Per-branch, per-prefix monotonic counter for human-readable IDs (patient no,
 /// case no, bill no…). Prefixes are configurable in Setup → Prefix Setting.
+/// A single configuration value, per branch.
+///
+/// Deliberately key/value rather than a wide table: the settings surface is 20
+/// screens that will keep growing, and a column per field would mean a
+/// migration for every new toggle. The shape of each value is enforced in code
+/// by a Zod schema in settings.registry.ts, which is also where the default
+/// lives — so a missing row is never an error, just "not configured yet".
+///
+/// `isSecret` rows hold gateway credentials. Their `value` is AES-GCM
+/// ciphertext, never plaintext, and the API returns them masked. See
+/// settings.crypto.ts.
+model Setting {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @db.Uuid
+  key       String
+  value     Json
+  isSecret  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.Uuid
+
+  @@unique([branchId, key])
+  @@index([branchId])
+  @@map("setting")
+}
+
 model SequenceCounter {
   id       String @id @default(uuid()) @db.Uuid
   branchId String @db.Uuid
@@ -305,11 +330,11 @@ model SequenceCounter {
 // Shared by every department's billing in later phases.
 // ─────────────────────────────────────────────────────────────
 model ChargeCategory {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   charges Charge[]
@@ -319,12 +344,12 @@ model ChargeCategory {
 }
 
 model ChargeType {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  modules   String[] @default([])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  modules   String[]  @default([])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   charges Charge[]
@@ -334,12 +359,12 @@ model ChargeType {
 }
 
 model TaxCategory {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  percent   Decimal  @default(0) @db.Decimal(5, 2)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  percent   Decimal   @default(0) @db.Decimal(5, 2)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   charges Charge[]
@@ -349,11 +374,11 @@ model TaxCategory {
 }
 
 model UnitType {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   charges Charge[]
@@ -363,25 +388,25 @@ model UnitType {
 }
 
 model Charge {
-  id             String   @id @default(uuid()) @db.Uuid
-  branchId       String   @db.Uuid
+  id             String    @id @default(uuid()) @db.Uuid
+  branchId       String    @db.Uuid
   name           String
-  categoryId     String?  @db.Uuid
-  typeId         String?  @db.Uuid
-  unitId         String?  @db.Uuid
-  taxCategoryId  String?  @db.Uuid
-  standardCharge Decimal  @default(0) @db.Decimal(14, 2)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  categoryId     String?   @db.Uuid
+  typeId         String?   @db.Uuid
+  unitId         String?   @db.Uuid
+  taxCategoryId  String?   @db.Uuid
+  standardCharge Decimal   @default(0) @db.Decimal(14, 2)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  category    ChargeCategory?   @relation(fields: [categoryId], references: [id])
-  type        ChargeType?       @relation(fields: [typeId], references: [id])
-  unit        UnitType?         @relation(fields: [unitId], references: [id])
-  taxCategory TaxCategory?      @relation(fields: [taxCategoryId], references: [id])
-  schedules   ChargeSchedule[]
-  tests       DiagnosticTest[]
-  bloodBags   BloodBag[]
+  category       ChargeCategory?  @relation(fields: [categoryId], references: [id])
+  type           ChargeType?      @relation(fields: [typeId], references: [id])
+  unit           UnitType?        @relation(fields: [unitId], references: [id])
+  taxCategory    TaxCategory?     @relation(fields: [taxCategoryId], references: [id])
+  schedules      ChargeSchedule[]
+  tests          DiagnosticTest[]
+  bloodBags      BloodBag[]
   ambulanceCalls AmbulanceCall[]
 
   @@index([branchId, deletedAt, createdAt])
@@ -414,23 +439,23 @@ model ChargeSchedule {
 // stored inline on each entity's `customFields` JSONB column.
 // ─────────────────────────────────────────────────────────────
 model CustomField {
-  id                 String   @id @default(uuid()) @db.Uuid
-  branchId           String   @db.Uuid
-  entity             String   // patient | appointment | opd | ipd | staff | ...
-  label              String
-  key                String   // stable machine key used in the JSONB map
-  fieldType          String   // text | textarea | number | date | datetime | select | multiselect | checkbox | color | hyperlink
-  options            Json     @default("[]") // for select/multiselect
-  gridWidth          Int      @default(6) // 1..12
-  required           Boolean  @default(false)
-  visibleTable       Boolean  @default(false)
-  visiblePrint       Boolean  @default(false)
-  visibleReport      Boolean  @default(false)
-  visiblePatientPanel Boolean @default(false)
-  sortOrder          Int      @default(0)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  deletedAt          DateTime?
+  id                  String    @id @default(uuid()) @db.Uuid
+  branchId            String    @db.Uuid
+  entity              String // patient | appointment | opd | ipd | staff | ...
+  label               String
+  key                 String // stable machine key used in the JSONB map
+  fieldType           String // text | textarea | number | date | datetime | select | multiselect | checkbox | color | hyperlink
+  options             Json      @default("[]") // for select/multiselect
+  gridWidth           Int       @default(6) // 1..12
+  required            Boolean   @default(false)
+  visibleTable        Boolean   @default(false)
+  visiblePrint        Boolean   @default(false)
+  visibleReport       Boolean   @default(false)
+  visiblePatientPanel Boolean   @default(false)
+  sortOrder           Int       @default(0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
 
   @@unique([branchId, entity, key])
   @@index([branchId, entity, deletedAt])
@@ -442,16 +467,16 @@ model CustomField {
 // Drives certificates, ID cards, bills, discharge cards, etc.
 // ─────────────────────────────────────────────────────────────
 model PrintTemplate {
-  id         String   @id @default(uuid()) @db.Uuid
-  branchId   String   @db.Uuid
-  kind       String   // certificate | patient_id_card | staff_id_card | ...
+  id         String    @id @default(uuid()) @db.Uuid
+  branchId   String    @db.Uuid
+  kind       String // certificate | patient_id_card | staff_id_card | ...
   name       String
   headerHtml String?
   footerHtml String?
-  bodyHtml   String   @default("")
-  isDefault  Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  bodyHtml   String    @default("")
+  isDefault  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
 
   @@index([branchId, kind, deletedAt])
@@ -466,33 +491,33 @@ model PrintTemplate {
 /// pathology, radiology, blood bank, ambulance) generates one of these via the
 /// InvoiceService. `module` records which department produced it.
 model Invoice {
-  id          String   @id @default(uuid()) @db.Uuid
-  branchId    String   @db.Uuid
-  caseId      String?  @db.Uuid
-  patientId   String   @db.Uuid
-  billNo      String
-  module      String   // opd | ipd | pharmacy | pathology | radiology | blood | ambulance | appointment
-  billDate    DateTime @default(now())
-  subtotal    Decimal  @default(0) @db.Decimal(14, 2)
-  discount    Decimal  @default(0) @db.Decimal(14, 2)
-  tax         Decimal  @default(0) @db.Decimal(14, 2)
-  netAmount   Decimal  @default(0) @db.Decimal(14, 2)
-  paid        Decimal  @default(0) @db.Decimal(14, 2)
-  refund      Decimal  @default(0) @db.Decimal(14, 2)
-  balance     Decimal  @default(0) @db.Decimal(14, 2)
-  status      String   @default("unpaid") // unpaid | partial | paid
-  tpaId       String?  @db.Uuid
-  consultantId String? @db.Uuid
-  referenceDoctor String?
-  prescriptionNo  String?
-  note        String?
+  id                  String    @id @default(uuid()) @db.Uuid
+  branchId            String    @db.Uuid
+  caseId              String?   @db.Uuid
+  patientId           String    @db.Uuid
+  billNo              String
+  module              String // opd | ipd | pharmacy | pathology | radiology | blood | ambulance | appointment
+  billDate            DateTime  @default(now())
+  subtotal            Decimal   @default(0) @db.Decimal(14, 2)
+  discount            Decimal   @default(0) @db.Decimal(14, 2)
+  tax                 Decimal   @default(0) @db.Decimal(14, 2)
+  netAmount           Decimal   @default(0) @db.Decimal(14, 2)
+  paid                Decimal   @default(0) @db.Decimal(14, 2)
+  refund              Decimal   @default(0) @db.Decimal(14, 2)
+  balance             Decimal   @default(0) @db.Decimal(14, 2)
+  status              String    @default("unpaid") // unpaid | partial | paid
+  tpaId               String?   @db.Uuid
+  consultantId        String?   @db.Uuid
+  referenceDoctor     String?
+  prescriptionNo      String?
+  note                String?
   /// Free-text carried on Pathology/Radiology bills and shown as its own list
   /// column — distinct from the previous-reports history, which is derived.
   previousReportValue String?
-  createdById String?  @db.Uuid
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
+  createdById         String?   @db.Uuid
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
 
   patient   Patient       @relation(fields: [patientId], references: [id])
   case      PatientCase?  @relation(fields: [caseId], references: [id])
@@ -525,13 +550,13 @@ model InvoiceItem {
 }
 
 model Payment {
-  id          String   @id @default(uuid()) @db.Uuid
-  invoiceId   String   @db.Uuid
-  amount      Decimal  @db.Decimal(14, 2)
-  mode        String   @default("cash") // cash | card | upi | tpa | cheque
+  id          String    @id @default(uuid()) @db.Uuid
+  invoiceId   String    @db.Uuid
+  amount      Decimal   @db.Decimal(14, 2)
+  mode        String    @default("cash") // cash | card | upi | tpa | cheque
   reference   String?
-  paidAt      DateTime @default(now())
-  createdById String?  @db.Uuid
+  paidAt      DateTime  @default(now())
+  createdById String?   @db.Uuid
   /// Voided, not erased. Money that was recorded and then reversed is evidence:
   /// it stays queryable for audit and reconciliation, and every read filters it
   /// out so it never counts toward paid or balance.
@@ -545,29 +570,29 @@ model Payment {
 }
 
 model Appointment {
-  id               String   @id @default(uuid()) @db.Uuid
-  branchId         String   @db.Uuid
+  id               String    @id @default(uuid()) @db.Uuid
+  branchId         String    @db.Uuid
   apptNo           String
-  patientId        String   @db.Uuid
-  caseId           String?  @db.Uuid
-  doctorId         String   @db.Uuid
+  patientId        String    @db.Uuid
+  caseId           String?   @db.Uuid
+  doctorId         String    @db.Uuid
   apptDate         DateTime
   shift            String?
   slot             String?
-  fees             Decimal  @default(0) @db.Decimal(14, 2)
-  discountPct      Decimal  @default(0) @db.Decimal(5, 2)
-  paid             Decimal  @default(0) @db.Decimal(14, 2)
-  priority         String   @default("normal") // normal | urgent | vip
+  fees             Decimal   @default(0) @db.Decimal(14, 2)
+  discountPct      Decimal   @default(0) @db.Decimal(5, 2)
+  paid             Decimal   @default(0) @db.Decimal(14, 2)
+  priority         String    @default("normal") // normal | urgent | vip
   source           String?
-  paymentMode      String   @default("cash")
-  liveConsult      Boolean  @default(false)
+  paymentMode      String    @default("cash")
+  liveConsult      Boolean   @default(false)
   /// pending | approved | cancelled | completed | consumed.
   /// `consumed` is the blueprint's terminal state (§9.3): the appointment
   /// became an OPD visit, and `opdVisitId` says which one. Distinct from
   /// `completed`, which someone sets by hand to mean "the patient was seen".
-  status           String   @default("pending")
+  status           String    @default("pending")
   /// Set with `status = consumed` — the visit this appointment turned into.
-  opdVisitId       String?  @db.Uuid
+  opdVisitId       String?   @db.Uuid
   message          String?
   alternateAddress String?
   // Surfaced on the Appointment Details screen alongside Payment Mode.
@@ -577,14 +602,14 @@ model Appointment {
   /// apptNo, which is the formatted reference the patient is given.
   serialNo         Int?
   queueOrder       Int?
-  createdById      String?  @db.Uuid
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdById      String?   @db.Uuid
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
   deletedAt        DateTime?
 
-  patient Patient     @relation(fields: [patientId], references: [id])
+  patient Patient      @relation(fields: [patientId], references: [id])
   case    PatientCase? @relation(fields: [caseId], references: [id])
-  doctor  User        @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  doctor  User         @relation("DoctorAppointments", fields: [doctorId], references: [id])
 
   @@unique([branchId, apptNo])
   @@index([branchId, apptDate, deletedAt])
@@ -593,33 +618,33 @@ model Appointment {
 }
 
 model OpdVisit {
-  id             String   @id @default(uuid()) @db.Uuid
-  branchId       String   @db.Uuid
-  opdNo          String
-  patientId      String   @db.Uuid
-  caseId         String?  @db.Uuid
-  consultantId   String   @db.Uuid
-  appointmentDate DateTime
-  symptomType    String?
-  symptoms       String?
-  symptomDescription String?
-  icd10Group     String?
-  icd10Diagnosis String?
-  knownAllergies String?
+  id                   String    @id @default(uuid()) @db.Uuid
+  branchId             String    @db.Uuid
+  opdNo                String
+  patientId            String    @db.Uuid
+  caseId               String?   @db.Uuid
+  consultantId         String    @db.Uuid
+  appointmentDate      DateTime
+  symptomType          String?
+  symptoms             String?
+  symptomDescription   String?
+  icd10Group           String?
+  icd10Diagnosis       String?
+  knownAllergies       String?
   previousMedicalIssue String?
-  note           String?
-  isAntenatal    Boolean  @default(false)
-  casualty       Boolean  @default(false)
-  oldPatient     Boolean  @default(false)
-  applyTpa       Boolean  @default(false)
-  liveConsult    Boolean  @default(false)
-  reference      String?
-  invoiceId      String?  @db.Uuid
-  customFields   Json     @default("{}")
-  createdById    String?  @db.Uuid
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  deletedAt      DateTime?
+  note                 String?
+  isAntenatal          Boolean   @default(false)
+  casualty             Boolean   @default(false)
+  oldPatient           Boolean   @default(false)
+  applyTpa             Boolean   @default(false)
+  liveConsult          Boolean   @default(false)
+  reference            String?
+  invoiceId            String?   @db.Uuid
+  customFields         Json      @default("{}")
+  createdById          String?   @db.Uuid
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedAt            DateTime?
 
   patient    Patient      @relation(fields: [patientId], references: [id])
   case       PatientCase? @relation(fields: [caseId], references: [id])
@@ -638,19 +663,19 @@ model OpdVisit {
 /// A follow-up on the same visit is a second checkup rather than a second
 /// visit, which is what "Total Recheckup" counts on the OPD Patient View.
 model OpdCheckup {
-  id              String   @id @default(uuid()) @db.Uuid
-  branchId        String   @db.Uuid
-  visitId         String   @db.Uuid
+  id              String    @id @default(uuid()) @db.Uuid
+  branchId        String    @db.Uuid
+  visitId         String    @db.Uuid
   checkupNo       String
   appointmentDate DateTime
-  consultantId    String   @db.Uuid
+  consultantId    String    @db.Uuid
   reference       String?
   symptoms        String?
   findings        String?
   note            String?
-  createdById     String?  @db.Uuid
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdById     String?   @db.Uuid
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
 
   visit      OpdVisit @relation(fields: [visitId], references: [id], onDelete: Cascade)
@@ -665,14 +690,14 @@ model OpdCheckup {
 // Phase 3 — Beds & IPD (Setup → Bed; FRD §2.4).
 // ─────────────────────────────────────────────────────────────
 model Floor {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  bedGroups        BedGroup[]
+  bedGroups         BedGroup[]
   rosterAssignments RosterAssignment[]
 
   @@index([branchId, deletedAt])
@@ -680,11 +705,11 @@ model Floor {
 }
 
 model BedType {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   beds Bed[]
@@ -694,13 +719,13 @@ model BedType {
 }
 
 model BedGroup {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
-  floorId   String?  @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
+  floorId   String?   @db.Uuid
   name      String
   color     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   floor Floor? @relation(fields: [floorId], references: [id])
@@ -711,14 +736,14 @@ model BedGroup {
 }
 
 model Bed {
-  id         String   @id @default(uuid()) @db.Uuid
-  branchId   String   @db.Uuid
-  bedGroupId String   @db.Uuid
-  bedTypeId  String?  @db.Uuid
+  id         String    @id @default(uuid()) @db.Uuid
+  branchId   String    @db.Uuid
+  bedGroupId String    @db.Uuid
+  bedTypeId  String?   @db.Uuid
   bedNo      String
-  status     String   @default("available") // available | allotted
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  status     String    @default("available") // available | allotted
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
 
   bedGroup   BedGroup       @relation(fields: [bedGroupId], references: [id])
@@ -731,45 +756,45 @@ model Bed {
 }
 
 model IpdAdmission {
-  id            String    @id @default(uuid()) @db.Uuid
-  branchId      String    @db.Uuid
-  ipdNo         String
-  patientId     String    @db.Uuid
-  caseId        String?   @db.Uuid
-  consultantId  String    @db.Uuid
-  admissionDate DateTime
-  bedId         String    @db.Uuid
-  creditLimit   Decimal   @default(20000) @db.Decimal(14, 2)
-  isAntenatal   Boolean   @default(false)
-  casualty      Boolean   @default(false)
-  oldPatient    Boolean   @default(false)
-  applyTpa      Boolean   @default(false)
-  reference     String?
-  symptomType   String?
-  symptoms      String?
-  symptomDescription String?
-  icd10Group    String?
-  icd10Diagnosis String?
-  knownAllergies String?
-  previousMedicalIssue String?
-  note          String?
-  liveConsult   Boolean   @default(false)
-  dischargeDate DateTime?
-  status        String    @default("admitted") // admitted | discharged
+  id                     String    @id @default(uuid()) @db.Uuid
+  branchId               String    @db.Uuid
+  ipdNo                  String
+  patientId              String    @db.Uuid
+  caseId                 String?   @db.Uuid
+  consultantId           String    @db.Uuid
+  admissionDate          DateTime
+  bedId                  String    @db.Uuid
+  creditLimit            Decimal   @default(20000) @db.Decimal(14, 2)
+  isAntenatal            Boolean   @default(false)
+  casualty               Boolean   @default(false)
+  oldPatient             Boolean   @default(false)
+  applyTpa               Boolean   @default(false)
+  reference              String?
+  symptomType            String?
+  symptoms               String?
+  symptomDescription     String?
+  icd10Group             String?
+  icd10Diagnosis         String?
+  knownAllergies         String?
+  previousMedicalIssue   String?
+  note                   String?
+  liveConsult            Boolean   @default(false)
+  dischargeDate          DateTime?
+  status                 String    @default("admitted") // admitted | discharged
   /// Discharge Card (blueprint §8.5). `dischargeStatus` drives the
   /// side-effect that matters: 'death' marks the patient deceased, which is
   /// what suppresses new encounters for them in the Patient list.
-  dischargeStatus String?  // death | referral | normal
-  dischargeNote   String?
+  dischargeStatus        String? // death | referral | normal
+  dischargeNote          String?
   dischargeOperation     String?
   dischargeDiagnosis     String?
   dischargeInvestigation String?
   treatmentHome          String?
-  customFields  Json      @default("{}")
-  createdById   String?   @db.Uuid
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  deletedAt     DateTime?
+  customFields           Json      @default("{}")
+  createdById            String?   @db.Uuid
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  deletedAt              DateTime?
 
   patient    Patient      @relation(fields: [patientId], references: [id])
   case       PatientCase? @relation(fields: [caseId], references: [id])
@@ -787,11 +812,11 @@ model IpdAdmission {
 // the shared InvoiceService.
 // ─────────────────────────────────────────────────────────────
 model MedicineCategory {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   medicines Medicine[]
@@ -802,11 +827,11 @@ model MedicineCategory {
 }
 
 model PharmaCompany {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   medicines Medicine[]
@@ -816,11 +841,11 @@ model PharmaCompany {
 }
 
 model MedicineGroup {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   medicines Medicine[]
@@ -830,11 +855,11 @@ model MedicineGroup {
 }
 
 model PharmaUnit {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   medicines Medicine[]
@@ -845,11 +870,11 @@ model PharmaUnit {
 }
 
 model DosageInterval {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   @@index([branchId, deletedAt])
@@ -857,11 +882,11 @@ model DosageInterval {
 }
 
 model DosageDuration {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   @@index([branchId, deletedAt])
@@ -869,17 +894,17 @@ model DosageDuration {
 }
 
 model PharmaSupplier {
-  id                 String   @id @default(uuid()) @db.Uuid
-  branchId           String   @db.Uuid
-  name               String
-  contact            String?
-  contactPerson      String?
-  contactPhone       String?
-  drugLicenseNumber  String?
-  address            String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  deletedAt          DateTime?
+  id                String    @id @default(uuid()) @db.Uuid
+  branchId          String    @db.Uuid
+  name              String
+  contact           String?
+  contactPerson     String?
+  contactPhone      String?
+  drugLicenseNumber String?
+  address           String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
 
   purchases MedicinePurchase[]
 
@@ -890,13 +915,13 @@ model PharmaSupplier {
 /// Category + Dosage value + Unit — a quick-pick preset (e.g. "Fever" · "500mg" ·
 /// "tablet") surfaced later in the C4 Prescription builder.
 model MedicineDosage {
-  id         String   @id @default(uuid()) @db.Uuid
-  branchId   String   @db.Uuid
-  categoryId String?  @db.Uuid
+  id         String    @id @default(uuid()) @db.Uuid
+  branchId   String    @db.Uuid
+  categoryId String?   @db.Uuid
   dosage     String
-  unitId     String?  @db.Uuid
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  unitId     String?   @db.Uuid
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
 
   category MedicineCategory? @relation(fields: [categoryId], references: [id])
@@ -933,10 +958,10 @@ model Medicine {
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
-  category      MedicineCategory? @relation(fields: [categoryId], references: [id])
-  companyRef    PharmaCompany?    @relation(fields: [companyId], references: [id])
-  group         MedicineGroup?    @relation(fields: [groupId], references: [id])
-  unitRef       PharmaUnit?       @relation(fields: [unitId], references: [id])
+  category      MedicineCategory?      @relation(fields: [categoryId], references: [id])
+  companyRef    PharmaCompany?         @relation(fields: [companyId], references: [id])
+  group         MedicineGroup?         @relation(fields: [groupId], references: [id])
+  unitRef       PharmaUnit?            @relation(fields: [unitId], references: [id])
   purchaseItems MedicinePurchaseItem[]
   badStocks     MedicineBadStock[]
 
@@ -976,27 +1001,27 @@ model MedicinePurchase {
 }
 
 model MedicinePurchaseItem {
-  id             String   @id @default(uuid()) @db.Uuid
-  branchId       String   @db.Uuid
-  purchaseId     String   @db.Uuid
-  medicineId     String   @db.Uuid
-  batchNo        String
-  expiryMonth    DateTime
-  mrp            Decimal  @default(0) @db.Decimal(14, 2)
-  batchAmount    Decimal  @default(0) @db.Decimal(14, 2)
-  salePrice      Decimal  @default(0) @db.Decimal(14, 2)
-  packingQty     Int?
-  quantity       Int      @default(0)
-  purchasePrice  Decimal  @default(0) @db.Decimal(14, 2)
-  taxPercent     Decimal  @default(0) @db.Decimal(6, 2)
-  amount         Decimal  @default(0) @db.Decimal(14, 2)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String   @id @default(uuid()) @db.Uuid
+  branchId      String   @db.Uuid
+  purchaseId    String   @db.Uuid
+  medicineId    String   @db.Uuid
+  batchNo       String
+  expiryMonth   DateTime
+  mrp           Decimal  @default(0) @db.Decimal(14, 2)
+  batchAmount   Decimal  @default(0) @db.Decimal(14, 2)
+  salePrice     Decimal  @default(0) @db.Decimal(14, 2)
+  packingQty    Int?
+  quantity      Int      @default(0)
+  purchasePrice Decimal  @default(0) @db.Decimal(14, 2)
+  taxPercent    Decimal  @default(0) @db.Decimal(6, 2)
+  amount        Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  purchase   MedicinePurchase       @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  medicine   Medicine               @relation(fields: [medicineId], references: [id])
-  badStocks  MedicineBadStock[]
-  tpaRates   MedicineBatchTpaRate[]
+  purchase  MedicinePurchase       @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  medicine  Medicine               @relation(fields: [medicineId], references: [id])
+  badStocks MedicineBadStock[]
+  tpaRates  MedicineBatchTpaRate[]
 
   @@index([branchId, medicineId])
   @@index([purchaseId])
@@ -1004,17 +1029,17 @@ model MedicinePurchaseItem {
 }
 
 model MedicineBadStock {
-  id            String   @id @default(uuid()) @db.Uuid
-  branchId      String   @db.Uuid
-  medicineId    String   @db.Uuid
-  purchaseItemId String? @db.Uuid
-  batchNo       String?
-  expiryDate    DateTime?
-  outwardDate   DateTime @default(now())
-  qty           Int
-  note          String?
-  createdById   String?  @db.Uuid
-  createdAt     DateTime @default(now())
+  id             String    @id @default(uuid()) @db.Uuid
+  branchId       String    @db.Uuid
+  medicineId     String    @db.Uuid
+  purchaseItemId String?   @db.Uuid
+  batchNo        String?
+  expiryDate     DateTime?
+  outwardDate    DateTime  @default(now())
+  qty            Int
+  note           String?
+  createdById    String?   @db.Uuid
+  createdAt      DateTime  @default(now())
 
   medicine     Medicine              @relation(fields: [medicineId], references: [id])
   purchaseItem MedicinePurchaseItem? @relation(fields: [purchaseItemId], references: [id])
@@ -1042,12 +1067,12 @@ model MedicineBatchTpaRate {
 
 /// Shared by pathology & radiology, distinguished by `modality`.
 model DiagnosticCategory {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
-  modality  String   // pathology | radiology
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
+  modality  String // pathology | radiology
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   tests DiagnosticTest[]
@@ -1057,12 +1082,12 @@ model DiagnosticCategory {
 }
 
 model DiagnosticUnit {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
-  modality  String   // pathology | radiology
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
+  modality  String // pathology | radiology
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   tests DiagnosticTest[]
@@ -1072,30 +1097,30 @@ model DiagnosticUnit {
 }
 
 model DiagnosticTest {
-  id             String   @id @default(uuid()) @db.Uuid
-  branchId       String   @db.Uuid
-  modality       String   // pathology | radiology
-  categoryId     String?  @db.Uuid
+  id             String    @id @default(uuid()) @db.Uuid
+  branchId       String    @db.Uuid
+  modality       String // pathology | radiology
+  categoryId     String?   @db.Uuid
   name           String
   shortName      String?
   testType       String?
   subCategory    String?
   method         String?
-  reportDays     Int?     @default(1)
-  chargeId       String?  @db.Uuid
-  unitId         String?  @db.Uuid
+  reportDays     Int?      @default(1)
+  chargeId       String?   @db.Uuid
+  unitId         String?   @db.Uuid
   referenceRange String?
-  refMin         Decimal? @db.Decimal(10, 2)
-  refMax         Decimal? @db.Decimal(10, 2)
+  refMin         Decimal?  @db.Decimal(10, 2)
+  refMax         Decimal?  @db.Decimal(10, 2)
   description    String?
-  charge         Decimal  @default(0) @db.Decimal(14, 2)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  charge         Decimal   @default(0) @db.Decimal(14, 2)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  category   DiagnosticCategory?      @relation(fields: [categoryId], references: [id])
-  unit       DiagnosticUnit?          @relation(fields: [unitId], references: [id])
-  chargeRef  Charge?                  @relation(fields: [chargeId], references: [id])
+  category   DiagnosticCategory?       @relation(fields: [categoryId], references: [id])
+  unit       DiagnosticUnit?           @relation(fields: [unitId], references: [id])
+  chargeRef  Charge?                   @relation(fields: [chargeId], references: [id])
   parameters DiagnosticTestParameter[]
 
   @@index([branchId, modality, deletedAt, createdAt])
@@ -1120,15 +1145,15 @@ model DiagnosticTestParameter {
 }
 
 model BloodProduct {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
-  name      String
+  id         String    @id @default(uuid()) @db.Uuid
+  branchId   String    @db.Uuid
+  name       String
   bloodGroup String? // B+, A+, ... (null for pure components)
-  component String?  // Cryo, Red Cells, Plasma, Platelets, ...
-  rate      Decimal  @default(0) @db.Decimal(14, 2)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
+  component  String? // Cryo, Red Cells, Plasma, Platelets, ...
+  rate       Decimal   @default(0) @db.Decimal(14, 2)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
 
   stock  BloodStock?
   issues BloodIssue[]
@@ -1205,10 +1230,10 @@ model BloodBag {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  donor      BloodDonor? @relation(fields: [donorId], references: [id])
-  sourceBag  BloodBag?   @relation("BagComponents", fields: [sourceBagId], references: [id])
-  components BloodBag[]  @relation("BagComponents")
-  charge     Charge?     @relation(fields: [chargeId], references: [id])
+  donor      BloodDonor?  @relation(fields: [donorId], references: [id])
+  sourceBag  BloodBag?    @relation("BagComponents", fields: [sourceBagId], references: [id])
+  components BloodBag[]   @relation("BagComponents")
+  charge     Charge?      @relation(fields: [chargeId], references: [id])
   issues     BloodIssue[]
 
   @@index([branchId, bloodGroup, component, status, deletedAt])
@@ -1216,21 +1241,21 @@ model BloodBag {
 }
 
 model BloodIssue {
-  id            String   @id @default(uuid()) @db.Uuid
-  branchId      String   @db.Uuid
-  productId     String?  @db.Uuid
-  bagId         String?  @db.Uuid
-  donorId       String?  @db.Uuid
-  patientId     String?  @db.Uuid
-  invoiceId     String?  @db.Uuid
-  type          String   @default("blood") // blood | component
-  units         Int      @default(1)
-  technician    String?
-  note          String?
-  bloodQty      String?
-  issuedAt      DateTime @default(now())
-  createdById   String?  @db.Uuid
-  createdAt     DateTime @default(now())
+  id          String   @id @default(uuid()) @db.Uuid
+  branchId    String   @db.Uuid
+  productId   String?  @db.Uuid
+  bagId       String?  @db.Uuid
+  donorId     String?  @db.Uuid
+  patientId   String?  @db.Uuid
+  invoiceId   String?  @db.Uuid
+  type        String   @default("blood") // blood | component
+  units       Int      @default(1)
+  technician  String?
+  note        String?
+  bloodQty    String?
+  issuedAt    DateTime @default(now())
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
 
   product BloodProduct? @relation(fields: [productId], references: [id])
   bag     BloodBag?     @relation(fields: [bagId], references: [id])
@@ -1241,11 +1266,11 @@ model BloodIssue {
 }
 
 model OperationCategory {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   operations Operation[]
@@ -1255,12 +1280,12 @@ model OperationCategory {
 }
 
 model Operation {
-  id         String   @id @default(uuid()) @db.Uuid
-  branchId   String   @db.Uuid
-  categoryId String?  @db.Uuid
+  id         String    @id @default(uuid()) @db.Uuid
+  branchId   String    @db.Uuid
+  categoryId String?   @db.Uuid
   name       String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
 
   category OperationCategory? @relation(fields: [categoryId], references: [id])
@@ -1273,11 +1298,11 @@ model Operation {
 // Phase 5 — Finance, Referral, Ambulance.
 // ─────────────────────────────────────────────────────────────
 model IncomeHead {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   incomes Income[]
@@ -1287,11 +1312,11 @@ model IncomeHead {
 }
 
 model ExpenseHead {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   expenses Expense[]
@@ -1301,18 +1326,18 @@ model ExpenseHead {
 }
 
 model Income {
-  id          String   @id @default(uuid()) @db.Uuid
-  branchId    String   @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  branchId    String    @db.Uuid
   invoiceNo   String?
   name        String
-  date        DateTime @default(now())
+  date        DateTime  @default(now())
   description String?
-  headId      String?  @db.Uuid
-  amount      Decimal  @default(0) @db.Decimal(14, 2)
+  headId      String?   @db.Uuid
+  amount      Decimal   @default(0) @db.Decimal(14, 2)
   documentUrl String?
-  createdById String?  @db.Uuid
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
   head IncomeHead? @relation(fields: [headId], references: [id])
@@ -1322,18 +1347,18 @@ model Income {
 }
 
 model Expense {
-  id          String   @id @default(uuid()) @db.Uuid
-  branchId    String   @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  branchId    String    @db.Uuid
   invoiceNo   String?
   name        String
-  date        DateTime @default(now())
+  date        DateTime  @default(now())
   description String?
-  headId      String?  @db.Uuid
-  amount      Decimal  @default(0) @db.Decimal(14, 2)
+  headId      String?   @db.Uuid
+  amount      Decimal   @default(0) @db.Decimal(14, 2)
   documentUrl String?
-  createdById String?  @db.Uuid
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
   head ExpenseHead? @relation(fields: [headId], references: [id])
@@ -1343,11 +1368,11 @@ model Expense {
 }
 
 model ReferralCategory {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   @@index([branchId, deletedAt])
@@ -1355,18 +1380,18 @@ model ReferralCategory {
 }
 
 model ReferralPerson {
-  id            String   @id @default(uuid()) @db.Uuid
-  branchId      String   @db.Uuid
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
   name          String
   category      String?
   phone         String?
   contactPerson String?
   contactPhone  String?
   address       String?
-  commissionPct Decimal  @default(0) @db.Decimal(5, 2) // standard commission %
-  commissions   Json     @default("{}") // per-module: { opd, ipd, pharmacy, pathology, radiology, bloodBank, ambulance }
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  commissionPct Decimal   @default(0) @db.Decimal(5, 2) // standard commission %
+  commissions   Json      @default("{}") // per-module: { opd, ipd, pharmacy, pathology, radiology, bloodBank, ambulance }
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
   payments ReferralPayment[]
@@ -1376,20 +1401,20 @@ model ReferralPerson {
 }
 
 model ReferralPayment {
-  id               String   @id @default(uuid()) @db.Uuid
-  branchId         String   @db.Uuid
-  referralPersonId String   @db.Uuid
-  invoiceId        String?  @db.Uuid
-  patientId        String?  @db.Uuid
+  id               String    @id @default(uuid()) @db.Uuid
+  branchId         String    @db.Uuid
+  referralPersonId String    @db.Uuid
+  invoiceId        String?   @db.Uuid
+  patientId        String?   @db.Uuid
   patientType      String?
   patientName      String?
   billNo           String?
-  billAmount       Decimal  @default(0) @db.Decimal(14, 2)
-  commissionPct    Decimal  @default(0) @db.Decimal(5, 2)
-  commissionAmount Decimal  @default(0) @db.Decimal(14, 2)
-  createdById      String?  @db.Uuid
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @default(now()) @updatedAt
+  billAmount       Decimal   @default(0) @db.Decimal(14, 2)
+  commissionPct    Decimal   @default(0) @db.Decimal(5, 2)
+  commissionAmount Decimal   @default(0) @db.Decimal(14, 2)
+  createdById      String?   @db.Uuid
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now()) @updatedAt
   deletedAt        DateTime?
 
   referralPerson ReferralPerson @relation(fields: [referralPersonId], references: [id])
@@ -1399,18 +1424,18 @@ model ReferralPayment {
 }
 
 model AmbulanceVehicle {
-  id            String   @id @default(uuid()) @db.Uuid
-  branchId      String   @db.Uuid
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
   vehicleNo     String
   model         String?
   year          Int?
   driverName    String?
   driverLicense String?
   driverContact String?
-  vehicleType   String?  // owned | contractual
+  vehicleType   String? // owned | contractual
   note          String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
   calls AmbulanceCall[]
@@ -1420,23 +1445,23 @@ model AmbulanceVehicle {
 }
 
 model AmbulanceCall {
-  id             String   @id @default(uuid()) @db.Uuid
-  branchId       String   @db.Uuid
-  vehicleId      String   @db.Uuid
-  patientId      String?  @db.Uuid
-  caseId         String?  @db.Uuid
-  chargeId       String?  @db.Uuid
-  invoiceId      String?  @db.Uuid
+  id             String    @id @default(uuid()) @db.Uuid
+  branchId       String    @db.Uuid
+  vehicleId      String    @db.Uuid
+  patientId      String?   @db.Uuid
+  caseId         String?   @db.Uuid
+  chargeId       String?   @db.Uuid
+  invoiceId      String?   @db.Uuid
   patientName    String
   patientAddress String?
-  standardCharge Decimal? @db.Decimal(14, 2)
-  discountPct    Decimal  @default(0) @db.Decimal(5, 2)
-  taxPct         Decimal  @default(0) @db.Decimal(5, 2)
+  standardCharge Decimal?  @db.Decimal(14, 2)
+  discountPct    Decimal   @default(0) @db.Decimal(5, 2)
+  taxPct         Decimal   @default(0) @db.Decimal(5, 2)
   note           String?
-  date           DateTime @default(now())
-  createdById    String?  @db.Uuid
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  date           DateTime  @default(now())
+  createdById    String?   @db.Uuid
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
   vehicle AmbulanceVehicle @relation(fields: [vehicleId], references: [id])
@@ -1452,11 +1477,11 @@ model AmbulanceCall {
 // staff user works with or without an extended profile row.
 // ─────────────────────────────────────────────────────────────
 model Department {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   staff             Staff[]
@@ -1467,11 +1492,11 @@ model Department {
 }
 
 model Designation {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   staff Staff[]
@@ -1481,11 +1506,11 @@ model Designation {
 }
 
 model Specialization {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   staff Staff[]
@@ -1539,16 +1564,16 @@ model Staff {
 }
 
 model Shift {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
   startTime String?
   endTime   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  rosters      DutyRoster[]
+  rosters       DutyRoster[]
   rosterPeriods Roster[]
 
   @@index([branchId, deletedAt])
@@ -1589,13 +1614,13 @@ model DutyRoster {
 
 /// A shift scheduled over a date range (the "Roster List" period).
 model Roster {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
-  shiftId   String   @db.Uuid
-  startDate DateTime @db.Date
-  endDate   DateTime @db.Date
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
+  shiftId   String    @db.Uuid
+  startDate DateTime  @db.Date
+  endDate   DateTime  @db.Date
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   shift       Shift              @relation(fields: [shiftId], references: [id])
@@ -1607,15 +1632,15 @@ model Roster {
 
 /// A staff member assigned to a Roster period, with floor + department.
 model RosterAssignment {
-  id            String   @id @default(uuid()) @db.Uuid
-  branchId      String   @db.Uuid
-  rosterId      String   @db.Uuid
-  staffUserId   String   @db.Uuid
-  floorId       String?  @db.Uuid
-  departmentId  String?  @db.Uuid
-  generatedById String?  @db.Uuid
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
+  rosterId      String    @db.Uuid
+  staffUserId   String    @db.Uuid
+  floorId       String?   @db.Uuid
+  departmentId  String?   @db.Uuid
+  generatedById String?   @db.Uuid
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
   roster     Roster      @relation(fields: [rosterId], references: [id])
@@ -1628,21 +1653,21 @@ model RosterAssignment {
 }
 
 model Payroll {
-  id             String   @id @default(uuid()) @db.Uuid
-  branchId       String   @db.Uuid
-  staffUserId    String   @db.Uuid
-  month          String   // YYYY-MM
-  basicSalary    Decimal  @default(0) @db.Decimal(14, 2)
-  gross          Decimal  @default(0) @db.Decimal(14, 2)
-  deductions     Decimal  @default(0) @db.Decimal(14, 2)
-  net            Decimal  @default(0) @db.Decimal(14, 2)
-  paymentMode    String   @default("Transfer to Bank Account")
-  earnings       Json     @default("[]") // [{ label, amount }]
-  deductionItems Json     @default("[]") // [{ label, amount }]
-  status         String   @default("generated") // generated | paid
+  id             String    @id @default(uuid()) @db.Uuid
+  branchId       String    @db.Uuid
+  staffUserId    String    @db.Uuid
+  month          String // YYYY-MM
+  basicSalary    Decimal   @default(0) @db.Decimal(14, 2)
+  gross          Decimal   @default(0) @db.Decimal(14, 2)
+  deductions     Decimal   @default(0) @db.Decimal(14, 2)
+  net            Decimal   @default(0) @db.Decimal(14, 2)
+  paymentMode    String    @default("Transfer to Bank Account")
+  earnings       Json      @default("[]") // [{ label, amount }]
+  deductionItems Json      @default("[]") // [{ label, amount }]
+  status         String    @default("generated") // generated | paid
   paidAt         DateTime?
-  createdById    String?  @db.Uuid
-  createdAt      DateTime @default(now())
+  createdById    String?   @db.Uuid
+  createdAt      DateTime  @default(now())
 
   @@unique([branchId, staffUserId, month])
   @@index([branchId])
@@ -1650,12 +1675,12 @@ model Payroll {
 }
 
 model LeaveType {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  quota     Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  quota     Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   requests LeaveRequest[]
@@ -1665,21 +1690,21 @@ model LeaveType {
 }
 
 model LeaveRequest {
-  id            String   @id @default(uuid()) @db.Uuid
-  branchId      String   @db.Uuid
-  staffUserId   String   @db.Uuid
-  leaveTypeId   String?  @db.Uuid
-  appliedDate   DateTime @default(now()) @db.Date
-  fromDate      DateTime @db.Date
-  toDate        DateTime @db.Date
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
+  staffUserId   String    @db.Uuid
+  leaveTypeId   String?   @db.Uuid
+  appliedDate   DateTime  @default(now()) @db.Date
+  fromDate      DateTime  @db.Date
+  toDate        DateTime  @db.Date
   reason        String?
   note          String?
   attachmentUrl String?
-  status        String   @default("pending") // pending | approved | disapprove
-  statusById    String?  @db.Uuid
+  status        String    @default("pending") // pending | approved | disapprove
+  statusById    String?   @db.Uuid
   statusAt      DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   leaveType LeaveType? @relation(fields: [leaveTypeId], references: [id])
 
@@ -1688,17 +1713,17 @@ model LeaveRequest {
 }
 
 model Holiday {
-  id          String   @id @default(uuid()) @db.Uuid
-  branchId    String   @db.Uuid
-  type        String   @default("holiday") // holiday | activity | vacation
+  id          String    @id @default(uuid()) @db.Uuid
+  branchId    String    @db.Uuid
+  type        String    @default("holiday") // holiday | activity | vacation
   title       String
-  fromDate    DateTime @db.Date
+  fromDate    DateTime  @db.Date
   toDate      DateTime? @db.Date
   description String?
-  frontSite   Boolean  @default(false)
-  createdById String?  @db.Uuid
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  frontSite   Boolean   @default(false)
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
   @@index([branchId, deletedAt, fromDate])
@@ -1709,53 +1734,53 @@ model Holiday {
 // Phase 7 — Front Office, Records, Comms, Inventory, Live Consult.
 // ─────────────────────────────────────────────────────────────
 model Visitor {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
-  purposeId String?  @db.Uuid
-  name      String
-  visitTo   String?  // ipd | opd | staff
-  phone     String?
-  date      DateTime @default(now())
-  inTime    DateTime?
-  outTime   DateTime?
-  note      String?
-  createdById String? @db.Uuid
-  createdAt DateTime @default(now())
-  deletedAt DateTime?
+  id          String    @id @default(uuid()) @db.Uuid
+  branchId    String    @db.Uuid
+  purposeId   String?   @db.Uuid
+  name        String
+  visitTo     String? // ipd | opd | staff
+  phone       String?
+  date        DateTime  @default(now())
+  inTime      DateTime?
+  outTime     DateTime?
+  note        String?
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
 
   @@index([branchId, deletedAt, date])
   @@map("visitor")
 }
 
 model PhoneCall {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
-  name      String
-  phone     String?
-  type      String   @default("incoming") // incoming | outgoing
-  date      DateTime @default(now())
-  note      String?
-  createdById String? @db.Uuid
-  createdAt DateTime @default(now())
-  deletedAt DateTime?
+  id          String    @id @default(uuid()) @db.Uuid
+  branchId    String    @db.Uuid
+  name        String
+  phone       String?
+  type        String    @default("incoming") // incoming | outgoing
+  date        DateTime  @default(now())
+  note        String?
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
 
   @@index([branchId, deletedAt, date])
   @@map("phone_call")
 }
 
 model PostalComplaint {
-  id             String   @id @default(uuid()) @db.Uuid
-  branchId       String   @db.Uuid
-  complaintTypeId String? @db.Uuid
-  source         String?
-  name           String?
-  phone          String?
-  description    String?
-  date           DateTime @default(now())
-  actionTaken    String?
-  createdById    String?  @db.Uuid
-  createdAt      DateTime @default(now())
-  deletedAt      DateTime?
+  id              String    @id @default(uuid()) @db.Uuid
+  branchId        String    @db.Uuid
+  complaintTypeId String?   @db.Uuid
+  source          String?
+  name            String?
+  phone           String?
+  description     String?
+  date            DateTime  @default(now())
+  actionTaken     String?
+  createdById     String?   @db.Uuid
+  createdAt       DateTime  @default(now())
+  deletedAt       DateTime?
 
   @@index([branchId, deletedAt, date])
   @@map("postal_complaint")
@@ -1791,22 +1816,22 @@ model BirthRecord {
 }
 
 model DeathRecord {
-  id             String    @id @default(uuid()) @db.Uuid
-  branchId       String    @db.Uuid
-  referenceNo    String
-  caseId         String?   @db.Uuid
-  patientId      String?   @db.Uuid
-  patientName    String
-  guardianName   String?
-  gender         Gender?
-  deathDate      DateTime  @db.Date
-  cause          String?
-  address        String?
-  bloodGroup     String?
-  attachmentUrl  String?
-  createdById    String?   @db.Uuid
-  createdAt      DateTime  @default(now())
-  deletedAt      DateTime?
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
+  referenceNo   String
+  caseId        String?   @db.Uuid
+  patientId     String?   @db.Uuid
+  patientName   String
+  guardianName  String?
+  gender        Gender?
+  deathDate     DateTime  @db.Date
+  cause         String?
+  address       String?
+  bloodGroup    String?
+  attachmentUrl String?
+  createdById   String?   @db.Uuid
+  createdAt     DateTime  @default(now())
+  deletedAt     DateTime?
 
   @@unique([branchId, referenceNo])
   @@index([branchId, deletedAt, deathDate])
@@ -1814,20 +1839,20 @@ model DeathRecord {
 }
 
 model Notification {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
-  type      String   @default("notice") // notice | sms | email | credential
-  subject   String
-  body      String?
-  audience  String?  // group / role the notice targets (legacy)
-  roles     String[] @default([]) // "Message To" recipient role labels
-  noticeDate DateTime?
-  publishOn  DateTime?
-  date      DateTime @default(now())
-  createdById String? @db.Uuid
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
-  deletedAt DateTime?
+  id          String    @id @default(uuid()) @db.Uuid
+  branchId    String    @db.Uuid
+  type        String    @default("notice") // notice | sms | email | credential
+  subject     String
+  body        String?
+  audience    String? // group / role the notice targets (legacy)
+  roles       String[]  @default([]) // "Message To" recipient role labels
+  noticeDate  DateTime?
+  publishOn   DateTime?
+  date        DateTime  @default(now())
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+  deletedAt   DateTime?
 
   @@index([branchId, deletedAt, date])
   @@map("notification")
@@ -1852,16 +1877,16 @@ model ContentShare {
 }
 
 model InventoryItem {
-  id            String   @id @default(uuid()) @db.Uuid
-  branchId      String   @db.Uuid
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
   name          String
-  categoryId    String?  @db.Uuid
-  supplierId    String?  @db.Uuid
+  categoryId    String?   @db.Uuid
+  supplierId    String?   @db.Uuid
   unit          String?
   description   String?
-  purchasePrice Decimal  @default(0) @db.Decimal(14, 2)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  purchasePrice Decimal   @default(0) @db.Decimal(14, 2)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
   stocks ItemStock[]
@@ -1872,17 +1897,17 @@ model InventoryItem {
 }
 
 model ItemStock {
-  id            String   @id @default(uuid()) @db.Uuid
-  branchId      String   @db.Uuid
-  itemId        String   @db.Uuid
-  supplierId    String?  @db.Uuid
-  storeId       String?  @db.Uuid
-  qty           Int      @default(0)
-  purchasePrice Decimal  @default(0) @db.Decimal(14, 2)
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
+  itemId        String    @db.Uuid
+  supplierId    String?   @db.Uuid
+  storeId       String?   @db.Uuid
+  qty           Int       @default(0)
+  purchasePrice Decimal   @default(0) @db.Decimal(14, 2)
   description   String?
   documentUrl   String?
-  date          DateTime @default(now())
-  createdById   String?  @db.Uuid
+  date          DateTime  @default(now())
+  createdById   String?   @db.Uuid
   deletedAt     DateTime?
 
   item InventoryItem @relation(fields: [itemId], references: [id])
@@ -1892,18 +1917,18 @@ model ItemStock {
 }
 
 model ItemIssue {
-  id          String   @id @default(uuid()) @db.Uuid
-  branchId    String   @db.Uuid
-  itemId      String   @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  branchId    String    @db.Uuid
+  itemId      String    @db.Uuid
   userType    String?
   issuedTo    String?
-  qty         Int      @default(1)
+  qty         Int       @default(1)
   note        String?
-  date        DateTime @default(now())
+  date        DateTime  @default(now())
   returnDate  DateTime?
-  status      String   @default("issued") // issued | returned
+  status      String    @default("issued") // issued | returned
   returnedAt  DateTime?
-  createdById String?  @db.Uuid
+  createdById String?   @db.Uuid
   deletedAt   DateTime?
 
   item InventoryItem @relation(fields: [itemId], references: [id])
@@ -1913,24 +1938,24 @@ model ItemIssue {
 }
 
 model LiveConsultation {
-  id          String   @id @default(uuid()) @db.Uuid
-  branchId    String   @db.Uuid
-  kind        String   @default("consultation") // consultation | meeting
-  title       String
-  description String?
-  date        DateTime
-  durationMin Int?
-  apiUsed     String?  // Zoom | Jitsi | ...
-  createdFor  String?
-  status      String   @default("scheduled")
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
+  kind          String    @default("consultation") // consultation | meeting
+  title         String
+  description   String?
+  date          DateTime
+  durationMin   Int?
+  apiUsed       String? // Zoom | Jitsi | ...
+  createdFor    String?
+  status        String    @default("scheduled")
   // Phase C5: optional encounter scoping (a live consult attached to an OPD/IPD encounter).
-  patientId     String?  @db.Uuid
+  patientId     String?   @db.Uuid
   encounterType String?
-  encounterId   String?  @db.Uuid
+  encounterId   String?   @db.Uuid
   joinUrl       String?
-  createdById String?  @db.Uuid
-  createdAt   DateTime @default(now())
-  deletedAt   DateTime?
+  createdById   String?   @db.Uuid
+  createdAt     DateTime  @default(now())
+  deletedAt     DateTime?
 
   patient Patient? @relation(fields: [patientId], references: [id])
 
@@ -1941,56 +1966,61 @@ model LiveConsultation {
 
 // Phase 7 name-catalogs (Setup master lists)
 model FrontOfficePurpose {
-  id String @id @default(uuid()) @db.Uuid
-  branchId String @db.Uuid
-  name String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
   @@index([branchId, deletedAt])
   @@map("front_office_purpose")
 }
 
 model ComplaintType {
-  id String @id @default(uuid()) @db.Uuid
-  branchId String @db.Uuid
-  name String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
   @@index([branchId, deletedAt])
   @@map("complaint_type")
 }
 
 model ContentType {
-  id String @id @default(uuid()) @db.Uuid
-  branchId String @db.Uuid
-  name String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
   @@index([branchId, deletedAt])
   @@map("content_type")
 }
 
 model ItemCategory {
-  id String @id @default(uuid()) @db.Uuid
-  branchId String @db.Uuid
-  name String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
   @@index([branchId, deletedAt])
   @@map("item_category")
 }
 
 model ItemStore {
-  id String @id @default(uuid()) @db.Uuid
-  branchId String @db.Uuid
-  name String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
   @@index([branchId, deletedAt])
   @@map("item_store")
 }
@@ -2009,6 +2039,7 @@ model ItemSupplier {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
+
   @@index([branchId, deletedAt])
   @@map("item_supplier")
 }
@@ -2017,17 +2048,17 @@ model ItemSupplier {
 // Phase 8 — Front CMS (public website content).
 // ─────────────────────────────────────────────────────────────
 model CmsPage {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
-  title     String
-  slug      String
-  pageType  String   @default("standard") // standard | event | gallery
-  body      String?
-  published Boolean  @default(false)
-  createdById String? @db.Uuid
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
+  id          String    @id @default(uuid()) @db.Uuid
+  branchId    String    @db.Uuid
+  title       String
+  slug        String
+  pageType    String    @default("standard") // standard | event | gallery
+  body        String?
+  published   Boolean   @default(false)
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
 
   @@unique([branchId, slug])
   @@index([branchId, deletedAt])
@@ -2035,15 +2066,15 @@ model CmsPage {
 }
 
 model CmsBanner {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   title     String
   imageUrl  String?
   link      String?
-  sortOrder Int      @default(0)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  sortOrder Int       @default(0)
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   @@index([branchId, deletedAt])
@@ -2051,13 +2082,13 @@ model CmsBanner {
 }
 
 model CmsMenu {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   label     String
   url       String
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   @@index([branchId, deletedAt])
@@ -2070,15 +2101,15 @@ model CmsMenu {
 // (opd | ipd) so the same widgets serve the profile + both detail pages.
 // ─────────────────────────────────────────────────────────────
 model VitalType {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
   unit      String?
-  refMin    Decimal? @db.Decimal(10, 2)
-  refMax    Decimal? @db.Decimal(10, 2)
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  refMin    Decimal?  @db.Decimal(10, 2)
+  refMax    Decimal?  @db.Decimal(10, 2)
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   readings VitalReading[]
@@ -2088,15 +2119,15 @@ model VitalType {
 }
 
 model VitalReading {
-  id            String   @id @default(uuid()) @db.Uuid
-  branchId      String   @db.Uuid
-  patientId     String   @db.Uuid
-  encounterType String?  // opd | ipd
-  encounterId   String?  @db.Uuid
-  vitalTypeId   String   @db.Uuid
-  value         String   // free string to allow "90/80" etc.
-  recordedAt    DateTime @default(now())
-  createdById   String?  @db.Uuid
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
+  patientId     String    @db.Uuid
+  encounterType String? // opd | ipd
+  encounterId   String?   @db.Uuid
+  vitalTypeId   String    @db.Uuid
+  value         String // free string to allow "90/80" etc.
+  recordedAt    DateTime  @default(now())
+  createdById   String?   @db.Uuid
   deletedAt     DateTime?
 
   patient   Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
@@ -2107,11 +2138,11 @@ model VitalReading {
 }
 
 model FindingCategory {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   findings Finding[]
@@ -2121,12 +2152,12 @@ model FindingCategory {
 }
 
 model Finding {
-  id          String   @id @default(uuid()) @db.Uuid
-  branchId    String   @db.Uuid
-  categoryId  String?  @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  branchId    String    @db.Uuid
+  categoryId  String?   @db.Uuid
   description String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
   category FindingCategory? @relation(fields: [categoryId], references: [id])
@@ -2137,15 +2168,15 @@ model Finding {
 }
 
 model FindingRecord {
-  id            String   @id @default(uuid()) @db.Uuid
-  branchId      String   @db.Uuid
-  patientId     String   @db.Uuid
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
+  patientId     String    @db.Uuid
   encounterType String?
-  encounterId   String?  @db.Uuid
-  findingId     String?  @db.Uuid
+  encounterId   String?   @db.Uuid
+  findingId     String?   @db.Uuid
   text          String
-  createdById   String?  @db.Uuid
-  createdAt     DateTime @default(now())
+  createdById   String?   @db.Uuid
+  createdAt     DateTime  @default(now())
   deletedAt     DateTime?
 
   patient Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
@@ -2158,11 +2189,11 @@ model FindingRecord {
 /// ICD-10 group — the top level of the diagnosis catalog (Setup ▸ ICD-10).
 /// A plain name catalog, same shape as FindingCategory and SymptomHead.
 model IcdGroup {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   codes IcdCode[]
@@ -2175,13 +2206,13 @@ model IcdGroup {
 /// description as text on the encounter, so historic rows keep reading
 /// correctly even if a code is later renamed or retired here.
 model IcdCode {
-  id          String   @id @default(uuid()) @db.Uuid
-  branchId    String   @db.Uuid
-  groupId     String?  @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  branchId    String    @db.Uuid
+  groupId     String?   @db.Uuid
   code        String
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
   group IcdGroup? @relation(fields: [groupId], references: [id])
@@ -2191,11 +2222,11 @@ model IcdCode {
 }
 
 model SymptomHead {
-  id        String   @id @default(uuid()) @db.Uuid
-  branchId  String   @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  branchId  String    @db.Uuid
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   types SymptomType[]
@@ -2205,13 +2236,13 @@ model SymptomHead {
 }
 
 model SymptomType {
-  id          String   @id @default(uuid()) @db.Uuid
-  branchId    String   @db.Uuid
-  headId      String?  @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  branchId    String    @db.Uuid
+  headId      String?   @db.Uuid
   title       String
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
   head    SymptomHead?    @relation(fields: [headId], references: [id])
@@ -2222,16 +2253,16 @@ model SymptomType {
 }
 
 model SymptomRecord {
-  id            String   @id @default(uuid()) @db.Uuid
-  branchId      String   @db.Uuid
-  patientId     String   @db.Uuid
+  id            String    @id @default(uuid()) @db.Uuid
+  branchId      String    @db.Uuid
+  patientId     String    @db.Uuid
   encounterType String?
-  encounterId   String?  @db.Uuid
-  symptomTypeId String?  @db.Uuid
+  encounterId   String?   @db.Uuid
+  symptomTypeId String?   @db.Uuid
   title         String
   description   String?
-  createdById   String?  @db.Uuid
-  createdAt     DateTime @default(now())
+  createdById   String?   @db.Uuid
+  createdAt     DateTime  @default(now())
   deletedAt     DateTime?
 
   patient     Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
@@ -2242,19 +2273,19 @@ model SymptomRecord {
 }
 
 model TimelineEntry {
-  id              String   @id @default(uuid()) @db.Uuid
-  branchId        String   @db.Uuid
-  patientId       String   @db.Uuid
-  encounterType   String?
-  encounterId     String?  @db.Uuid
-  title           String
-  date            DateTime
-  description     String?
-  fileUrl         String?
-  visibleToPatient Boolean @default(true)
-  createdById     String?  @db.Uuid
-  createdAt       DateTime @default(now())
-  deletedAt       DateTime?
+  id               String    @id @default(uuid()) @db.Uuid
+  branchId         String    @db.Uuid
+  patientId        String    @db.Uuid
+  encounterType    String?
+  encounterId      String?   @db.Uuid
+  title            String
+  date             DateTime
+  description      String?
+  fileUrl          String?
+  visibleToPatient Boolean   @default(true)
+  createdById      String?   @db.Uuid
+  createdAt        DateTime  @default(now())
+  deletedAt        DateTime?
 
   patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
@@ -2301,29 +2332,29 @@ model LabInvestigation {
 }
 
 model Prescription {
-  id             String    @id @default(uuid()) @db.Uuid
-  branchId       String    @db.Uuid
-  patientId      String    @db.Uuid
-  encounterType  String?
-  encounterId    String?   @db.Uuid
-  prescribedById String?   @db.Uuid
-  symptoms       String?
-  findings       String?
-  note           String?
+  id                 String    @id @default(uuid()) @db.Uuid
+  branchId           String    @db.Uuid
+  patientId          String    @db.Uuid
+  encounterType      String?
+  encounterId        String?   @db.Uuid
+  prescribedById     String?   @db.Uuid
+  symptoms           String?
+  findings           String?
+  note               String?
   headerNote         String?
   footerNote         String?
-  findingCategoryId  String?  @db.Uuid
-  findingList        String[] @default([])
+  findingCategoryId  String?   @db.Uuid
+  findingList        String[]  @default([])
   findingDescription String?
-  findingPrint       Boolean  @default(true)
+  findingPrint       Boolean   @default(true)
   attachmentUrl      String?
-  pathologyTestIds   String[] @default([])
-  radiologyTestIds   String[] @default([])
-  notifyRoles        String[] @default([])
-  createdById    String?   @db.Uuid
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  deletedAt      DateTime?
+  pathologyTestIds   String[]  @default([])
+  radiologyTestIds   String[]  @default([])
+  notifyRoles        String[]  @default([])
+  createdById        String?   @db.Uuid
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
 
   patient Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
   items   PrescriptionItem[]

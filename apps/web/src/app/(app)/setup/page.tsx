@@ -17,9 +17,16 @@ import {
   FlaskConical,
   Radio,
   ShieldCheck,
+  SlidersHorizontal as Sliders,
 } from 'lucide-react';
 
 const AREAS = [
+  {
+    href: '/setup/settings/general',
+    title: 'Settings',
+    desc: 'Hospital identity, formats, prefixes and platform configuration. Admin and Super Admin only.',
+    icon: Sliders,
+  },
   {
     href: '/setup/roles',
     title: 'Roles & Permissions',

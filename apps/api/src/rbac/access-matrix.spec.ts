@@ -56,15 +56,27 @@ const PUBLIC_ROUTES = [
 ];
 
 /**
- * Routes gated on the caller's ROLE rather than on a permission. This list
- * should contain the permission editor and nothing else — role gating cannot be
- * adjusted without a deploy, which is the problem the feature model exists to
- * solve. See require-role.decorator.ts for why the editor is the exception.
+ * Routes gated on the caller's ROLE rather than on a permission.
+ *
+ * Role gating cannot be adjusted without a deploy, which is the problem the
+ * feature model exists to solve — so this list stays short and every entry
+ * earns its place for the same reason: it configures the permission system
+ * itself, or holds credentials that move money. Gating either on a permission
+ * closes a loop, because the permission editor can revoke that permission.
+ * See require-role.decorator.ts.
+ *
+ * Today that is the permission editor and Setup ▸ Settings. A third entry
+ * should be argued for, not assumed.
  */
 const ROLE_GATED_ROUTES = [
   'GET /rbac/roles',
   'GET /rbac/roles/:slug/permissions',
   'PUT /rbac/roles/:slug/permissions',
+  'GET /settings',
+  'GET /settings/general',
+  'PUT /settings/general',
+  'GET /settings/prefixes',
+  'PUT /settings/prefixes',
 ];
 
 /**
@@ -169,7 +181,7 @@ describe('exemptions are explicit', () => {
     expect(routes.filter((r) => r.kind === 'public').map(id).sort()).toEqual([...PUBLIC_ROUTES].sort());
   });
 
-  it('only the permission editor is gated on a role', () => {
+  it('only the permission system and Settings are gated on a role', () => {
     expect(routes.filter((r) => r.kind === 'role').map(id).sort()).toEqual([...ROLE_GATED_ROUTES].sort());
   });
 

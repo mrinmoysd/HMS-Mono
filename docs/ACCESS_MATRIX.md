@@ -15,7 +15,7 @@ cannot be answered without one).
 
 ## Summary
 
-- routes: **375**
+- routes: **380**
 - feature-gated: 307
 - resolver-gated: 34
 - module-gated (documented exceptions): 13
@@ -380,6 +380,11 @@ cannot be answered without one).
 | PATCH | `/referral/persons/:id` | `referral.referral_person:edit` | ✓ | ✓ | ✓ | · | · | · | · | · | · |
 | GET | `/reports/:key` | *per request* | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | GET | `/reports/categories` | *authenticated* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| GET | `/settings` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| GET | `/settings/general` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| PUT | `/settings/general` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| GET | `/settings/prefixes` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| PUT | `/settings/prefixes` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | GET | `/shifts` | `appointment.shift:view` | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | · |
 | POST | `/shifts` | `appointment.shift:add` | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | · |
 | DELETE | `/shifts/:id` | `appointment.shift:delete` | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | · |

@@ -32,6 +32,7 @@ export * from './dto/comms';
 export * from './dto/dashboard';
 export * from './dto/inventory';
 export * from './dto/role-permissions';
+export * from './dto/settings';
 export * from './dto/reports';
 export * from './dto/branch';
 export * from './dto/cms';

@@ -42,6 +42,7 @@ import { BranchContextInterceptor } from './common/context/branch-context.interc
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { HealthController } from './health/health.controller';
 import { MetaController } from './meta/meta.controller';
+import { SettingsModule } from './settings/settings.module';
 
 const envSchema = z.object({
   DATABASE_URL: z.string().url(),
@@ -51,6 +52,12 @@ const envSchema = z.object({
   JWT_REFRESH_TTL: z.string().default('7d'),
   API_PORT: z.coerce.number().default(4000),
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
+  // Optional on purpose. The API already runs in production without it, and
+  // making it required would refuse to boot an otherwise healthy system the
+  // moment the settings code deploys. Absent, non-secret settings work and
+  // only credential storage is unavailable — with an error that says so.
+  // Generate with: openssl rand -base64 32
+  SETTINGS_ENCRYPTION_KEY: z.string().optional(),
 });
 
 @Module({
@@ -61,6 +68,7 @@ const envSchema = z.object({
     }),
     PrismaModule,
     RbacModule,
+    SettingsModule,
     AuditModule,
     SequenceModule,
     AuthModule,
