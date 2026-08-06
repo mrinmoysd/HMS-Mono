@@ -14,6 +14,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:seed-permissions": "tsx prisma/seed-permissions.ts",
     "prisma:seed-dashboard": "tsx prisma/seed-dashboard.ts",
     "prisma:studio": "prisma studio"
   },

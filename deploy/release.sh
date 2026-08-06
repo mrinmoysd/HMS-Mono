@@ -151,6 +151,24 @@ set -a; . <(sudo cat "$ENV_FILE"); set +a
 pnpm --filter @smart-hospital/api prisma:deploy 2>&1 | tail -6
 ok "schema up to date"
 
+# ── feature permissions ─────────────────────────────────────────────────────
+# NOT gated on DO_SEED. That flag guards the demo seed, which writes patients
+# and users and must never run twice. This is different in kind: it syncs the
+# 751 feature-permission rows from packages/shared/src/rbac/features.ts, which
+# is configuration derived from the schema, not data. It is idempotent by
+# construction — it adds what is new, removes what is gone, corrects drift —
+# and it asserts that the 116 module-level rows survive untouched.
+#
+# It has to run on EVERY deploy, because a deploy that migrates without it
+# leaves the feature column present and empty. That does not break anything —
+# Ability.canFeature falls back to the module rollup when a token carries no
+# features — but it silently reverts the system to module-level granularity,
+# which is the failure mode hardest to notice: everything works, and everyone
+# can see more than they should.
+log "Feature permissions"
+pnpm --filter @smart-hospital/api prisma:seed-permissions 2>&1 | tail -12
+ok "751 feature rows in sync"
+
 # ── seed ────────────────────────────────────────────────────────────────────
 # The guard fails CLOSED. An earlier version queried "Patient", but Prisma maps
 # models to snake_case, so the query errored, 2>/dev/null swallowed it, and the
