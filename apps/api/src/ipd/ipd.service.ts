@@ -19,6 +19,8 @@ import { InvoiceService } from '../billing/invoice.service';
 import { paginate, toPrismaPage } from '../common/pagination';
 import { resolveCaseId } from '../common/case';
 import type { RequestUser } from '../common/types/request-user';
+import { consultantScope } from '../settings/doctor-restriction';
+import { GeneralSettingsCache } from '../settings/general-settings.cache';
 
 const include = {
   patient: { select: { name: true, gender: true, phone: true } },
@@ -45,11 +47,19 @@ export class IpdService {
     private readonly audit: AuditService,
     private readonly sequence: SequenceService,
     private readonly invoices: InvoiceService,
+    private readonly general: GeneralSettingsCache,
   ) {}
 
-  async list(branchId: string, tab: IpdTab, query: ListQuery): Promise<Paginated<IpdAdmissionDto>> {
+  async list(
+    branchId: string,
+    tab: IpdTab,
+    query: ListQuery,
+    user?: RequestUser,
+  ): Promise<Paginated<IpdAdmissionDto>> {
+    const scope = consultantScope(user, await this.general.doctorRestriction(branchId));
     const { skip, take, orderBy } = toPrismaPage(query);
     const where: Prisma.IpdAdmissionWhereInput = {
+      ...scope,
       branchId,
       deletedAt: null,
       status: tab,

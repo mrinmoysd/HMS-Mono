@@ -20,6 +20,8 @@ import { OpdService } from '../opd/opd.service';
 import { paginate, toPrismaPage } from '../common/pagination';
 import { startOfToday, endOfToday } from '../common/dates';
 import type { RequestUser } from '../common/types/request-user';
+import { doctorScope } from '../settings/doctor-restriction';
+import { GeneralSettingsCache } from '../settings/general-settings.cache';
 
 const include = {
   patient: { select: { name: true, phone: true, gender: true } },
@@ -36,6 +38,7 @@ export class AppointmentService {
     private readonly audit: AuditService,
     private readonly sequence: SequenceService,
     private readonly opd: OpdService,
+    private readonly general: GeneralSettingsCache,
   ) {}
 
   async list(
@@ -43,8 +46,12 @@ export class AppointmentService {
     tab: AppointmentTab,
     doctorId: string | undefined,
     query: ListQuery,
+    user?: RequestUser,
   ): Promise<Paginated<AppointmentDto>> {
     const { skip, take } = toPrismaPage(query);
+    // Doctor Restriction Mode. Spread AFTER the caller's doctorId filter so a
+    // doctor cannot widen their own scope by passing someone else's id.
+    const scope = doctorScope(user, await this.general.doctorRestriction(branchId));
     const dateFilter: Prisma.AppointmentWhereInput =
       tab === 'today'
         ? { apptDate: { gte: startOfToday(), lte: endOfToday() } }
@@ -57,6 +64,7 @@ export class AppointmentService {
       deletedAt: null,
       ...dateFilter,
       ...(doctorId ? { doctorId } : {}),
+      ...scope,
       ...(query.search
         ? { patient: { name: { contains: query.search, mode: 'insensitive' } } }
         : {}),

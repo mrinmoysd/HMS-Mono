@@ -208,8 +208,11 @@ export class InvoiceService {
 
       const capped = Math.min(amount, Number(invoice.balance));
       if (capped > 0) {
+        // TRANID is ours; `reference` stays the payer's own cheque or UPI
+        // number as typed by the cashier.
+        const transactionNo = await this.sequence.next(branchId, 'transaction', tx);
         await tx.payment.create({
-          data: { invoiceId, amount: capped, mode, reference, createdById: user.id },
+          data: { invoiceId, transactionNo, amount: capped, mode, reference, createdById: user.id },
         });
       }
       const paid = round2(Number(invoice.paid) + capped);

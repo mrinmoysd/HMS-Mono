@@ -50,11 +50,12 @@ export class OpdController {
     @BranchId() branchId: string,
     @Query('tab') tab: string | undefined,
     @Query(new ZodValidationPipe(listQuerySchema)) query: ListQuery,
+    @CurrentUser() user: RequestUser,
   ) {
     const safeTab: OpdTab = (OPD_TABS as readonly string[]).includes(tab ?? '')
       ? (tab as OpdTab)
       : 'today';
-    return this.opd.list(branchId, safeTab, query);
+    return this.opd.list(branchId, safeTab, query, user);
   }
 
   @Post()

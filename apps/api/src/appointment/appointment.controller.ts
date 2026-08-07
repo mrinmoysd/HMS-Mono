@@ -51,11 +51,12 @@ export class AppointmentController {
     @Query('tab') tab: string | undefined,
     @Query('doctorId') doctorId: string | undefined,
     @Query(new ZodValidationPipe(listQuerySchema)) query: ListQuery,
+    @CurrentUser() user: RequestUser,
   ) {
     const safeTab: AppointmentTab = (APPOINTMENT_TABS as readonly string[]).includes(tab ?? '')
       ? (tab as AppointmentTab)
       : 'today';
-    return this.appointments.list(branchId, safeTab, doctorId, query);
+    return this.appointments.list(branchId, safeTab, doctorId, query, user);
   }
 
   // Static sub-routes declared BEFORE ':id' so they aren't shadowed.

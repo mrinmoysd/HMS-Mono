@@ -16,6 +16,8 @@ import { AuditService } from '../common/audit/audit.service';
 import { SequenceService } from '../common/sequence/sequence.service';
 import { paginate, toPrismaPage } from '../common/pagination';
 import type { RequestUser } from '../common/types/request-user';
+import { patientScope } from '../settings/doctor-restriction';
+import { GeneralSettingsCache } from '../settings/general-settings.cache';
 
 @Injectable()
 export class PatientService {
@@ -23,14 +25,23 @@ export class PatientService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly sequence: SequenceService,
+    private readonly general: GeneralSettingsCache,
   ) {}
 
-  async list(branchId: string, query: PatientListQuery): Promise<Paginated<PatientDto>> {
+  async list(
+    branchId: string,
+    query: PatientListQuery,
+    user?: RequestUser,
+  ): Promise<Paginated<PatientDto>> {
+    // Doctor Restriction Mode: a doctor sees only patients they have an
+    // encounter or appointment with. Empty object when it does not apply.
+    const scope = patientScope(user, await this.general.doctorRestriction(branchId));
     const { skip, take, orderBy } = toPrismaPage(query);
     // Match phone on the digits-only key too, so a plain-digits search finds
     // patients regardless of how their number was formatted on entry.
     const searchDigits = query.search ? canonicalizePhone(query.search) : null;
     const where: Prisma.PatientWhereInput = {
+      ...scope,
       branchId,
       deletedAt: null,
       ...(query.disabled ? { isDisabled: query.disabled === 'true' } : {}),

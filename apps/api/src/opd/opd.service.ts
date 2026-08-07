@@ -23,6 +23,8 @@ import { paginate, toPrismaPage } from '../common/pagination';
 import { resolveCaseId } from '../common/case';
 import { startOfToday, endOfToday } from '../common/dates';
 import type { RequestUser } from '../common/types/request-user';
+import { consultantScope } from '../settings/doctor-restriction';
+import { GeneralSettingsCache } from '../settings/general-settings.cache';
 
 const include = {
   patient: { select: { name: true } },
@@ -50,9 +52,16 @@ export class OpdService {
     private readonly sequence: SequenceService,
     private readonly invoices: InvoiceService,
     private readonly ipd: IpdService,
+    private readonly general: GeneralSettingsCache,
   ) {}
 
-  async list(branchId: string, tab: OpdTab, query: ListQuery): Promise<Paginated<OpdVisitDto>> {
+  async list(
+    branchId: string,
+    tab: OpdTab,
+    query: ListQuery,
+    user?: RequestUser,
+  ): Promise<Paginated<OpdVisitDto>> {
+    const scope = consultantScope(user, await this.general.doctorRestriction(branchId));
     const { skip, take } = toPrismaPage(query);
     const dateFilter: Prisma.OpdVisitWhereInput =
       tab === 'today'
@@ -61,6 +70,7 @@ export class OpdService {
           ? { appointmentDate: { gt: endOfToday() } }
           : { appointmentDate: { lt: startOfToday() } };
     const where: Prisma.OpdVisitWhereInput = {
+      ...scope,
       branchId,
       deletedAt: null,
       ...dateFilter,

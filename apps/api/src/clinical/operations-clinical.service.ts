@@ -10,6 +10,7 @@ import type {
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit/audit.service';
 import type { RequestUser } from '../common/types/request-user';
+import { SequenceService } from '../common/sequence/sequence.service';
 
 interface EncounterScope {
   patientId: string;
@@ -22,6 +23,7 @@ export class OperationsClinicalService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly sequence: SequenceService,
   ) {}
 
   private scope(q: EncounterScope) {
@@ -43,6 +45,11 @@ export class OperationsClinicalService {
   }
 
   async createOperation(user: RequestUser, branchId: string, input: CreateOperationInput): Promise<OperationRecordDto> {
+    // OTREF, but only when the caller left it blank: `refNo` is a field the
+    // surgeon can fill with the theatre's own reference, and overwriting that
+    // with a generated one would lose the number the OT register uses.
+    const refNo = input.refNo || (await this.sequence.next(branchId, 'operation'));
+
     const row = await this.prisma.operationRecord.create({
       data: {
         branchId,
@@ -60,7 +67,7 @@ export class OperationsClinicalService {
         otTechnician: input.otTechnician || null,
         otAssistant: input.otAssistant || null,
         result: input.result || null,
-        refNo: input.refNo || null,
+        refNo,
         remark: input.remark || null,
         createdById: user.id,
       },

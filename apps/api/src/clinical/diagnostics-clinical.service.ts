@@ -13,6 +13,7 @@ import type {
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit/audit.service';
 import type { RequestUser } from '../common/types/request-user';
+import { SequenceService } from '../common/sequence/sequence.service';
 
 interface EncounterScope {
   patientId: string;
@@ -25,6 +26,7 @@ export class DiagnosticsClinicalService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly sequence: SequenceService,
   ) {}
 
   /** Resolve staff names for the *ById columns (models keep plain FK ids, no relations). */
@@ -147,9 +149,19 @@ export class DiagnosticsClinicalService {
   }
 
   async createPrescription(user: RequestUser, branchId: string, input: CreatePrescriptionInput): Promise<PrescriptionDto> {
+    // IPD and OPD prescriptions are numbered from separate counters, matching
+    // the two Prefix Setting rows. Anything that is not an IPD encounter —
+    // including a prescription written outside an encounter — numbers as OPD,
+    // because that is where the reference puts walk-in prescriptions.
+    const prescriptionNo = await this.sequence.next(
+      branchId,
+      input.encounterType === 'ipd' ? 'ipd_prescription' : 'opd_prescription',
+    );
+
     const row = await this.prisma.prescription.create({
       data: {
         branchId,
+        prescriptionNo,
         patientId: input.patientId,
         encounterType: input.encounterType ?? null,
         encounterId: input.encounterId ?? null,

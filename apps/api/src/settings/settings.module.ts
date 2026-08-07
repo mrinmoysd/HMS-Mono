@@ -4,6 +4,7 @@ import { SettingsService } from './settings.service';
 import { SettingsCrypto } from './settings.crypto';
 import { PrefixService } from './prefix.service';
 import { ModuleAccessService } from './module-access.service';
+import { GeneralSettingsCache } from './general-settings.cache';
 
 /**
  * `ModuleAccessService` is exported because `PermissionsGuard` — registered as
@@ -12,7 +13,7 @@ import { ModuleAccessService } from './module-access.service';
  */
 @Module({
   controllers: [SettingsController],
-  providers: [SettingsService, SettingsCrypto, PrefixService, ModuleAccessService],
-  exports: [SettingsService, SettingsCrypto, ModuleAccessService],
+  providers: [SettingsService, SettingsCrypto, PrefixService, ModuleAccessService, GeneralSettingsCache],
+  exports: [SettingsService, SettingsCrypto, ModuleAccessService, GeneralSettingsCache],
 })
 export class SettingsModule {}

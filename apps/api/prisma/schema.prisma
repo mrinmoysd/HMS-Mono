@@ -552,6 +552,9 @@ model InvoiceItem {
 model Payment {
   id          String    @id @default(uuid()) @db.Uuid
   invoiceId   String    @db.Uuid
+  /// TRANID, generated per branch. Distinct from `reference`, which is the
+  /// payer's own cheque or UPI reference typed in by the cashier.
+  transactionNo String?
   amount      Decimal   @db.Decimal(14, 2)
   mode        String    @default("cash") // cash | card | upi | tpa | cheque
   reference   String?
@@ -2335,6 +2338,10 @@ model Prescription {
   id                 String    @id @default(uuid()) @db.Uuid
   branchId           String    @db.Uuid
   patientId          String    @db.Uuid
+  /// IPDP/OPDP number, chosen by encounterType. Nullable: rows written before
+  /// the counter existed have none, and inventing one retroactively would put
+  /// a number on a document that was printed without it.
+  prescriptionNo     String?
   encounterType      String?
   encounterId        String?   @db.Uuid
   prescribedById     String?   @db.Uuid

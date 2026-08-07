@@ -38,11 +38,12 @@ export class IpdController {
     @BranchId() branchId: string,
     @Query('tab') tab: string | undefined,
     @Query(new ZodValidationPipe(listQuerySchema)) query: ListQuery,
+    @CurrentUser() user: RequestUser,
   ) {
     const safeTab: IpdTab = (IPD_TABS as readonly string[]).includes(tab ?? '')
       ? (tab as IpdTab)
       : 'admitted';
-    return this.ipd.list(branchId, safeTab, query);
+    return this.ipd.list(branchId, safeTab, query, user);
   }
 
   @Post()

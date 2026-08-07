@@ -16,6 +16,7 @@ import { SettingsService } from './settings.service';
 import { PrefixService } from './prefix.service';
 import { SETTINGS_NAV } from './settings.nav';
 import { ModuleAccessService, MODULE_SETTING_KEY } from './module-access.service';
+import { GeneralSettingsCache } from './general-settings.cache';
 import { RequireRole } from '../rbac/require-role.decorator';
 import { Authenticated } from '../rbac/authenticated.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -41,6 +42,7 @@ export class SettingsController {
     private readonly settings: SettingsService,
     private readonly prefixes: PrefixService,
     private readonly moduleAccess: ModuleAccessService,
+    private readonly generalCache: GeneralSettingsCache,
   ) {}
 
   /** The rail, plus whether credential storage is usable on this deployment. */
@@ -58,11 +60,16 @@ export class SettingsController {
 
   @Put('general')
   @RequireRole('super_admin', 'admin')
-  setGeneral(
+  async setGeneral(
     @CurrentUser() user: RequestUser,
+    @BranchId() branchId: string,
     @Body(new ZodValidationPipe(generalSettingSchema)) body: GeneralSettingInput,
   ) {
-    return this.settings.set(user, GENERAL_SETTING_KEY, generalSettingSchema, body);
+    const saved = await this.settings.set(user, GENERAL_SETTING_KEY, generalSettingSchema, body);
+    // Doctor Restriction Mode gates the patient/OPD/IPD lists, so a change has
+    // to bite on the next request rather than up to a TTL later.
+    this.generalCache.invalidate(branchId);
+    return saved;
   }
 
   /** The Modules screen: which modules are switched off for this branch. */

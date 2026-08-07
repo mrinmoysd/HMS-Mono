@@ -9,8 +9,10 @@ import { OperationsClinicalController } from './operations-clinical.controller';
 import { OperationsClinicalService } from './operations-clinical.service';
 import { IpdClinicalController } from './ipd-clinical.controller';
 import { IpdClinicalService } from './ipd-clinical.service';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
+  imports: [SettingsModule],
   controllers: [ClinicalController, DiagnosticsClinicalController, OperationsClinicalController, IpdClinicalController],
   providers: [ClinicalService, VitalTypeService, ProfileService, DiagnosticsClinicalService, OperationsClinicalService, IpdClinicalService],
 })

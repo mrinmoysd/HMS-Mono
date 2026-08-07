@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import {
@@ -13,6 +13,7 @@ import { Authenticated } from '../rbac/authenticated.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import type { RequestUser } from '../common/types/request-user';
+import { PatientPanelGuard } from './patient-panel.guard';
 
 const paySchema = z.object({ amount: z.coerce.number().min(0) });
 
@@ -27,6 +28,7 @@ const paySchema = z.object({ amount: z.coerce.number().min(0) });
  * check that matters here is ownership, and it lives in the service.
  */
 @ApiTags('portal')
+@UseGuards(PatientPanelGuard)
 @Controller('portal')
 export class PortalController {
   constructor(private readonly portal: PortalService) {}

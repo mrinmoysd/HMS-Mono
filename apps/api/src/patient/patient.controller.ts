@@ -45,8 +45,12 @@ export class PatientController {
   // not separately gated here — same limitation as the IPD tabs, recorded
   // rather than faked.
   @RequireFeature('patient.patient', 'view')
-  list(@BranchId() branchId: string, @Query(new ZodValidationPipe(patientListQuerySchema)) query: PatientListQuery) {
-    return this.patients.list(branchId, query);
+  list(
+    @BranchId() branchId: string,
+    @CurrentUser() user: RequestUser,
+    @Query(new ZodValidationPipe(patientListQuerySchema)) query: PatientListQuery,
+  ) {
+    return this.patients.list(branchId, query, user);
   }
 
   // Declared before ':id' so the literal route wins over the UUID param.

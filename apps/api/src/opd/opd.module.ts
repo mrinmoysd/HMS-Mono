@@ -3,9 +3,10 @@ import { BillingModule } from '../billing/billing.module';
 import { IpdModule } from '../ipd/ipd.module';
 import { OpdController } from './opd.controller';
 import { OpdService } from './opd.service';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
-  imports: [BillingModule, IpdModule], // shared InvoiceService + IpdService for move-to-ipd
+  imports: [SettingsModule, BillingModule, IpdModule], // shared InvoiceService + IpdService for move-to-ipd
   controllers: [OpdController],
   providers: [OpdService],
   exports: [OpdService], // AppointmentService converts an appointment into a visit

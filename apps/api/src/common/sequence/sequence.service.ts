@@ -24,6 +24,11 @@ const DEFAULT_PREFIXES: Record<string, string> = {
   income: 'INC',
   expense: 'EXP',
   staff: 'STF',
+  // The four the Prefix screen listed while nothing generated from them.
+  ipd_prescription: 'IPDP',
+  opd_prescription: 'OPDP',
+  operation: 'OTREF',
+  transaction: 'TRANID',
   // BREF/DREF match the reference and PREFIX_FIELDS. Only new branches pick
   // these up: a branch that already has a counter keeps the prefix its existing
   // records were issued with, because renumbering would invalidate every
