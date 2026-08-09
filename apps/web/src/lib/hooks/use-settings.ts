@@ -3,6 +3,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   GeneralSettingInput,
+  NotificationEventDef,
+  NotificationEventConfig,
+  NotificationSettingInput,
+  SystemNotificationEventDef,
+  SystemNotificationEventConfig,
+  SystemNotificationSettingInput,
   ModuleSettingInput,
   ModuleStateDto,
   ModuleToggleRow,
@@ -15,6 +21,16 @@ import { api } from '@/lib/api';
 interface ModulesResponse {
   rows: ModuleToggleRow[];
   disabled: string[];
+}
+
+interface NotificationsResponse {
+  events: NotificationEventDef[];
+  config: Record<string, NotificationEventConfig>;
+}
+
+interface SystemNotificationsResponse {
+  events: SystemNotificationEventDef[];
+  config: Record<string, SystemNotificationEventConfig>;
 }
 
 export function useSettingsOverview() {
@@ -84,5 +100,37 @@ export function useSavePrefixes() {
   return useMutation({
     mutationFn: (body: PrefixUpdateInput) => api.put<PrefixRowDto[]>('/settings/prefixes', body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings-prefixes'] }),
+  });
+}
+
+export function useNotificationSettings() {
+  return useQuery({
+    queryKey: ['settings-notifications'],
+    queryFn: () => api.get<NotificationsResponse>('/settings/notifications'),
+  });
+}
+
+export function useSaveNotificationSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: NotificationSettingInput) =>
+      api.put<NotificationsResponse>('/settings/notifications', body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settings-notifications'] }),
+  });
+}
+
+export function useSystemNotificationSettings() {
+  return useQuery({
+    queryKey: ['settings-system-notifications'],
+    queryFn: () => api.get<SystemNotificationsResponse>('/settings/system-notifications'),
+  });
+}
+
+export function useSaveSystemNotificationSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SystemNotificationSettingInput) =>
+      api.put<SystemNotificationsResponse>('/settings/system-notifications', body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settings-system-notifications'] }),
   });
 }

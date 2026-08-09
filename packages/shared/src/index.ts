@@ -44,3 +44,4 @@ export * from './dto/diagnostics-clinical';
 export * from './dto/operations-clinical';
 export * from './dto/ipd-clinical';
 export * from './dto/patient-report';
+export * from './dto/notifications';

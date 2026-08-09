@@ -86,6 +86,10 @@ const ROLE_GATED_ROUTES = [
   'PUT /settings/general',
   'GET /settings/modules',
   'PUT /settings/modules',
+  'GET /settings/notifications',
+  'PUT /settings/notifications',
+  'GET /settings/system-notifications',
+  'PUT /settings/system-notifications',
   'GET /settings/prefixes',
   'PUT /settings/prefixes',
 ];

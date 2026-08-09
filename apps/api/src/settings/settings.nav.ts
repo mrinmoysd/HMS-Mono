@@ -14,8 +14,8 @@ export const SETTINGS_NAV: SettingsNavItemDto[] = [
   g('attendance', 'Attendance Setting', 'Identity', null),
   g('theme', 'Theme Studio', 'Identity', null),
 
-  g('notification', 'Notification Setting', 'Notifications', null),
-  g('system_notification', 'System Notification Setting', 'Notifications', null),
+  g('notification', 'Notification Setting', 'Notifications', '/setup/settings/notifications'),
+  g('system_notification', 'System Notification Setting', 'Notifications', '/setup/settings/system-notifications'),
 
   g('sms', 'SMS Setting', 'Channels', null),
   g('whatsapp', 'WhatsApp Setting', 'Channels', null),

@@ -15,7 +15,7 @@ cannot be answered without one).
 
 ## Summary
 
-- routes: **383**
+- routes: **387**
 - feature-gated: 307
 - resolver-gated: 34
 - module-gated (documented exceptions): 13
@@ -386,8 +386,12 @@ cannot be answered without one).
 | GET | `/settings/modules` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | PUT | `/settings/modules` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | GET | `/settings/modules/state` | *authenticated* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| GET | `/settings/notifications` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| PUT | `/settings/notifications` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | GET | `/settings/prefixes` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | PUT | `/settings/prefixes` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| GET | `/settings/system-notifications` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| PUT | `/settings/system-notifications` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | GET | `/shifts` | `appointment.shift:view` | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | · |
 | POST | `/shifts` | `appointment.shift:add` | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | · |
 | DELETE | `/shifts/:id` | `appointment.shift:delete` | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | · |

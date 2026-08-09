@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isToggleableModule } from '../rbac/module-toggles';
+import { notificationSettingSchema, systemNotificationSettingSchema } from './notifications';
 
 /**
  * The settings registry (parity plan, phase G0).
@@ -100,6 +101,8 @@ export interface ModuleStateDto {
 export const SETTINGS_SCHEMAS = {
   general: generalSettingSchema,
   modules: moduleSettingSchema,
+  notifications: notificationSettingSchema,
+  system_notifications: systemNotificationSettingSchema,
 } as const;
 
 // ── Prefix Setting ─────────────────────────────────────────────────────────

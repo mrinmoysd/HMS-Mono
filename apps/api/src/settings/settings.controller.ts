@@ -1,15 +1,22 @@
-import { Body, Controller, Get, Put } from '@nestjs/common';
+import { Body, Controller, Get, Put, UnprocessableEntityException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   generalSettingSchema,
   moduleSettingSchema,
+  notificationSettingSchema,
+  systemNotificationSettingSchema,
   prefixUpdateSchema,
   sanitiseDisabled,
+  unknownPlaceholders,
   MODULE_TOGGLES,
+  NOTIFICATION_EVENTS,
+  SYSTEM_NOTIFICATION_EVENTS,
   PREFIX_FIELDS,
   type GeneralSettingInput,
   type ModuleSettingInput,
   type ModuleStateDto,
+  type NotificationSettingInput,
+  type SystemNotificationSettingInput,
   type PrefixUpdateInput,
 } from '@smart-hospital/shared';
 import { SettingsService } from './settings.service';
@@ -25,6 +32,38 @@ import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import type { RequestUser } from '../common/types/request-user';
 
 export const GENERAL_SETTING_KEY = 'general';
+export const NOTIFICATION_KEY = 'notifications';
+export const SYSTEM_NOTIFICATION_KEY = 'system_notifications';
+
+/**
+ * Refuse a template whose placeholders its event cannot supply.
+ *
+ * Validated on the server, not only in the screen: a `{{patinet_name}}` typo
+ * saved here would later render as a hole in an SMS to a patient, and nothing
+ * downstream would notice. Failing the save is the last moment anyone is
+ * looking.
+ */
+function assertTemplatesResolvable(
+  events: Record<string, { subject?: string; body?: string }>,
+  catalogue: readonly { key: string; placeholders: readonly string[] }[],
+): void {
+  const byKey = new Map(catalogue.map((e) => [e.key, e.placeholders]));
+  const problems: string[] = [];
+  for (const [key, cfg] of Object.entries(events)) {
+    const allowed = byKey.get(key);
+    if (!allowed) {
+      problems.push(`${key}: unknown event`);
+      continue;
+    }
+    for (const field of ['subject', 'body'] as const) {
+      const bad = unknownPlaceholders(cfg[field] ?? '', allowed);
+      if (bad.length) problems.push(`${key} ${field}: ${bad.map((b) => `{{${b}}}`).join(', ')}`);
+    }
+  }
+  if (problems.length) {
+    throw new UnprocessableEntityException(`Unknown placeholders — ${problems.join(' · ')}`);
+  }
+}
 
 /**
  * Setup ▸ Settings (parity plan, phase G0/G1/G2).
@@ -107,6 +146,51 @@ export class SettingsController {
   async moduleState(@BranchId() branchId: string): Promise<ModuleStateDto> {
     const value = await this.settings.get(branchId, MODULE_SETTING_KEY, moduleSettingSchema);
     return { disabled: sanitiseDisabled(value.disabled) };
+  }
+
+  /**
+   * Notification Setting — user-facing events × channels, plus templates.
+   *
+   * The event catalogue ships with the response rather than being fetched
+   * separately: the screen cannot render a row without knowing which
+   * placeholders that event supplies, and splitting them would let the two
+   * drift.
+   */
+  @Get('notifications')
+  @RequireRole('super_admin', 'admin')
+  async getNotifications(@BranchId() branchId: string) {
+    const value = await this.settings.get(branchId, NOTIFICATION_KEY, notificationSettingSchema);
+    return { events: NOTIFICATION_EVENTS, config: value.events };
+  }
+
+  @Put('notifications')
+  @RequireRole('super_admin', 'admin')
+  async setNotifications(
+    @CurrentUser() user: RequestUser,
+    @Body(new ZodValidationPipe(notificationSettingSchema)) body: NotificationSettingInput,
+  ) {
+    assertTemplatesResolvable(body.events, NOTIFICATION_EVENTS);
+    const saved = await this.settings.set(user, NOTIFICATION_KEY, notificationSettingSchema, body);
+    return { events: NOTIFICATION_EVENTS, config: saved.events };
+  }
+
+  /** System Notification Setting — internal events with Staff/Patient toggles. */
+  @Get('system-notifications')
+  @RequireRole('super_admin', 'admin')
+  async getSystemNotifications(@BranchId() branchId: string) {
+    const value = await this.settings.get(branchId, SYSTEM_NOTIFICATION_KEY, systemNotificationSettingSchema);
+    return { events: SYSTEM_NOTIFICATION_EVENTS, config: value.events };
+  }
+
+  @Put('system-notifications')
+  @RequireRole('super_admin', 'admin')
+  async setSystemNotifications(
+    @CurrentUser() user: RequestUser,
+    @Body(new ZodValidationPipe(systemNotificationSettingSchema)) body: SystemNotificationSettingInput,
+  ) {
+    assertTemplatesResolvable(body.events, SYSTEM_NOTIFICATION_EVENTS);
+    const saved = await this.settings.set(user, SYSTEM_NOTIFICATION_KEY, systemNotificationSettingSchema, body);
+    return { events: SYSTEM_NOTIFICATION_EVENTS, config: saved.events };
   }
 
   /**
