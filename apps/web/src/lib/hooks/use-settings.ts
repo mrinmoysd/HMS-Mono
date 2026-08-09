@@ -2,6 +2,11 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  Channel,
+  ChannelSettingDto,
+  ChannelSettingInput,
+  ChannelTestInput,
+  ChannelTestResult,
   GeneralSettingInput,
   NotificationEventDef,
   NotificationEventConfig,
@@ -116,6 +121,34 @@ export function useSaveNotificationSettings() {
     mutationFn: (body: NotificationSettingInput) =>
       api.put<NotificationsResponse>('/settings/notifications', body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings-notifications'] }),
+  });
+}
+
+export function useChannelSetting(channel: Channel) {
+  return useQuery({
+    queryKey: ['settings-channel', channel],
+    queryFn: () => api.get<ChannelSettingDto>(`/settings/channels/${channel}`),
+  });
+}
+
+export function useSaveChannelSetting(channel: Channel) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ChannelSettingInput) =>
+      api.put<ChannelSettingDto>(`/settings/channels/${channel}`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settings-channel', channel] }),
+  });
+}
+
+/**
+ * Deliberately not a `useMutation` with cache invalidation: a test send changes
+ * nothing, and re-fetching the settings after one would discard the admin's
+ * unsaved edits.
+ */
+export function useTestChannel(channel: Channel) {
+  return useMutation({
+    mutationFn: (body: ChannelTestInput) =>
+      api.post<ChannelTestResult>(`/settings/channels/${channel}/test`, body),
   });
 }
 

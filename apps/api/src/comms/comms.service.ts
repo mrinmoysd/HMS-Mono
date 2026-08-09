@@ -17,6 +17,7 @@ import type {
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit/audit.service';
 import { paginate, toPrismaPage } from '../common/pagination';
+import { ChannelsService } from '../settings/channels/channels.service';
 import type { RequestUser } from '../common/types/request-user';
 
 /** Deterministic 6-char display token for the patient-credential table. */
@@ -34,6 +35,7 @@ export class CommsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly channels: ChannelsService,
   ) {}
 
   // ── Notice board ─────────────────────────────────────────────
@@ -101,23 +103,83 @@ export class CommsService {
     await this.audit.record({ branchId, userId: user.id, action: 'delete', entity: 'notification', entityId: id });
   }
 
-  // ── Send SMS / Email (recorded; a real gateway/queue would dispatch here) ──
-  async sendSms(user: RequestUser, branchId: string, input: SmsSendInput): Promise<{ ok: true }> {
+  // ── Send SMS / Email ─────────────────────────────────────────────────
+
+  /**
+   * Who a Group or Individual send actually reaches.
+   *
+   * Recipients with no address on that channel are counted as skipped rather
+   * than attempted — "sent to 40 of 52, 12 have no mobile number" is a fact the
+   * sender can act on; a silent 40 is not.
+   */
+  private async recipients(
+    branchId: string,
+    input: { mode: 'group' | 'individual'; roles: string[]; patientId?: string | null },
+    field: 'phone' | 'email',
+  ): Promise<{ addresses: string[]; skipped: number }> {
+    if (input.mode === 'individual') {
+      if (!input.patientId) return { addresses: [], skipped: 0 };
+      const p = await this.prisma.patient.findFirst({
+        where: { id: input.patientId, branchId, deletedAt: null },
+        select: { phone: true, email: true },
+      });
+      const value = p?.[field] ?? '';
+      return value ? { addresses: [value], skipped: 0 } : { addresses: [], skipped: p ? 1 : 0 };
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: { branchId, deletedAt: null, isActive: true, role: { slug: { in: input.roles } } },
+      select: { phone: true, email: true },
+    });
+    const addresses = users.map((u) => u[field] ?? '').filter((v): v is string => !!v);
+    return { addresses, skipped: users.length - addresses.length };
+  }
+
+  /**
+   * Deliver through the branch's configured gateway, then record what happened.
+   *
+   * One failing recipient does not abandon the rest — a single bad number in a
+   * fifty-person broadcast would otherwise silently truncate the send.
+   */
+  private async broadcast(
+    branchId: string,
+    channel: 'sms' | 'email',
+    addresses: string[],
+    msg: { subject: string; body: string },
+  ): Promise<{ delivered: number; failed: number; detail: string }> {
+    if (!addresses.length) return { delivered: 0, failed: 0, detail: 'No recipient had an address on this channel.' };
+    let delivered = 0;
+    let firstError = '';
+    for (const to of addresses) {
+      const res = await this.channels.send(branchId, channel, { to, body: msg.body, subject: msg.subject });
+      if (res.ok) delivered += 1;
+      else if (!firstError) firstError = res.detail;
+    }
+    const failed = addresses.length - delivered;
+    const detail = failed ? firstError : `Delivered to ${delivered} recipient(s).`;
+    return { delivered, failed, detail };
+  }
+
+  async sendSms(user: RequestUser, branchId: string, input: SmsSendInput) {
     const audience = input.mode === 'individual' ? 'Individual' : input.roles.join(', ');
+    const { addresses, skipped } = await this.recipients(branchId, input, 'phone');
+    const result = await this.broadcast(branchId, 'sms', addresses, { subject: input.subject, body: input.message });
     const n = await this.prisma.notification.create({
       data: { branchId, type: 'sms', subject: input.subject, body: input.message, roles: input.roles, audience, createdById: user.id },
     });
     await this.audit.record({ branchId, userId: user.id, action: 'send_sms', entity: 'notification', entityId: n.id });
-    return { ok: true };
+    return { ok: true as const, ...result, skipped };
   }
 
-  async sendEmail(user: RequestUser, branchId: string, input: EmailSendInput): Promise<{ ok: true }> {
+  async sendEmail(user: RequestUser, branchId: string, input: EmailSendInput) {
     const audience = input.mode === 'individual' ? 'Individual' : input.roles.join(', ');
+    const { addresses, skipped } = await this.recipients(branchId, input, 'email');
+    const result = await this.broadcast(branchId, 'email', addresses, { subject: input.subject, body: input.message });
     const n = await this.prisma.notification.create({
       data: { branchId, type: 'email', subject: input.subject, body: input.message, roles: input.roles, audience, createdById: user.id },
     });
     await this.audit.record({ branchId, userId: user.id, action: 'send_email', entity: 'notification', entityId: n.id });
-    return { ok: true };
+    return { ok: true as const, ...result, skipped };
   }
 
   // ── Patient credentials ──────────────────────────────────────

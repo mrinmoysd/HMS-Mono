@@ -92,6 +92,9 @@ const ROLE_GATED_ROUTES = [
   'PUT /settings/system-notifications',
   'GET /settings/prefixes',
   'PUT /settings/prefixes',
+  'GET /settings/channels/:channel',
+  'PUT /settings/channels/:channel',
+  'POST /settings/channels/:channel/test',
 ];
 
 /**

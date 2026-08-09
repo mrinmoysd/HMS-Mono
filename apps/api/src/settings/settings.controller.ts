@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, UnprocessableEntityException } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, Post, Put, UnprocessableEntityException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   generalSettingSchema,
@@ -6,8 +6,12 @@ import {
   notificationSettingSchema,
   systemNotificationSettingSchema,
   prefixUpdateSchema,
+  channelSettingSchema,
+  channelTestSchema,
+  isChannel,
   sanitiseDisabled,
   unknownPlaceholders,
+  CHANNEL_META,
   MODULE_TOGGLES,
   NOTIFICATION_EVENTS,
   SYSTEM_NOTIFICATION_EVENTS,
@@ -18,12 +22,16 @@ import {
   type NotificationSettingInput,
   type SystemNotificationSettingInput,
   type PrefixUpdateInput,
+  type Channel,
+  type ChannelSettingInput,
+  type ChannelTestInput,
 } from '@smart-hospital/shared';
 import { SettingsService } from './settings.service';
 import { PrefixService } from './prefix.service';
 import { SETTINGS_NAV } from './settings.nav';
 import { ModuleAccessService, MODULE_SETTING_KEY } from './module-access.service';
 import { GeneralSettingsCache } from './general-settings.cache';
+import { ChannelsService } from './channels/channels.service';
 import { RequireRole } from '../rbac/require-role.decorator';
 import { Authenticated } from '../rbac/authenticated.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -82,6 +90,7 @@ export class SettingsController {
     private readonly prefixes: PrefixService,
     private readonly moduleAccess: ModuleAccessService,
     private readonly generalCache: GeneralSettingsCache,
+    private readonly channels: ChannelsService,
   ) {}
 
   /** The rail, plus whether credential storage is usable on this deployment. */
@@ -211,6 +220,58 @@ export class SettingsController {
   ) {
     return this.prefixes.update(user, body);
   }
+
+  // ── Channels: SMS / WhatsApp / Email ────────────────────────────────
+
+  /**
+   * Credentials come back masked, never in the clear — see ChannelsService.
+   * There is no reveal endpoint by design.
+   */
+  @Get('channels/:channel')
+  @RequireRole('super_admin', 'admin')
+  getChannel(@BranchId() branchId: string, @Param('channel') channel: string) {
+    return this.channels.view(branchId, assertChannel(channel));
+  }
+
+  @Put('channels/:channel')
+  @RequireRole('super_admin', 'admin')
+  setChannel(
+    @CurrentUser() user: RequestUser,
+    @Param('channel') channel: string,
+    @Body(new ZodValidationPipe(channelSettingSchema)) body: ChannelSettingInput,
+  ) {
+    return this.channels.save(user, assertChannel(channel), body);
+  }
+
+  /**
+   * Send one real message through the active provider.
+   *
+   * The only honest way to know a gateway works: credentials that parse, an
+   * account that is funded, and a sender the carrier has actually approved are
+   * three different things, and only a delivered message proves all three. It
+   * uses the same code path as production sending, so a pass here means the
+   * next appointment reminder goes out too.
+   */
+  @Post('channels/:channel/test')
+  @RequireRole('super_admin', 'admin')
+  testChannel(
+    @BranchId() branchId: string,
+    @Param('channel') channel: string,
+    @Body(new ZodValidationPipe(channelTestSchema)) body: ChannelTestInput,
+  ) {
+    const ch = assertChannel(channel);
+    return this.channels.send(branchId, ch, {
+      to: body.to,
+      body: body.message,
+      subject: `Test message from ${CHANNEL_META[ch].label.replace(' Setting', '')}`,
+    });
+  }
+}
+
+/** A path segment is user input; only the three real channels get through. */
+function assertChannel(value: string): Channel {
+  if (!isChannel(value)) throw new NotFoundException(`Unknown channel: ${value}`);
+  return value;
 }
 
 /** Exported for the test that asserts the rail and the field list agree. */

@@ -45,3 +45,4 @@ export * from './dto/operations-clinical';
 export * from './dto/ipd-clinical';
 export * from './dto/patient-report';
 export * from './dto/notifications';
+export * from './dto/channels';

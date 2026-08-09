@@ -44,10 +44,14 @@ export class SettingsService {
     key: string,
     schema: S,
     value: unknown,
-    opts: { isSecret?: boolean } = {},
+    opts: { isSecret?: boolean; preEncrypted?: boolean } = {},
   ): Promise<z.infer<S>> {
     const parsed = schema.parse(value) as z.infer<S>;
-    const stored = opts.isSecret ? this.encryptStrings(parsed) : parsed;
+    // `preEncrypted` is for payloads where only *some* fields are secret and
+    // they are nested — channel credentials, where `activeProvider` and
+    // `status` must stay readable. Blanket top-level encryption would encrypt
+    // those too, and a status nobody can read is a status nobody can act on.
+    const stored = opts.isSecret && !opts.preEncrypted ? this.encryptStrings(parsed) : parsed;
 
     await this.prisma.setting.upsert({
       where: { branchId_key: { branchId: actor.branchId, key } },

@@ -17,9 +17,9 @@ export const SETTINGS_NAV: SettingsNavItemDto[] = [
   g('notification', 'Notification Setting', 'Notifications', '/setup/settings/notifications'),
   g('system_notification', 'System Notification Setting', 'Notifications', '/setup/settings/system-notifications'),
 
-  g('sms', 'SMS Setting', 'Channels', null),
-  g('whatsapp', 'WhatsApp Setting', 'Channels', null),
-  g('email', 'Email Setting', 'Channels', null),
+  g('sms', 'SMS Setting', 'Channels', '/setup/settings/sms'),
+  g('whatsapp', 'WhatsApp Setting', 'Channels', '/setup/settings/whatsapp'),
+  g('email', 'Email Setting', 'Channels', '/setup/settings/email'),
   g('payment', 'Payment Methods', 'Channels', null),
 
   g('front_cms', 'Front CMS Setting', 'Platform', null),
