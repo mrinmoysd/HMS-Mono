@@ -7,6 +7,8 @@ import type {
   ChannelSettingInput,
   ChannelTestInput,
   ChannelTestResult,
+  PaymentSettingDto,
+  PaymentSettingInput,
   GeneralSettingInput,
   NotificationEventDef,
   NotificationEventConfig,
@@ -149,6 +151,22 @@ export function useTestChannel(channel: Channel) {
   return useMutation({
     mutationFn: (body: ChannelTestInput) =>
       api.post<ChannelTestResult>(`/settings/channels/${channel}/test`, body),
+  });
+}
+
+export function usePaymentMethods() {
+  return useQuery({
+    queryKey: ['settings-payment-methods'],
+    queryFn: () => api.get<PaymentSettingDto>('/settings/payment-methods'),
+  });
+}
+
+export function useSavePaymentMethods() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: PaymentSettingInput) =>
+      api.put<PaymentSettingDto>('/settings/payment-methods', body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settings-payment-methods'] }),
   });
 }
 

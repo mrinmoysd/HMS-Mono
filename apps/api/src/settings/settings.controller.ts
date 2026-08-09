@@ -8,6 +8,7 @@ import {
   prefixUpdateSchema,
   channelSettingSchema,
   channelTestSchema,
+  paymentSettingSchema,
   isChannel,
   sanitiseDisabled,
   unknownPlaceholders,
@@ -25,6 +26,7 @@ import {
   type Channel,
   type ChannelSettingInput,
   type ChannelTestInput,
+  type PaymentSettingInput,
 } from '@smart-hospital/shared';
 import { SettingsService } from './settings.service';
 import { PrefixService } from './prefix.service';
@@ -32,6 +34,7 @@ import { SETTINGS_NAV } from './settings.nav';
 import { ModuleAccessService, MODULE_SETTING_KEY } from './module-access.service';
 import { GeneralSettingsCache } from './general-settings.cache';
 import { ChannelsService } from './channels/channels.service';
+import { PaymentsService } from './payments/payments.service';
 import { RequireRole } from '../rbac/require-role.decorator';
 import { Authenticated } from '../rbac/authenticated.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -265,6 +268,29 @@ export class SettingsController {
       body: body.message,
       subject: `Test message from ${CHANNEL_META[ch].label.replace(' Setting', '')}`,
     });
+  }
+}
+
+/** Payment Methods — the online gateways, their credentials and their fees. */
+@ApiTags('settings')
+@ApiBearerAuth()
+@Controller('settings/payment-methods')
+export class PaymentMethodsController {
+  constructor(private readonly payments: PaymentsService) {}
+
+  @Get()
+  @RequireRole('super_admin', 'admin')
+  get(@BranchId() branchId: string) {
+    return this.payments.view(branchId);
+  }
+
+  @Put()
+  @RequireRole('super_admin', 'admin')
+  set(
+    @CurrentUser() user: RequestUser,
+    @Body(new ZodValidationPipe(paymentSettingSchema)) body: PaymentSettingInput,
+  ) {
+    return this.payments.save(user, body);
   }
 }
 

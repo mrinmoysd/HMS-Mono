@@ -9,11 +9,14 @@ import type {
   PortalProfileDto,
   PortalRegisterInput,
   PortalVisitDto,
+  PaymentOrderDto,
+  PaymentVerifyInput,
 } from '@smart-hospital/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { AuditService } from '../common/audit/audit.service';
 import { SequenceService } from '../common/sequence/sequence.service';
+import { PaymentsService } from '../settings/payments/payments.service';
 import { InvoiceService } from '../billing/invoice.service';
 import type { RequestUser } from '../common/types/request-user';
 
@@ -25,6 +28,7 @@ export class PortalService {
     private readonly audit: AuditService,
     private readonly sequence: SequenceService,
     private readonly invoices: InvoiceService,
+    private readonly payments: PaymentsService,
   ) {}
 
   /** Resolve the patient owned by the authenticated user — the scoping boundary. */
@@ -174,11 +178,69 @@ export class PortalService {
     }));
   }
 
-  async pay(user: RequestUser, invoiceId: string, amount: number): Promise<InvoiceDto> {
+  /**
+   * The invoice a portal payment is for, scoped to the signed-in patient.
+   *
+   * Every step of the payment flow re-resolves it rather than trusting an id
+   * carried over from the previous call: a patient must not be able to open an
+   * order against their own invoice and settle somebody else's with it.
+   */
+  private async ownInvoice(user: RequestUser, invoiceId: string) {
     const p = await this.requirePatient(user);
-    const invoice = await this.prisma.invoice.findFirst({ where: { id: invoiceId, patientId: p.id, deletedAt: null } });
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { id: invoiceId, patientId: p.id, deletedAt: null },
+    });
     if (!invoice) throw new ForbiddenException('Invoice not found');
-    return this.invoices.addPayment(user, p.branchId, invoiceId, amount, 'upi', 'portal');
+    return { patient: p, invoice };
+  }
+
+  /**
+   * Step 1 of paying online: open an order at the configured gateway.
+   *
+   * Nothing is recorded here. The response is what the checkout widget needs,
+   * and the order carries the invoice id in the gateway's own metadata so step
+   * 2 can prove the two belong together.
+   */
+  async payOrder(user: RequestUser, invoiceId: string, amount: number): Promise<PaymentOrderDto> {
+    const { patient, invoice } = await this.ownInvoice(user, invoiceId);
+    const balance = Number(invoice.balance);
+    if (balance <= 0) throw new BadRequestException('This invoice is already settled.');
+    if (amount > balance) {
+      throw new BadRequestException(`This invoice has ${balance.toFixed(2)} outstanding.`);
+    }
+    return this.payments.createOrder(patient.branchId, invoice.id, invoice.billNo ?? invoice.id, amount);
+  }
+
+  /**
+   * Step 2: confirm with the gateway, then record what it says was collected.
+   *
+   * The amount written down comes from the gateway, never from this request —
+   * the browser reporting a payment is a claim, not evidence. Before this
+   * existed, the portal recorded whatever amount a patient posted, with no
+   * money involved at all.
+   */
+  async payVerify(user: RequestUser, invoiceId: string, input: PaymentVerifyInput): Promise<InvoiceDto> {
+    const { patient, invoice } = await this.ownInvoice(user, invoiceId);
+    const result = await this.payments.verifyOrder(patient.branchId, invoice.id, input);
+
+    const reference = `${result.gateway}:${result.reference}`;
+    // A replayed callback must not be recorded twice. The gateway's own
+    // payment id is unique per capture, so a matching reference means this
+    // exact payment has already been taken.
+    const seen = await this.prisma.payment.findFirst({
+      where: { invoiceId: invoice.id, reference, deletedAt: null },
+    });
+    if (seen) return this.invoices.get(patient.branchId, invoice.id);
+
+    await this.audit.record({
+      branchId: patient.branchId,
+      userId: user.id,
+      action: 'portal_payment',
+      entity: 'invoice',
+      entityId: invoice.id,
+      after: { gateway: result.gateway, amount: result.amount, fee: result.fee },
+    });
+    return this.invoices.addPayment(user, patient.branchId, invoice.id, result.amount, 'online', reference);
   }
 
   async notifications(user: RequestUser) {

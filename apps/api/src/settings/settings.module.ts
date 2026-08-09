@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
-import { SettingsController } from './settings.controller';
+import { SettingsController, PaymentMethodsController } from './settings.controller';
 import { SettingsService } from './settings.service';
 import { SettingsCrypto } from './settings.crypto';
 import { PrefixService } from './prefix.service';
 import { ModuleAccessService } from './module-access.service';
 import { GeneralSettingsCache } from './general-settings.cache';
 import { ChannelsService } from './channels/channels.service';
+import { PaymentsService } from './payments/payments.service';
 
 /**
  * `ModuleAccessService` is exported because `PermissionsGuard` — registered as
@@ -17,8 +18,8 @@ import { ChannelsService } from './channels/channels.service';
  * else, not a second path with its own idea of which provider is active.
  */
 @Module({
-  controllers: [SettingsController],
-  providers: [SettingsService, SettingsCrypto, PrefixService, ModuleAccessService, GeneralSettingsCache, ChannelsService],
-  exports: [SettingsService, SettingsCrypto, ModuleAccessService, GeneralSettingsCache, ChannelsService],
+  controllers: [SettingsController, PaymentMethodsController],
+  providers: [SettingsService, SettingsCrypto, PrefixService, ModuleAccessService, GeneralSettingsCache, ChannelsService, PaymentsService],
+  exports: [SettingsService, SettingsCrypto, ModuleAccessService, GeneralSettingsCache, ChannelsService, PaymentsService],
 })
 export class SettingsModule {}

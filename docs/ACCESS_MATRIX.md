@@ -15,11 +15,11 @@ cannot be answered without one).
 
 ## Summary
 
-- routes: **390**
+- routes: **393**
 - feature-gated: 307
 - resolver-gated: 34
 - module-gated (documented exceptions): 13
-- authenticated, no permission: 13
+- authenticated, no permission: 14
 - public: 6
 - **unguarded: 0**
 
@@ -333,7 +333,8 @@ cannot be answered without one).
 | POST | `/portal/appointments` | *authenticated* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | GET | `/portal/doctors` | *authenticated* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | GET | `/portal/invoices` | *authenticated* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| POST | `/portal/invoices/:id/pay` | *authenticated* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| POST | `/portal/invoices/:id/pay/order` | *authenticated* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| POST | `/portal/invoices/:id/pay/verify` | *authenticated* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | GET | `/portal/me` | *authenticated* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | GET | `/portal/notifications` | *authenticated* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | POST | `/portal/register` | *public* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -391,6 +392,8 @@ cannot be answered without one).
 | GET | `/settings/modules/state` | *authenticated* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | GET | `/settings/notifications` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | PUT | `/settings/notifications` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| GET | `/settings/payment-methods` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| PUT | `/settings/payment-methods` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | GET | `/settings/prefixes` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | PUT | `/settings/prefixes` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | GET | `/settings/system-notifications` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |

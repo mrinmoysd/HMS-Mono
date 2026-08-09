@@ -20,7 +20,7 @@ export const SETTINGS_NAV: SettingsNavItemDto[] = [
   g('sms', 'SMS Setting', 'Channels', '/setup/settings/sms'),
   g('whatsapp', 'WhatsApp Setting', 'Channels', '/setup/settings/whatsapp'),
   g('email', 'Email Setting', 'Channels', '/setup/settings/email'),
-  g('payment', 'Payment Methods', 'Channels', null),
+  g('payment', 'Payment Methods', 'Channels', '/setup/settings/payment-methods'),
 
   g('front_cms', 'Front CMS Setting', 'Platform', null),
   g('prefix', 'Prefix Setting', 'Platform', '/setup/settings/prefix'),

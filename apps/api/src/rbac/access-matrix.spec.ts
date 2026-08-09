@@ -47,7 +47,8 @@ const AUTHENTICATED_ROUTES = [
   'GET /portal/notifications',
   'GET /portal/visits',
   'POST /portal/appointments',
-  'POST /portal/invoices/:id/pay',
+  'POST /portal/invoices/:id/pay/order',
+  'POST /portal/invoices/:id/pay/verify',
   'GET /reports/categories',
   // The sidebar needs to know which modules are off; almost no one who needs
   // that may open Settings. It returns only the disabled list.
@@ -95,6 +96,8 @@ const ROLE_GATED_ROUTES = [
   'GET /settings/channels/:channel',
   'PUT /settings/channels/:channel',
   'POST /settings/channels/:channel/test',
+  'GET /settings/payment-methods',
+  'PUT /settings/payment-methods',
 ];
 
 /**

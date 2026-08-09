@@ -1,11 +1,14 @@
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { z } from 'zod';
 import {
   portalBookSchema,
   portalRegisterSchema,
+  paymentOrderSchema,
+  paymentVerifySchema,
   type PortalBookInput,
   type PortalRegisterInput,
+  type PaymentOrderInput,
+  type PaymentVerifyInput,
 } from '@smart-hospital/shared';
 import { PortalService } from './portal.service';
 import { Public } from '../common/decorators/public.decorator';
@@ -15,7 +18,6 @@ import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import type { RequestUser } from '../common/types/request-user';
 import { PatientPanelGuard } from './patient-panel.guard';
 
-const paySchema = z.object({ amount: z.coerce.number().min(0) });
 
 /**
  * Patient self-service portal. Every endpoint (except register) is scoped to the
@@ -76,15 +78,35 @@ export class PortalController {
     return this.portal.listInvoices(user);
   }
 
+  /**
+   * Online payment, in two steps.
+   *
+   * It replaced a single `pay` endpoint that recorded whatever amount the
+   * caller posted, with no gateway involved — a patient could settle their own
+   * hospital bill by asking. Opening an order and then verifying it with the
+   * gateway is the whole point: nothing is written until the money is
+   * confirmed by the party that actually holds it.
+   */
   @Authenticated()
-  @Post('invoices/:id/pay')
+  @Post('invoices/:id/pay/order')
   @HttpCode(200)
-  pay(
+  payOrder(
     @CurrentUser() user: RequestUser,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(new ZodValidationPipe(paySchema)) body: { amount: number },
+    @Body(new ZodValidationPipe(paymentOrderSchema)) body: PaymentOrderInput,
   ) {
-    return this.portal.pay(user, id, body.amount);
+    return this.portal.payOrder(user, id, body.amount);
+  }
+
+  @Authenticated()
+  @Post('invoices/:id/pay/verify')
+  @HttpCode(200)
+  payVerify(
+    @CurrentUser() user: RequestUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(paymentVerifySchema)) body: PaymentVerifyInput,
+  ) {
+    return this.portal.payVerify(user, id, body);
   }
 
   @Authenticated()
