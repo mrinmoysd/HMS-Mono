@@ -47,3 +47,4 @@ export * from './dto/patient-report';
 export * from './dto/notifications';
 export * from './dto/channels';
 export * from './dto/payments';
+export * from './dto/users';

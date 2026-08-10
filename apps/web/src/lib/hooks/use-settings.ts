@@ -9,6 +9,11 @@ import type {
   ChannelTestResult,
   PaymentSettingDto,
   PaymentSettingInput,
+  Paginated,
+  UserAccountDto,
+  UserListQuery,
+  UserPasswordResetInput,
+  UserStatusInput,
   GeneralSettingInput,
   NotificationEventDef,
   NotificationEventConfig,
@@ -167,6 +172,39 @@ export function useSavePaymentMethods() {
     mutationFn: (body: PaymentSettingInput) =>
       api.put<PaymentSettingDto>('/settings/payment-methods', body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings-payment-methods'] }),
+  });
+}
+
+export function useSettingsUsers(query: UserListQuery) {
+  return useQuery({
+    queryKey: ['settings-users', query],
+    queryFn: () =>
+      api.get<Paginated<UserAccountDto>>(
+        `/settings/users?${new URLSearchParams({
+          type: query.type,
+          status: query.status,
+          page: String(query.page),
+          size: String(query.size),
+          ...(query.search ? { search: query.search } : {}),
+        })}`,
+      ),
+    placeholderData: (prev) => prev,
+  });
+}
+
+export function useSetUserStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: UserStatusInput & { id: string }) =>
+      api.patch<UserAccountDto>(`/settings/users/${id}/status`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settings-users'] }),
+  });
+}
+
+export function useResetUserPassword() {
+  return useMutation({
+    mutationFn: ({ id, ...body }: UserPasswordResetInput & { id: string }) =>
+      api.post<{ ok: true }>(`/settings/users/${id}/reset-password`, body),
   });
 }
 

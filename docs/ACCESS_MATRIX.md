@@ -15,7 +15,7 @@ cannot be answered without one).
 
 ## Summary
 
-- routes: **393**
+- routes: **396**
 - feature-gated: 307
 - resolver-gated: 34
 - module-gated (documented exceptions): 13
@@ -398,6 +398,9 @@ cannot be answered without one).
 | PUT | `/settings/prefixes` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | GET | `/settings/system-notifications` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | PUT | `/settings/system-notifications` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| GET | `/settings/users` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| POST | `/settings/users/:id/reset-password` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| PATCH | `/settings/users/:id/status` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | GET | `/shifts` | `appointment.shift:view` | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | · |
 | POST | `/shifts` | `appointment.shift:add` | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | · |
 | DELETE | `/shifts/:id` | `appointment.shift:delete` | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | · |

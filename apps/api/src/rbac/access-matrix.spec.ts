@@ -98,6 +98,9 @@ const ROLE_GATED_ROUTES = [
   'POST /settings/channels/:channel/test',
   'GET /settings/payment-methods',
   'PUT /settings/payment-methods',
+  'GET /settings/users',
+  'PATCH /settings/users/:id/status',
+  'POST /settings/users/:id/reset-password',
 ];
 
 /**

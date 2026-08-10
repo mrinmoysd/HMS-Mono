@@ -27,7 +27,7 @@ export const SETTINGS_NAV: SettingsNavItemDto[] = [
   g('roles', 'Roles Permissions', 'Platform', '/setup/roles'),
   g('backup', 'Backup / Restore', 'Platform', null),
   g('languages', 'Languages', 'Platform', null),
-  g('users', 'Users', 'Platform', null),
+  g('users', 'Users', 'Platform', '/setup/settings/users'),
   g('captcha', 'Captcha Settings', 'Platform', null),
 
   g('modules', 'Modules', 'System', '/setup/settings/modules'),

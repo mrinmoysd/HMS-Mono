@@ -1,4 +1,4 @@
-import { Body, Controller, Get, NotFoundException, Param, Post, Put, UnprocessableEntityException } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, NotFoundException, Param, ParseUUIDPipe, Patch, Post, Put, Query, UnprocessableEntityException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   generalSettingSchema,
@@ -9,6 +9,9 @@ import {
   channelSettingSchema,
   channelTestSchema,
   paymentSettingSchema,
+  userListQuerySchema,
+  userStatusSchema,
+  userPasswordResetSchema,
   isChannel,
   sanitiseDisabled,
   unknownPlaceholders,
@@ -27,6 +30,9 @@ import {
   type ChannelSettingInput,
   type ChannelTestInput,
   type PaymentSettingInput,
+  type UserListQuery,
+  type UserStatusInput,
+  type UserPasswordResetInput,
 } from '@smart-hospital/shared';
 import { SettingsService } from './settings.service';
 import { PrefixService } from './prefix.service';
@@ -35,6 +41,7 @@ import { ModuleAccessService, MODULE_SETTING_KEY } from './module-access.service
 import { GeneralSettingsCache } from './general-settings.cache';
 import { ChannelsService } from './channels/channels.service';
 import { PaymentsService } from './payments/payments.service';
+import { UsersService } from './users/users.service';
 import { RequireRole } from '../rbac/require-role.decorator';
 import { Authenticated } from '../rbac/authenticated.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -291,6 +298,52 @@ export class PaymentMethodsController {
     @Body(new ZodValidationPipe(paymentSettingSchema)) body: PaymentSettingInput,
   ) {
     return this.payments.save(user, body);
+  }
+}
+
+/** Setup ▸ Settings ▸ Users — the accounts that can sign in. */
+@ApiTags('settings')
+@ApiBearerAuth()
+@Controller('settings/users')
+export class SettingsUsersController {
+  constructor(private readonly users: UsersService) {}
+
+  @Get()
+  @RequireRole('super_admin', 'admin')
+  list(
+    @CurrentUser() user: RequestUser,
+    @BranchId() branchId: string,
+    @Query(new ZodValidationPipe(userListQuerySchema)) query: UserListQuery,
+  ) {
+    return this.users.list(user, branchId, query);
+  }
+
+  /**
+   * Suspend or reinstate. `isActive` is already honoured by login, refresh and
+   * every authenticated request, so this takes effect on the target's next
+   * call rather than when their token expires.
+   */
+  @Patch(':id/status')
+  @RequireRole('super_admin', 'admin')
+  setStatus(
+    @CurrentUser() user: RequestUser,
+    @BranchId() branchId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(userStatusSchema)) body: UserStatusInput,
+  ) {
+    return this.users.setStatus(user, branchId, id, body);
+  }
+
+  @Post(':id/reset-password')
+  @HttpCode(200)
+  @RequireRole('super_admin', 'admin')
+  resetPassword(
+    @CurrentUser() user: RequestUser,
+    @BranchId() branchId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(userPasswordResetSchema)) body: UserPasswordResetInput,
+  ) {
+    return this.users.resetPassword(user, branchId, id, body);
   }
 }
 
