@@ -1,7 +1,9 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { classifyArrival } from '@smart-hospital/shared';
 import type {
   AttendanceDto,
+  AttendanceStatus,
   LeaveRequestDto,
   LeaveRequestInput,
   LeaveStatusInput,
@@ -21,13 +23,39 @@ import type {
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit/audit.service';
 import { paginate, toPrismaPage } from '../common/pagination';
-import { startOfToday } from '../common/dates';
+import { dayKeyInZone, dayKeyOf } from '../common/dates';
 import { abilityOf } from '../rbac/ability-of';
+import { AttendanceSettingsCache } from '../settings/attendance-settings.cache';
+import { GeneralSettingsCache } from '../settings/general-settings.cache';
 import type { RequestUser } from '../common/types/request-user';
 
 type StaffUser = Prisma.UserGetPayload<{
   include: { role: true; staffProfile: { include: { department: true; designation: true } } };
 }>;
+
+/**
+ * The wall-clock time at `at` in `zone`, as "HH:MM".
+ *
+ * A band written as 09:00 means nine in the morning where the hospital is.
+ * Reading the UTC hour instead would shift every verdict by the offset — in
+ * Asia/Kolkata that is five and a half hours, which turns an on-time arrival
+ * into a half day.
+ */
+function localHHMM(at: Date, zone: string): string {
+  try {
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: zone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(at);
+  } catch {
+    // An unknown timezone must not throw on a check-in. Falling back to the
+    // server clock is wrong-but-close; classifyArrival still refuses anything
+    // it cannot read.
+    return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }).format(at);
+  }
+}
 
 function daysBetween(from: Date, to: Date): number {
   return Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000) + 1);
@@ -38,6 +66,8 @@ export class WorkforceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly attendanceSettings: AttendanceSettingsCache,
+    private readonly generalSettings: GeneralSettingsCache,
   ) {}
 
   private async names(userIds: (string | null | undefined)[]): Promise<Map<string, { name: string; staffNo: string | null }>> {
@@ -59,20 +89,63 @@ export class WorkforceService {
   }
 
   // ── Attendance ───────────────────────────────────────────────
+
+  /**
+   * What this arrival counts as, from the bands configured for the person's
+   * role. Null when nothing should be inferred — see `classifyArrival`.
+   *
+   * The clock is read in the branch's own timezone rather than UTC: a band
+   * written as 09:00 means nine in the morning where the hospital is, and
+   * comparing it against a UTC hour would shift every verdict by the offset.
+   */
+  private async classify(branchId: string, staffUserId: string, at: Date): Promise<AttendanceStatus | null> {
+    const setting = await this.attendanceSettings.get(branchId);
+    const staff = await this.prisma.user.findFirst({
+      where: { id: staffUserId, branchId, deletedAt: null },
+      select: { role: { select: { slug: true } } },
+    });
+    if (!staff) return null;
+
+    const zone = (await this.generalSettings.get(branchId)).timeZone;
+    return classifyArrival(setting, staff.role.slug, localHHMM(at, zone));
+  }
+
   async markAttendance(user: RequestUser, branchId: string, input: MarkAttendanceInput): Promise<AttendanceDto> {
-    const day = input.date ? new Date(input.date) : startOfToday();
-    day.setHours(0, 0, 0, 0);
+    const setting = await this.attendanceSettings.get(branchId);
+
+    // A scan recorded as `manual` because biometric happens to be off would be
+    // a record whose stated source is a lie. Refuse instead.
+    if (input.method !== 'manual' && !setting.biometricEnabled) {
+      throw new BadRequestException(
+        'Biometric and QR check-in are switched off. Enable them in Settings ▸ Attendance Setting.',
+      );
+    }
+
+    const zone = (await this.generalSettings.get(branchId)).timeZone;
+    const day = input.date ? dayKeyOf(new Date(input.date)) : dayKeyInZone(new Date(), zone);
     const existing = await this.prisma.attendance.findUnique({
       where: { branchId_staffUserId_date: { branchId, staffUserId: input.staffUserId, date: day } },
     });
     const now = new Date();
+
     const row = existing
       ? await this.prisma.attendance.update({
           where: { id: existing.id },
           data: input.action === 'out' ? { outTime: now } : { inTime: existing.inTime ?? now },
         })
       : await this.prisma.attendance.create({
-          data: { branchId, staffUserId: input.staffUserId, date: day, method: input.method, status: 'present', ...(input.action === 'out' ? { outTime: now } : { inTime: now }) },
+          data: {
+            branchId,
+            staffUserId: input.staffUserId,
+            date: day,
+            method: input.method,
+            // Classified from the actual arrival time rather than assumed. A
+            // null verdict — no bands for this role — leaves the long-standing
+            // `present` default in place, so switching this on cannot silently
+            // mark an unconfigured role absent.
+            status: (await this.classify(branchId, input.staffUserId, now)) ?? 'present',
+            ...(input.action === 'out' ? { outTime: now } : { inTime: now }),
+          },
         });
     await this.audit.record({ branchId, userId: user.id, action: `attendance_${input.action}`, entity: 'attendance', entityId: row.id });
     const nameMap = await this.names([row.staffUserId]);
@@ -81,8 +154,8 @@ export class WorkforceService {
 
   /** Every staff member for a date, joined with any saved attendance (unmarked → Present, N/A source). */
   async listAttendance(branchId: string, date: string | undefined, roleSlug: string | undefined): Promise<AttendanceDto[]> {
-    const day = date ? new Date(date) : startOfToday();
-    day.setHours(0, 0, 0, 0);
+    const zone = (await this.generalSettings.get(branchId)).timeZone;
+    const day = date ? dayKeyOf(new Date(date)) : dayKeyInZone(new Date(), zone);
     const staff = await this.staffUsers(branchId, roleSlug);
     const records = await this.prisma.attendance.findMany({ where: { branchId, date: day } });
     const byUser = new Map(records.map((r) => [r.staffUserId, r]));
@@ -106,14 +179,13 @@ export class WorkforceService {
   }
 
   async saveAttendance(user: RequestUser, branchId: string, input: SaveAttendanceInput): Promise<{ saved: number }> {
-    const day = new Date(input.date);
-    day.setHours(0, 0, 0, 0);
+    const day = dayKeyOf(new Date(input.date));
     const toDate = (hhmm: string | undefined): Date | null => {
       if (!hhmm) return null;
       const [h, m] = hhmm.split(':').map(Number);
-      const d = new Date(day);
-      d.setHours(h || 0, m || 0, 0, 0);
-      return d;
+      // Anchored to the day key, which is UTC midnight, so the stored instant
+      // matches the date column rather than drifting a day at the boundary.
+      return new Date(day.getTime() + (h || 0) * 3_600_000 + (m || 0) * 60_000);
     };
     await this.prisma.$transaction(
       input.rows.map((row) =>

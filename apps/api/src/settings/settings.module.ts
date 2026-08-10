@@ -5,6 +5,7 @@ import { SettingsCrypto } from './settings.crypto';
 import { PrefixService } from './prefix.service';
 import { ModuleAccessService } from './module-access.service';
 import { GeneralSettingsCache } from './general-settings.cache';
+import { AttendanceSettingsCache } from './attendance-settings.cache';
 import { ChannelsService } from './channels/channels.service';
 import { PaymentsService } from './payments/payments.service';
 import { UsersService } from './users/users.service';
@@ -20,7 +21,7 @@ import { UsersService } from './users/users.service';
  */
 @Module({
   controllers: [SettingsController, PaymentMethodsController, SettingsUsersController],
-  providers: [SettingsService, SettingsCrypto, PrefixService, ModuleAccessService, GeneralSettingsCache, ChannelsService, PaymentsService, UsersService],
-  exports: [SettingsService, SettingsCrypto, ModuleAccessService, GeneralSettingsCache, ChannelsService, PaymentsService],
+  providers: [SettingsService, SettingsCrypto, PrefixService, ModuleAccessService, GeneralSettingsCache, AttendanceSettingsCache, ChannelsService, PaymentsService, UsersService],
+  exports: [SettingsService, SettingsCrypto, ModuleAccessService, GeneralSettingsCache, AttendanceSettingsCache, ChannelsService, PaymentsService],
 })
 export class SettingsModule {}

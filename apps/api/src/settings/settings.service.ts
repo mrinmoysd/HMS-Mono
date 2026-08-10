@@ -84,6 +84,20 @@ export class SettingsService {
     return this.crypto.isConfigured();
   }
 
+  /**
+   * Roles a staff member can hold, for screens that configure something per
+   * role. `patient` is excluded: it is a portal login, never somebody who
+   * clocks in.
+   */
+  async staffRoles(): Promise<{ slug: string; label: string }[]> {
+    const rows = await this.prisma.role.findMany({
+      where: { slug: { not: 'patient' } },
+      select: { slug: true, label: true },
+      orderBy: { label: 'asc' },
+    });
+    return rows;
+  }
+
   /** Encrypt every string field of a secret payload, leaving other types alone. */
   private encryptStrings<T>(value: T): T {
     if (typeof value !== 'object' || value === null) return value;

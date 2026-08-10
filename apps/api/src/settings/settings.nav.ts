@@ -11,7 +11,7 @@ import type { SettingsNavItemDto } from '@smart-hospital/shared';
  */
 export const SETTINGS_NAV: SettingsNavItemDto[] = [
   g('general', 'General Setting', 'Identity', '/setup/settings/general'),
-  g('attendance', 'Attendance Setting', 'Identity', null),
+  g('attendance', 'Attendance Setting', 'Identity', '/setup/settings/attendance'),
   g('theme', 'Theme Studio', 'Identity', null),
 
   g('notification', 'Notification Setting', 'Notifications', '/setup/settings/notifications'),

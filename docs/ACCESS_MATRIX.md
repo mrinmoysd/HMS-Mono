@@ -15,7 +15,7 @@ cannot be answered without one).
 
 ## Summary
 
-- routes: **396**
+- routes: **398**
 - feature-gated: 307
 - resolver-gated: 34
 - module-gated (documented exceptions): 13
@@ -382,6 +382,8 @@ cannot be answered without one).
 | GET | `/reports/:key` | *per request* | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | GET | `/reports/categories` | *authenticated* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | GET | `/settings` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| GET | `/settings/attendance` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| PUT | `/settings/attendance` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | GET | `/settings/channels/:channel` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | PUT | `/settings/channels/:channel` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | POST | `/settings/channels/:channel/test` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |

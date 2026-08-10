@@ -48,3 +48,4 @@ export * from './dto/notifications';
 export * from './dto/channels';
 export * from './dto/payments';
 export * from './dto/users';
+export * from './dto/attendance-setting';

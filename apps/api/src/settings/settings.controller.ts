@@ -9,6 +9,8 @@ import {
   channelSettingSchema,
   channelTestSchema,
   paymentSettingSchema,
+  attendanceSettingSchema,
+  attendanceSettingProblems,
   userListQuerySchema,
   userStatusSchema,
   userPasswordResetSchema,
@@ -30,6 +32,7 @@ import {
   type ChannelSettingInput,
   type ChannelTestInput,
   type PaymentSettingInput,
+  type AttendanceSettingInput,
   type UserListQuery,
   type UserStatusInput,
   type UserPasswordResetInput,
@@ -39,6 +42,7 @@ import { PrefixService } from './prefix.service';
 import { SETTINGS_NAV } from './settings.nav';
 import { ModuleAccessService, MODULE_SETTING_KEY } from './module-access.service';
 import { GeneralSettingsCache } from './general-settings.cache';
+import { AttendanceSettingsCache, ATTENDANCE_SETTING_KEY } from './attendance-settings.cache';
 import { ChannelsService } from './channels/channels.service';
 import { PaymentsService } from './payments/payments.service';
 import { UsersService } from './users/users.service';
@@ -101,6 +105,7 @@ export class SettingsController {
     private readonly moduleAccess: ModuleAccessService,
     private readonly generalCache: GeneralSettingsCache,
     private readonly channels: ChannelsService,
+    private readonly attendanceCache: AttendanceSettingsCache,
   ) {}
 
   /** The rail, plus whether credential storage is usable on this deployment. */
@@ -229,6 +234,44 @@ export class SettingsController {
     @Body(new ZodValidationPipe(prefixUpdateSchema)) body: PrefixUpdateInput,
   ) {
     return this.prefixes.update(user, body);
+  }
+
+  /**
+   * Attendance Setting — the biometric switch and the per-role time bands that
+   * `markAttendance` classifies a check-in against.
+   *
+   * The role list ships with the response: the screen cannot render a row per
+   * role without knowing which roles exist, and fetching them separately would
+   * let the two drift.
+   */
+  @Get('attendance')
+  @RequireRole('super_admin', 'admin')
+  async getAttendance(@BranchId() branchId: string) {
+    const [value, roles] = await Promise.all([
+      this.attendanceCache.get(branchId),
+      this.settings.staffRoles(),
+    ]);
+    return { setting: value, roles };
+  }
+
+  @Put('attendance')
+  @RequireRole('super_admin', 'admin')
+  async setAttendance(
+    @CurrentUser() user: RequestUser,
+    @BranchId() branchId: string,
+    @Body(new ZodValidationPipe(attendanceSettingSchema)) body: AttendanceSettingInput,
+  ) {
+    // A ladder that runs backwards would make a later arrival earn a better
+    // status than an earlier one. Refused here as well as in the screen,
+    // because the screen is not the only way in.
+    const problems = attendanceSettingProblems(body);
+    if (problems.length) throw new UnprocessableEntityException(problems.join(' · '));
+
+    const saved = await this.settings.set(user, ATTENDANCE_SETTING_KEY, attendanceSettingSchema, body);
+    // Check-in reads this on a hot path; a change has to apply to the next
+    // scan, not up to a TTL later.
+    this.attendanceCache.invalidate(branchId);
+    return { setting: saved, roles: await this.settings.staffRoles() };
   }
 
   // ── Channels: SMS / WhatsApp / Email ────────────────────────────────

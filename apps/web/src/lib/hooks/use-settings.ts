@@ -14,6 +14,7 @@ import type {
   UserListQuery,
   UserPasswordResetInput,
   UserStatusInput,
+  AttendanceSettingInput,
   GeneralSettingInput,
   NotificationEventDef,
   NotificationEventConfig,
@@ -172,6 +173,27 @@ export function useSavePaymentMethods() {
     mutationFn: (body: PaymentSettingInput) =>
       api.put<PaymentSettingDto>('/settings/payment-methods', body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings-payment-methods'] }),
+  });
+}
+
+interface AttendanceResponse {
+  setting: AttendanceSettingInput;
+  roles: { slug: string; label: string }[];
+}
+
+export function useAttendanceSetting() {
+  return useQuery({
+    queryKey: ['settings-attendance'],
+    queryFn: () => api.get<AttendanceResponse>('/settings/attendance'),
+  });
+}
+
+export function useSaveAttendanceSetting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: AttendanceSettingInput) =>
+      api.put<AttendanceResponse>('/settings/attendance', body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settings-attendance'] }),
   });
 }
 

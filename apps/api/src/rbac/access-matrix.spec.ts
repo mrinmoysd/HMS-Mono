@@ -101,6 +101,8 @@ const ROLE_GATED_ROUTES = [
   'GET /settings/users',
   'PATCH /settings/users/:id/status',
   'POST /settings/users/:id/reset-password',
+  'GET /settings/attendance',
+  'PUT /settings/attendance',
 ];
 
 /**
