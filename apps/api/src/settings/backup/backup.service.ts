@@ -247,7 +247,7 @@ export class BackupService {
     return { name, source: 'manual', sizeBytes: stat.size, createdAt: stat.mtime.toISOString() };
   }
 
-  private runDump(target: string): Promise<void> {
+  private async runDump(target: string): Promise<void> {
     const dsn = this.dsn!;
     // Arguments as an array and no shell: a database name containing a quote
     // or a semicolon is a value here, not syntax.
@@ -262,39 +262,55 @@ export class BackupService {
       dsn.database,
     ];
 
-    return new Promise<void>((resolve, reject) => {
-      const child = spawn('pg_dump', args, {
-        env: { ...process.env, PGPASSWORD: dsn.password },
-      });
-
-      let stderr = '';
-      child.stderr.on('data', (c) => {
-        // Bounded: a version mismatch repeats its complaint for every table.
-        if (stderr.length < 4000) stderr += String(c);
-      });
-
-      const timer = setTimeout(() => {
-        child.kill('SIGKILL');
-        reject(new Error(`pg_dump timed out after ${DUMP_TIMEOUT_MS / 60000} minutes.`));
-      }, DUMP_TIMEOUT_MS);
-
-      pipeline(child.stdout, createGzip(), createWriteStream(target)).catch(reject);
-
-      child.on('error', (err) => {
-        clearTimeout(timer);
-        reject(new Error(`pg_dump could not be started: ${err.message}`));
-      });
-
-      child.on('close', (code) => {
-        clearTimeout(timer);
-        if (code === 0) return resolve();
-        // The most common real failure is a pg_dump older than the server —
-        // it refuses rather than producing a partial dump, and the operator
-        // needs to read that sentence to know what to install.
-        const first = stderr.split('\n').find((l) => l.trim().length > 0) ?? '';
-        reject(new Error(first ? `pg_dump failed: ${first.trim()}` : `pg_dump exited with code ${code}.`));
-      });
+    const child = spawn('pg_dump', args, {
+      env: { ...process.env, PGPASSWORD: dsn.password },
     });
+
+    let stderr = '';
+    child.stderr.on('data', (c) => {
+      // Bounded: a version mismatch repeats its complaint for every table.
+      if (stderr.length < 4000) stderr += String(c);
+    });
+
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGKILL');
+    }, DUMP_TIMEOUT_MS);
+
+    // Both halves are awaited, and this is the whole point of the rewrite that
+    // replaced the first version of this method.
+    //
+    //   `exited`   — pg_dump finished, and with what code.
+    //   `written`  — the gzip stream actually flushed every byte to disk.
+    //
+    // Resolving on the process alone renames a file that is still being
+    // written: the dump looks complete, `stat` reports a size short of the
+    // truth, and a large enough database could be renamed mid-write and sit in
+    // the list as a backup nobody can restore from. Caught by comparing the
+    // size reported at creation against the bytes that came back on download.
+    const written = pipeline(child.stdout, createGzip(), createWriteStream(target));
+    const exited = new Promise<number>((resolve, reject) => {
+      child.on('error', (err) => reject(new Error(`pg_dump could not be started: ${err.message}`)));
+      child.on('close', (code) => resolve(code ?? -1));
+    });
+
+    try {
+      const [code] = await Promise.all([exited, written]);
+      if (code === 0) return;
+      if (timedOut) throw new Error(`pg_dump timed out after ${DUMP_TIMEOUT_MS / 60000} minutes.`);
+      // The most common real failure is a pg_dump older than the server — it
+      // refuses rather than producing a partial dump, and the operator needs
+      // to read that sentence to know what to install.
+      const first = stderr.split('\n').find((l) => l.trim().length > 0) ?? '';
+      throw new Error(first ? `pg_dump failed: ${first.trim()}` : `pg_dump exited with code ${code}.`);
+    } finally {
+      clearTimeout(timer);
+      // If the write side failed, `Promise.all` came back while pg_dump was
+      // still going. Nothing is reading its output any more, so leaving it
+      // running just holds a connection open against the live database.
+      if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    }
   }
 
   /**
