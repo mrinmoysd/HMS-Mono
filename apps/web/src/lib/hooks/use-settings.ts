@@ -15,6 +15,9 @@ import type {
   UserPasswordResetInput,
   UserStatusInput,
   AttendanceSettingInput,
+  BackupListDto,
+  BackupFileDto,
+  BackupSettingInput,
   GeneralSettingInput,
   NotificationEventDef,
   NotificationEventConfig,
@@ -194,6 +197,37 @@ export function useSaveAttendanceSetting() {
     mutationFn: (body: AttendanceSettingInput) =>
       api.put<AttendanceResponse>('/settings/attendance', body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings-attendance'] }),
+  });
+}
+
+export function useBackups() {
+  return useQuery({
+    queryKey: ['settings-backups'],
+    queryFn: () => api.get<BackupListDto>('/settings/backups'),
+  });
+}
+
+export function useCreateBackup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<BackupFileDto>('/settings/backups'),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settings-backups'] }),
+  });
+}
+
+export function useDeleteBackup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api.delete<void>(`/settings/backups/${encodeURIComponent(name)}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settings-backups'] }),
+  });
+}
+
+export function useSaveBackupRetention() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: BackupSettingInput) => api.put<BackupSettingInput>('/settings/backups/retention', body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settings-backups'] }),
   });
 }
 

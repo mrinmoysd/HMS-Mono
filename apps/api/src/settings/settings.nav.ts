@@ -25,7 +25,7 @@ export const SETTINGS_NAV: SettingsNavItemDto[] = [
   g('front_cms', 'Front CMS Setting', 'Platform', null),
   g('prefix', 'Prefix Setting', 'Platform', '/setup/settings/prefix'),
   g('roles', 'Roles Permissions', 'Platform', '/setup/roles'),
-  g('backup', 'Backup / Restore', 'Platform', null),
+  g('backup', 'Backup', 'Platform', '/setup/settings/backup'),
   g('languages', 'Languages', 'Platform', null),
   g('users', 'Users', 'Platform', '/setup/settings/users'),
   g('captcha', 'Captcha Settings', 'Platform', null),

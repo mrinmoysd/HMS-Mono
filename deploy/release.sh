@@ -30,14 +30,30 @@ cd "$APP_DIR"
 # Written before the build, deliberately: NEXT_PUBLIC_* is inlined into the
 # client bundle at build time. Writing it afterwards would be a silent no-op.
 log "Environment"
+# This file is REWRITTEN from scratch below, so every secret that must outlive
+# a deploy has to be read back here first. Anything added by hand and not
+# listed in this block is silently lost on the next release — and for
+# SETTINGS_ENCRYPTION_KEY that would make every stored gateway credential
+# undecryptable, with no way back.
 if [[ -f "$ENV_FILE" ]]; then
   ok "reusing $ENV_FILE (secrets preserved)"
   JWT_A=$(sudo grep -m1 '^JWT_ACCESS_SECRET=' "$ENV_FILE" | cut -d= -f2-)
   JWT_R=$(sudo grep -m1 '^JWT_REFRESH_SECRET=' "$ENV_FILE" | cut -d= -f2-)
+  SETTINGS_KEY=$(sudo grep -m1 '^SETTINGS_ENCRYPTION_KEY=' "$ENV_FILE" | cut -d= -f2- || true)
 else
   JWT_A="$(openssl rand -hex 32)"
   JWT_R="$(openssl rand -hex 32)"
+  SETTINGS_KEY=""
   ok "generated fresh JWT secrets"
+fi
+
+# Generated once and then preserved forever after. Rotating it is not a
+# recoverable operation: it decrypts stored channel and payment credentials.
+if [[ -z "${SETTINGS_KEY:-}" ]]; then
+  SETTINGS_KEY="$(openssl rand -base64 32)"
+  ok "generated SETTINGS_ENCRYPTION_KEY (first deploy — never rotate this)"
+else
+  ok "SETTINGS_ENCRYPTION_KEY preserved"
 fi
 
 PG_PASS=$(sudo cat "$SHARED_DIR/.pgpass" 2>/dev/null || echo '')
@@ -55,6 +71,8 @@ JWT_REFRESH_TTL=7d
 API_PORT=4000
 CORS_ORIGINS=${PUBLIC_ORIGIN:-http://localhost:3001}
 NEXT_PUBLIC_API_URL=/api/v1
+SETTINGS_ENCRYPTION_KEY=${SETTINGS_KEY}
+BACKUP_DIR=${APP_ROOT}/backups
 ENV
 sudo chown root:"$SVC_USER" "$ENV_FILE"
 sudo chmod 640 "$ENV_FILE"
@@ -142,7 +160,13 @@ fi
 # ── backup before migrating ─────────────────────────────────────────────────
 log "Pre-migration backup"
 BACKUP="$APP_ROOT/backups/pre-deploy-$(date +%Y%m%d-%H%M%S).sql.gz"
+sudo mkdir -p "$APP_ROOT/backups"
 sudo -u postgres pg_dump "$PG_DB" | gzip | sudo tee "$BACKUP" >/dev/null
+# Setup ▸ Settings ▸ Backup lists and deletes these too, and it runs as the
+# service user rather than root.
+sudo chown -R root:"$SVC_USER" "$APP_ROOT/backups"
+sudo chmod 775 "$APP_ROOT/backups"
+sudo chmod 640 "$BACKUP"
 ok "$(basename "$BACKUP") ($(sudo du -h "$BACKUP" | cut -f1))"
 
 # ── migrate ─────────────────────────────────────────────────────────────────

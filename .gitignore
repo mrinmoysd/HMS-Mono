@@ -29,3 +29,4 @@ test-results/
 # logs / os
 *.log
 .DS_Store
+backups/

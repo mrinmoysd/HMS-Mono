@@ -58,6 +58,16 @@ const envSchema = z.object({
   // only credential storage is unavailable — with an error that says so.
   // Generate with: openssl rand -base64 32
   SETTINGS_ENCRYPTION_KEY: z.string().optional(),
+  /**
+   * Where database backups are written and read. Optional: without it the
+   * Backup screen says so rather than the API failing to boot, matching how
+   * SETTINGS_ENCRYPTION_KEY behaves.
+   *
+   * It must be listed here even though nothing validates it — this schema
+   * `parse`s the environment, and Zod strips keys it does not know, so an
+   * undeclared variable is invisible to ConfigService.
+   */
+  BACKUP_DIR: z.string().optional(),
 });
 
 @Module({

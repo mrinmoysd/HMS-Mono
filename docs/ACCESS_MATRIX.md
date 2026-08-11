@@ -15,7 +15,7 @@ cannot be answered without one).
 
 ## Summary
 
-- routes: **398**
+- routes: **403**
 - feature-gated: 307
 - resolver-gated: 34
 - module-gated (documented exceptions): 13
@@ -384,6 +384,11 @@ cannot be answered without one).
 | GET | `/settings` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | GET | `/settings/attendance` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | PUT | `/settings/attendance` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| GET | `/settings/backups` | *role* | ✓ | · | · | · | · | · | · | · | · |
+| POST | `/settings/backups` | *role* | ✓ | · | · | · | · | · | · | · | · |
+| DELETE | `/settings/backups/:name` | *role* | ✓ | · | · | · | · | · | · | · | · |
+| GET | `/settings/backups/:name/download` | *role* | ✓ | · | · | · | · | · | · | · | · |
+| PUT | `/settings/backups/retention` | *role* | ✓ | · | · | · | · | · | · | · | · |
 | GET | `/settings/channels/:channel` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | PUT | `/settings/channels/:channel` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | POST | `/settings/channels/:channel/test` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |

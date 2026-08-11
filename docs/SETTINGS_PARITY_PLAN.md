@@ -199,11 +199,15 @@ enable/disable on the patient portal login.
 Biometric toggle + the per-role Present/Late/Half Day/Half Day Second Shift time
 bands, and then actually classifying attendance against them.
 
-## G9 — Backup / Restore
+## G9 — Backup  *(restore moved to anti-parity — see below)*
 
-In-app backup history, download, upload, restore. **Restore is the most
-dangerous button in the product** — it replaces the whole database. Gated,
-confirmed by typing the hospital name, and audited.
+In-app backup history: create, download, delete, retention. Super Admin only,
+audited on all four actions.
+
+**Restore and upload were dropped after building the rest of this phase**, on
+the same argument as Addons and System Update. The reasoning is in the
+anti-parity section; the operator procedure that replaces the button is in
+`docs/RUNBOOK.md`.
 
 ## G10 — The remainder
 
@@ -228,6 +232,16 @@ are anti-parity — see below.
 4. **Superadmin Visibility toggle.** Hiding the super admin from lists is
    security theatre — the role still bypasses every check. We show it, locked,
    with the reason, as `/setup/roles` already does.
+5. **Restoring a database from the web UI, and uploading a backup to restore
+   from.** A `.sql` dump is a script, so restoring is arbitrary SQL execution
+   against the live database — item 1 in this list with a different file
+   extension. One phished administrator session would be enough to replace or
+   destroy every record in the hospital, and the API deliberately runs with
+   `NoNewPrivileges=true`, so doing it properly would mean adding a privileged
+   helper: more attack surface for the one operation nobody performs weekly.
+   Taking, listing, downloading and deleting backups are all in the app;
+   restoring is an SSH procedure in `docs/RUNBOOK.md` that stops the service,
+   takes a safety copy first, and verifies the archive before loading it.
 
 ---
 

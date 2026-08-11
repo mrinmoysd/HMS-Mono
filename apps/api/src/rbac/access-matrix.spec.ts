@@ -103,6 +103,32 @@ const ROLE_GATED_ROUTES = [
   'POST /settings/users/:id/reset-password',
   'GET /settings/attendance',
   'PUT /settings/attendance',
+  // Backup is Super Admin only, narrower than the rest of Settings: a dump is
+  // every patient record in one file. The matrix below shows that as a single
+  // ✓ column rather than two.
+  'GET /settings/backups',
+  'POST /settings/backups',
+  'PUT /settings/backups/retention',
+  'GET /settings/backups/:name/download',
+  'DELETE /settings/backups/:name',
+];
+
+/**
+ * The one place Admin is deliberately shut out.
+ *
+ * Every other route in the product is reachable by Admin, and the invariant
+ * below treats an unreachable route as a decorator mistake. Backup is the
+ * exception on purpose: a database dump is every patient record in a single
+ * file, so the account that can take one off-site is the top one rather than
+ * any administrator. Listed rather than exempted silently, because the whole
+ * value of that invariant is that narrowing access has to be argued for.
+ */
+const SUPER_ADMIN_ONLY_ROUTES = [
+  'GET /settings/backups',
+  'POST /settings/backups',
+  'PUT /settings/backups/retention',
+  'GET /settings/backups/:name/download',
+  'DELETE /settings/backups/:name',
 ];
 
 /**
@@ -207,13 +233,31 @@ describe('invariants', () => {
     expect(impossible).toEqual([]);
   });
 
-  it('Admin can reach every statically-decidable route', () => {
+  it('Admin can reach every statically-decidable route, bar the documented few', () => {
     // Admin holds all 751 toggles. Anything Admin cannot reach is a mistake in
-    // the decorator, not a policy decision.
+    // the decorator rather than a policy decision — unless it is one of the
+    // routes listed as deliberately Super Admin only.
+    const allowed = new Set(SUPER_ADMIN_ONLY_ROUTES);
     const denied = routes
       .filter((r) => roleMayAccess(r, 'admin') === false)
+      .filter((r) => !allowed.has(id(r)))
       .map((r) => `${id(r)}  ${r.features.map((f) => `${f.feature}:${f.action}`).join(' + ')}`);
     expect(denied).toEqual([]);
+  });
+
+  it('every route listed as Super Admin only really does exclude Admin', () => {
+    // The other half: a route can be listed here and then quietly widened, and
+    // the list above would hide it. This catches that.
+    // Reported as a list so a failure names the offending route rather than
+    // just saying `false` was `true`.
+    const wrong = SUPER_ADMIN_ONLY_ROUTES.map((route) => {
+      const entry = routes.find((r) => id(r) === route);
+      if (!entry) return `${route}: listed as Super Admin only but does not exist`;
+      if (roleMayAccess(entry, 'admin') !== false) return `${route}: admits Admin`;
+      if (roleMayAccess(entry, 'super_admin') !== true) return `${route}: excludes Super Admin`;
+      return null;
+    }).filter((x): x is string => x !== null);
+    expect(wrong).toEqual([]);
   });
 
   // ── Modules on/off (G3) ──────────────────────────────────────────────────
@@ -263,10 +307,17 @@ describe('exemptions are explicit', () => {
     expect(routes.filter((r) => r.kind === 'role').map(id).sort()).toEqual([...ROLE_GATED_ROUTES].sort());
   });
 
-  it('the role-gated routes admit Admin and Super Admin only', () => {
-    for (const r of routes.filter((x) => x.kind === 'role')) {
-      expect([...(r.roles ?? [])].sort()).toEqual(['admin', 'super_admin']);
-    }
+  it('the role-gated routes admit Admin and Super Admin, or Super Admin alone', () => {
+    const superOnly = new Set(SUPER_ADMIN_ONLY_ROUTES);
+    const wrong = routes
+      .filter((x) => x.kind === 'role')
+      .map((r) => {
+        const roles = [...(r.roles ?? [])].sort();
+        const want = superOnly.has(id(r)) ? ['super_admin'] : ['admin', 'super_admin'];
+        return roles.join(',') === want.join(',') ? null : `${id(r)}: ${roles.join(',') || 'none'}`;
+      })
+      .filter((x): x is string => x !== null);
+    expect(wrong).toEqual([]);
   });
 
   it('only the documented routes remain on a module gate', () => {

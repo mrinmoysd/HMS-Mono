@@ -50,7 +50,36 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return json as T;
 }
 
+/**
+ * Fetch a file the API only serves to an authenticated caller.
+ *
+ * A plain <a download> cannot carry the bearer token, so the bytes come back
+ * through fetch and reach the disk via an object URL. Streamed by the browser
+ * rather than parsed, so a database dump does not become a JavaScript string.
+ */
+async function download(path: string, filename: string): Promise<void> {
+  const state = useAuthStore.getState();
+  const headers: Record<string, string> = {};
+  if (state.accessToken) headers.Authorization = `Bearer ${state.accessToken}`;
+  if (state.activeBranchId) headers['x-branch-id'] = state.activeBranchId;
+
+  const res = await fetch(`${API_URL}${path}`, { headers });
+  if (!res.ok) {
+    const json = (await res.json().catch(() => ({}))) as { error?: ApiError };
+    if (res.status === 401) useAuthStore.getState().clear();
+    throw new ApiRequestError(res.status, json.error ?? { code: 'error', message: 'Download failed' });
+  }
+
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export const api = {
+  download,
   get: <T>(path: string, opts?: RequestOptions) => request<T>(path, { ...opts, method: 'GET' }),
   post: <T>(path: string, body?: unknown, opts?: RequestOptions) =>
     request<T>(path, { ...opts, method: 'POST', body }),

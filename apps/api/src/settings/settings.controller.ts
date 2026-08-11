@@ -1,4 +1,6 @@
-import { Body, Controller, Get, HttpCode, NotFoundException, Param, ParseUUIDPipe, Patch, Post, Put, Query, UnprocessableEntityException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, NotFoundException, Param, ParseUUIDPipe, Patch, Post, Put, Query, Res, StreamableFile, UnprocessableEntityException } from '@nestjs/common';
+import { createReadStream } from 'fs';
+import type { Response } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   generalSettingSchema,
@@ -11,6 +13,7 @@ import {
   paymentSettingSchema,
   attendanceSettingSchema,
   attendanceSettingProblems,
+  backupSettingSchema,
   userListQuerySchema,
   userStatusSchema,
   userPasswordResetSchema,
@@ -33,6 +36,7 @@ import {
   type ChannelTestInput,
   type PaymentSettingInput,
   type AttendanceSettingInput,
+  type BackupSettingInput,
   type UserListQuery,
   type UserStatusInput,
   type UserPasswordResetInput,
@@ -46,6 +50,7 @@ import { AttendanceSettingsCache, ATTENDANCE_SETTING_KEY } from './attendance-se
 import { ChannelsService } from './channels/channels.service';
 import { PaymentsService } from './payments/payments.service';
 import { UsersService } from './users/users.service';
+import { BackupService } from './backup/backup.service';
 import { RequireRole } from '../rbac/require-role.decorator';
 import { Authenticated } from '../rbac/authenticated.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -387,6 +392,72 @@ export class SettingsUsersController {
     @Body(new ZodValidationPipe(userPasswordResetSchema)) body: UserPasswordResetInput,
   ) {
     return this.users.resetPassword(user, branchId, id, body);
+  }
+}
+
+/**
+ * Setup ▸ Settings ▸ Backup.
+ *
+ * **Super Admin only, deliberately narrower than the rest of Settings.** A
+ * database dump is every patient record in one file; the account that can take
+ * one off-site should be the top one, not any administrator. There is no
+ * restore endpoint — see dto/backup.ts.
+ */
+@ApiTags('settings')
+@ApiBearerAuth()
+@Controller('settings/backups')
+export class BackupController {
+  constructor(private readonly backups: BackupService) {}
+
+  @Get()
+  @RequireRole('super_admin')
+  list(@BranchId() branchId: string) {
+    return this.backups.list(branchId);
+  }
+
+  @Post()
+  @RequireRole('super_admin')
+  create(@CurrentUser() user: RequestUser, @BranchId() branchId: string) {
+    return this.backups.create(user, branchId);
+  }
+
+  @Put('retention')
+  @RequireRole('super_admin')
+  saveRetention(
+    @CurrentUser() user: RequestUser,
+    @Body(new ZodValidationPipe(backupSettingSchema)) body: BackupSettingInput,
+  ) {
+    return this.backups.saveSetting(user, body);
+  }
+
+  /**
+   * Streamed rather than read into memory: these files are the size of the
+   * whole hospital, and the API is capped at 420M of RSS by systemd.
+   */
+  @Get(':name/download')
+  @RequireRole('super_admin')
+  async download(
+    @CurrentUser() user: RequestUser,
+    @BranchId() branchId: string,
+    @Param('name') name: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const file = await this.backups.fileFor(name);
+    // Downloading a full dump is worth a line in the audit trail on its own.
+    await this.backups.recordDownload(user, branchId, name);
+    res.set({
+      'Content-Type': 'application/gzip',
+      'Content-Disposition': `attachment; filename="${name}"`,
+      'Content-Length': String(file.size),
+    });
+    return new StreamableFile(createReadStream(file.path));
+  }
+
+  @Delete(':name')
+  @RequireRole('super_admin')
+  @HttpCode(204)
+  remove(@CurrentUser() user: RequestUser, @BranchId() branchId: string, @Param('name') name: string) {
+    return this.backups.remove(user, branchId, name);
   }
 }
 
