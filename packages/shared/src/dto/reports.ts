@@ -30,9 +30,26 @@ export const REPORT_CATEGORIES: { category: string; reports: ReportEntry[] }[] =
       { key: 'finance-patient-bill', label: 'Patient Bill' },
     ],
   },
+  {
+    category: 'Balance',
+    reports: [
+      { key: 'balance-amount', label: 'Balance Amount Report' },
+      { key: 'opd-balance', label: 'OPD Balance Report' },
+      { key: 'ipd-balance', label: 'IPD Balance Report' },
+      { key: 'pathology-balance', label: 'Pathology Balance Report' },
+      { key: 'radiology-balance', label: 'Radiology Balance Report' },
+      { key: 'processing-transaction', label: 'Processing Transaction Report' },
+    ],
+  },
   { category: 'Appointment', reports: [{ key: 'appointment', label: 'Appointment Report' }] },
   { category: 'OPD', reports: [{ key: 'opd', label: 'OPD Report' }] },
-  { category: 'IPD', reports: [{ key: 'ipd', label: 'IPD Report' }] },
+  {
+    category: 'IPD',
+    reports: [
+      { key: 'ipd', label: 'IPD Report' },
+      { key: 'discharge-patient', label: 'Discharge Patient Report' },
+    ],
+  },
   { category: 'OT', reports: [{ key: 'ot', label: 'OT Report' }] },
   {
     category: 'Pharmacy',

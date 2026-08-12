@@ -197,7 +197,130 @@ export class ReportsService {
       const rows = await this.prisma.patient.findMany({ where: { branchId, deletedAt: null, createdAt: date }, orderBy: { createdAt: 'desc' } });
       return { title: 'Patient Visit Report', columns: ['Patient No', 'Name', 'Age', 'Gender', 'Phone', 'Registered'], rows: rows.map((r) => [r.patientNo, r.name, r.age, r.gender ?? '—', r.phone ?? '—', this.day(r.createdAt)]), summary: { Patients: rows.length } };
     },
+
+    // ── Balances (RP1) ────────────────────────────────────────────────
+    //
+    // What is still owed, per module and in total. These are the reports
+    // somebody runs before chasing money, so they list the unpaid rather than
+    // the billed: an invoice settled in full is not a line on a balance report.
+
+    'opd-balance': (branchId, date) => this.balanceReport(branchId, date, 'opd', 'OPD Balance Report'),
+    'ipd-balance': (branchId, date) => this.balanceReport(branchId, date, 'ipd', 'IPD Balance Report'),
+    'pathology-balance': (branchId, date) => this.balanceReport(branchId, date, 'pathology', 'Pathology Balance Report'),
+    'radiology-balance': (branchId, date) => this.balanceReport(branchId, date, 'radiology', 'Radiology Balance Report'),
+    'balance-amount': (branchId, date) => this.balanceReport(branchId, date, undefined, 'Balance Amount Report'),
+
+    /**
+     * Transactions still in flight.
+     *
+     * The reference calls this "Processing"; our nearest true equivalent is an
+     * invoice that has taken money but not all of it — `status = partial`.
+     * Deliberately not "anything unpaid": a bill nobody has paid a rupee
+     * against is not being processed, it is outstanding, and that is the
+     * Balance Amount report above.
+     */
+    'processing-transaction': async (branchId, date) => {
+      const rows = await this.prisma.invoice.findMany({
+        where: { branchId, deletedAt: null, createdAt: date, status: 'partial' },
+        orderBy: { createdAt: 'desc' },
+        include: { patient: { select: { name: true } } },
+      });
+      const net = rows.reduce((s, r) => s + this.money(r.netAmount), 0);
+      const paid = rows.reduce((s, r) => s + this.money(r.paid), 0);
+      return {
+        title: 'Processing Transaction Report',
+        columns: ['Bill No', 'Module', 'Patient', 'Date', 'Net', 'Paid', 'Balance'],
+        rows: rows.map((r) => [r.billNo, r.module.toUpperCase(), r.patient.name, this.day(r.createdAt), this.money(r.netAmount), this.money(r.paid), this.money(r.balance)]),
+        summary: { 'Total Net': net, 'Collected So Far': paid, 'Still Due': net - paid, Transactions: rows.length },
+      };
+    },
+
+    /**
+     * Discharges in the period.
+     *
+     * Ranged on `dischargeDate`, not `admissionDate` — the question this report
+     * answers is who left, and a patient admitted in March and discharged in
+     * August belongs in August's.
+     */
+    'discharge-patient': async (branchId, date) => {
+      const rows = await this.prisma.ipdAdmission.findMany({
+        where: { branchId, deletedAt: null, status: 'discharged', dischargeDate: date },
+        orderBy: { dischargeDate: 'desc' },
+        include: {
+          patient: { select: { patientNo: true, name: true } },
+          consultant: { select: { name: true } },
+          bed: { select: { bedNo: true } },
+        },
+      });
+      const stay = (r: { admissionDate: Date; dischargeDate: Date | null }) =>
+        r.dischargeDate
+          ? Math.max(1, Math.round((r.dischargeDate.getTime() - r.admissionDate.getTime()) / 86_400_000))
+          : 0;
+      const deaths = rows.filter((r) => r.dischargeStatus === 'death').length;
+      return {
+        title: 'Discharge Patient Report',
+        columns: ['Patient No', 'Patient', 'Bed', 'Consultant', 'Admitted', 'Discharged', 'Days', 'Status'],
+        rows: rows.map((r) => [
+          r.patient.patientNo,
+          r.patient.name,
+          r.bed?.bedNo ?? '—',
+          r.consultant?.name ?? '—',
+          this.day(r.admissionDate),
+          r.dischargeDate ? this.day(r.dischargeDate) : '—',
+          stay(r),
+          r.dischargeStatus ?? 'normal',
+        ]),
+        summary: {
+          Discharges: rows.length,
+          Deaths: deaths,
+          'Average Stay (days)': rows.length
+            ? Number((rows.reduce((s, r) => s + stay(r), 0) / rows.length).toFixed(1))
+            : 0,
+        },
+      };
+    },
   };
+
+  /**
+   * Money still owed, optionally narrowed to one module.
+   *
+   * `balance > 0` rather than `status != 'paid'`: status is a label and balance
+   * is the number people act on, and a refund can leave the two disagreeing.
+   */
+  private async balanceReport(
+    branchId: string,
+    date: Prisma.DateTimeFilter,
+    module: string | undefined,
+    title: string,
+  ): Promise<Omit<ReportResult, 'key'>> {
+    const rows = await this.prisma.invoice.findMany({
+      where: { branchId, deletedAt: null, createdAt: date, balance: { gt: 0 }, ...(module ? { module } : {}) },
+      orderBy: { balance: 'desc' },
+      include: { patient: { select: { patientNo: true, name: true, phone: true } } },
+    });
+    const due = rows.reduce((s, r) => s + this.money(r.balance), 0);
+    const net = rows.reduce((s, r) => s + this.money(r.netAmount), 0);
+    return {
+      title,
+      // Module column only earns its place when the report spans modules.
+      columns: module
+        ? ['Bill No', 'Patient No', 'Patient', 'Phone', 'Date', 'Net', 'Paid', 'Balance']
+        : ['Bill No', 'Module', 'Patient No', 'Patient', 'Phone', 'Date', 'Net', 'Paid', 'Balance'],
+      rows: rows.map((r) => {
+        const tail = [
+          r.patient.patientNo,
+          r.patient.name,
+          r.patient.phone ?? '—',
+          this.day(r.createdAt),
+          this.money(r.netAmount),
+          this.money(r.paid),
+          this.money(r.balance),
+        ];
+        return module ? [r.billNo, ...tail] : [r.billNo, r.module.toUpperCase(), ...tail];
+      }),
+      summary: { 'Total Billed': net, 'Total Outstanding': due, 'Unpaid Bills': rows.length },
+    };
+  }
 
   private async invoiceReport(branchId: string, date: Prisma.DateTimeFilter, module: string | undefined, title: string): Promise<Omit<ReportResult, 'key'>> {
     const rows = await this.prisma.invoice.findMany({ where: { branchId, deletedAt: null, createdAt: date, ...(module ? { module } : {}) }, orderBy: { createdAt: 'desc' }, include: { patient: { select: { name: true } } } });
