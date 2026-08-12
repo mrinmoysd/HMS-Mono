@@ -2,6 +2,8 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { ALL_REPORT_KEYS, type ReportResult } from '@smart-hospital/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { GeneralSettingsCache } from '../settings/general-settings.cache';
+import { zonedDayBounds } from '../common/dates';
 
 type Builder = (branchId: string, range: Prisma.DateTimeFilter) => Promise<Omit<ReportResult, 'key'>>;
 
@@ -13,22 +15,48 @@ type Builder = (branchId: string, range: Prisma.DateTimeFilter) => Promise<Omit<
  */
 @Injectable()
 export class ReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly generalSettings: GeneralSettingsCache,
+  ) {}
 
   async run(key: string, branchId: string, from?: string, to?: string): Promise<ReportResult> {
     const builder = this.builders[key];
     if (!builder) throw new BadRequestException(`Unknown report: ${key}`);
-    const range: Prisma.DateTimeFilter = {};
-    if (from) range.gte = new Date(from);
-    if (to) {
-      const end = new Date(to);
-      end.setHours(23, 59, 59, 999);
-      range.lte = end;
-    }
-    const result = await builder(branchId, range);
+    const result = await builder(branchId, await this.rangeFor(branchId, from, to));
     return { key, ...result };
   }
 
+  /**
+   * The instants covering the days the user asked for, in the hospital's zone.
+   *
+   * "From the 1st to the 11th" means eleven of *their* days. Reading the dates
+   * as UTC, or closing the range with `setHours` in the server's zone, silently
+   * clips one end: a hospital in Asia/Kolkata lost the last five and a half
+   * hours of the 11th and gained the same slice of the 12th. Every figure on
+   * every report was drawn from a window nobody asked for.
+   */
+  private async rangeFor(
+    branchId: string,
+    from?: string,
+    to?: string,
+  ): Promise<Prisma.DateTimeFilter> {
+    if (!from && !to) return {};
+    const { timeZone } = await this.generalSettings.get(branchId);
+    const range: Prisma.DateTimeFilter = {};
+    if (from) range.gte = zonedDayBounds(from, timeZone).start;
+    if (to) range.lte = zonedDayBounds(to, timeZone).end;
+    return range;
+  }
+
+  /**
+   * The report keys this engine can actually run.
+   *
+   * `reports.spec.ts` asserts this covers every builder-backed catalogue entry.
+   * Without that, a key could be added to the catalogue, appear in the menu for
+   * anyone holding its permission, and 400 on click — the menu-of-things-that-
+   * fail problem the catalogue filter exists to prevent.
+   */
   keys(): string[] {
     return ALL_REPORT_KEYS.filter((k) => this.builders[k]);
   }

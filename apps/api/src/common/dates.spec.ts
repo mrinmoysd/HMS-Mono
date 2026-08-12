@@ -1,66 +1,61 @@
-import { dayKeyInZone, dayKeyOf } from './dates';
+import { dayKeyInZone, dayKeyOf, zonedDayBounds } from './dates';
 
-/**
- * The day key for a `@db.Date` column.
- *
- * These exist because attendance was filing Monday's check-ins under Sunday
- * for every hospital east of UTC: local midnight in Asia/Kolkata is 18:30 the
- * previous day in UTC, and a date column keeps the UTC part.
- */
-describe('dayKeyInZone', () => {
-  // 16:31 UTC on the 10th — evening in Kolkata, still morning in Los Angeles.
-  const AT = new Date('2026-08-10T16:31:00.000Z');
-
-  it('returns UTC midnight, so a date column stores the day unchanged', () => {
-    expect(dayKeyInZone(AT, 'UTC').toISOString()).toBe('2026-08-10T00:00:00.000Z');
+describe('zonedDayBounds', () => {
+  it('bounds a day in a +offset zone, not the server’s', () => {
+    const { start, end } = zonedDayBounds('2026-08-11', 'Asia/Kolkata');
+    // IST is UTC+5:30, so the 11th locally starts at 18:30Z on the 10th.
+    expect(start.toISOString()).toBe('2026-08-10T18:30:00.000Z');
+    expect(end.toISOString()).toBe('2026-08-11T18:29:59.999Z');
   });
 
-  it('keeps the local day for a zone ahead of UTC', () => {
-    // 22:01 on the 10th in Kolkata — the same calendar day.
-    expect(dayKeyInZone(AT, 'Asia/Kolkata').toISOString()).toBe('2026-08-10T00:00:00.000Z');
+  it('bounds a day in a -offset zone', () => {
+    const { start, end } = zonedDayBounds('2026-08-11', 'America/New_York');
+    // EDT is UTC-4 in August.
+    expect(start.toISOString()).toBe('2026-08-11T04:00:00.000Z');
+    expect(end.toISOString()).toBe('2026-08-12T03:59:59.999Z');
   });
 
-  it('keeps the local day for a zone behind UTC', () => {
-    // 09:31 on the 10th in Los Angeles.
-    expect(dayKeyInZone(AT, 'America/Los_Angeles').toISOString()).toBe('2026-08-10T00:00:00.000Z');
+  it('is exactly one day wide, less a millisecond', () => {
+    for (const zone of ['UTC', 'Asia/Kolkata', 'America/New_York', 'Australia/Adelaide']) {
+      const { start, end } = zonedDayBounds('2026-08-11', zone);
+      expect(end.getTime() - start.getTime()).toBe(86_400_000 - 1);
+    }
   });
 
-  it('rolls forward when the zone is already into the next day', () => {
-    // 19:00 UTC on the 10th is 00:30 on the 11th in Kolkata.
-    const late = new Date('2026-08-10T19:00:00.000Z');
-    expect(dayKeyInZone(late, 'Asia/Kolkata').toISOString()).toBe('2026-08-11T00:00:00.000Z');
+  it('lands on the right side of a DST transition', () => {
+    // US clocks go forward on 2026-03-08, making that local day 23h long.
+    const { start, end } = zonedDayBounds('2026-03-08', 'America/New_York');
+    expect(start.toISOString()).toBe('2026-03-08T05:00:00.000Z');
+    expect(end.toISOString()).toBe('2026-03-09T03:59:59.999Z');
+    // 23 hours, not 24 — the hour that does not exist is not in the range.
+    expect(end.getTime() - start.getTime()).toBe(23 * 3_600_000 - 1);
   });
 
-  it('rolls back when the zone is still on the previous day', () => {
-    // 02:00 UTC on the 10th is 19:00 on the 9th in Los Angeles.
-    const early = new Date('2026-08-10T02:00:00.000Z');
-    expect(dayKeyInZone(early, 'America/Los_Angeles').toISOString()).toBe('2026-08-09T00:00:00.000Z');
+  it('falls back to UTC rather than throwing on a bad zone', () => {
+    const { start, end } = zonedDayBounds('2026-08-11', 'Not/AZone');
+    expect(start.toISOString()).toBe('2026-08-11T00:00:00.000Z');
+    expect(end.toISOString()).toBe('2026-08-11T23:59:59.999Z');
   });
 
-  it('is stable across the local midnight boundary', () => {
-    // 18:29 UTC is 23:59 on the 10th in Kolkata; 18:30 is 00:00 on the 11th.
-    expect(dayKeyInZone(new Date('2026-08-10T18:29:00Z'), 'Asia/Kolkata').toISOString()).toBe('2026-08-10T00:00:00.000Z');
-    expect(dayKeyInZone(new Date('2026-08-10T18:30:00Z'), 'Asia/Kolkata').toISOString()).toBe('2026-08-11T00:00:00.000Z');
-  });
-
-  it('falls back to the UTC day rather than throwing on an unknown zone', () => {
-    expect(dayKeyInZone(AT, 'Mars/Olympus_Mons').toISOString()).toBe('2026-08-10T00:00:00.000Z');
+  it('does not overlap the neighbouring day', () => {
+    const a = zonedDayBounds('2026-08-11', 'Asia/Kolkata');
+    const b = zonedDayBounds('2026-08-12', 'Asia/Kolkata');
+    expect(a.end.getTime()).toBeLessThan(b.start.getTime());
+    expect(b.start.getTime() - a.end.getTime()).toBe(1);
   });
 });
 
-describe('dayKeyOf', () => {
-  it('passes a plain date through unchanged', () => {
-    // What z.coerce.date() produces from "2026-08-10".
-    expect(dayKeyOf(new Date('2026-08-10')).toISOString()).toBe('2026-08-10T00:00:00.000Z');
+describe('dayKeyInZone / dayKeyOf', () => {
+  it('keys the local day, not the UTC one', () => {
+    // 19:00Z on the 10th is already the 11th in Kolkata.
+    const at = new Date('2026-08-10T19:00:00.000Z');
+    expect(dayKeyInZone(at, 'Asia/Kolkata').toISOString()).toBe('2026-08-11T00:00:00.000Z');
+    expect(dayKeyInZone(at, 'UTC').toISOString()).toBe('2026-08-10T00:00:00.000Z');
   });
 
-  it('strips the time from a full timestamp', () => {
-    expect(dayKeyOf(new Date('2026-08-10T23:45:12.345Z')).toISOString()).toBe('2026-08-10T00:00:00.000Z');
-  });
-
-  it('reads UTC parts, not local ones', () => {
-    // The bug this replaced: reading local parts shifted the day for any
-    // server not running in UTC.
-    expect(dayKeyOf(new Date('2026-08-10T00:00:00.000Z')).toISOString()).toBe('2026-08-10T00:00:00.000Z');
+  it('normalises a client-supplied date without shifting it', () => {
+    expect(dayKeyOf(new Date('2026-08-11T00:00:00.000Z')).toISOString()).toBe(
+      '2026-08-11T00:00:00.000Z',
+    );
   });
 });

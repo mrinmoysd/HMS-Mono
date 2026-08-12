@@ -1,6 +1,7 @@
 'use client';
 
 import { PageHeader } from '@/components/ui/page-header';
+import Link from 'next/link';
 import { useState } from 'react';
 import { BarChart3, Download, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -30,22 +31,31 @@ export default function ReportsPage() {
           title={<span className="flex items-center gap-2"><BarChart3 className="h-5 w-5 shrink-0 text-primary" /> Reports</span>}
           description={categories.data ? `${categories.data.length} report categories` : 'Loading…'}
         />
+        {/*
+          Every card comes from the catalogue, which the server has already
+          filtered to what this user may run. TPA used to be hardcoded here and
+          so was offered to everyone — including the roles whose click would
+          have been refused by the API.
+
+          A report with an `href` has its own page; the rest run through the
+          generic engine below.
+        */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-md border border-border bg-surface p-4">
-            <p className="mb-2 font-medium">TPA</p>
-            <div className="flex flex-col gap-1">
-              <a href="/reports/tpa" className="rounded-sm px-2 py-1.5 text-left text-sm text-primary hover:bg-primary/5">TPA Report</a>
-            </div>
-          </div>
           {(categories.data ?? []).map((c) => (
             <div key={c.category} className="rounded-md border border-border bg-surface p-4">
               <p className="mb-2 font-medium">{c.category}</p>
               <div className="flex flex-col gap-1">
-                {c.reports.map((r) => (
-                  <button key={r.key} onClick={() => setSelected(r)} className="rounded-sm px-2 py-1.5 text-left text-sm text-primary hover:bg-primary/5">
-                    {r.label}
-                  </button>
-                ))}
+                {c.reports.map((r) =>
+                  r.href ? (
+                    <Link key={r.key} href={r.href} className="rounded-sm px-2 py-1.5 text-left text-sm text-primary hover:bg-primary/5">
+                      {r.label}
+                    </Link>
+                  ) : (
+                    <button key={r.key} onClick={() => setSelected(r)} className="rounded-sm px-2 py-1.5 text-left text-sm text-primary hover:bg-primary/5">
+                      {r.label}
+                    </button>
+                  ),
+                )}
               </div>
             </div>
           ))}

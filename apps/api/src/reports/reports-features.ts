@@ -37,6 +37,10 @@ const REPORT_FEATURES: Record<string, string> = {
   live: 'reports.live_consultation_report',
   audit: 'reports.audit_trail_report',
   patient: 'reports.patient_visit_report',
+  // Its own page (`/reports/tpa`, served by GET /tpas/report) rather than a
+  // builder, but a catalogue row like any other so the same permission decides
+  // whether it appears.
+  tpa: 'reports.tpa_report',
 };
 
 export const MAPPED_REPORTS = REPORT_FEATURES;

@@ -1,7 +1,26 @@
 import { z } from 'zod';
 
+/**
+ * One report in the catalogue.
+ *
+ * Most reports are tabular and run through the generic engine: the server
+ * returns `{columns, rows, summary}` and the Reports page renders it. A few
+ * need a screen of their own — TPA has filters and a layout no generic table
+ * covers — and those carry an `href` instead of a builder.
+ *
+ * The distinction lives here, in the catalogue, so that a bespoke report is
+ * still a normal row: filtered by the same permission check as every other,
+ * rather than hardcoded into the page and shown to everyone.
+ */
+export interface ReportEntry {
+  key: string;
+  label: string;
+  /** Set when the report has its own page rather than a generic builder. */
+  href?: string;
+}
+
 /** The 19 report categories (FRD §2.28), each expanding to report screens. */
-export const REPORT_CATEGORIES: { category: string; reports: { key: string; label: string }[] }[] = [
+export const REPORT_CATEGORIES: { category: string; reports: ReportEntry[] }[] = [
   {
     category: 'Finance',
     reports: [
@@ -51,7 +70,13 @@ export const REPORT_CATEGORIES: { category: string; reports: { key: string; labe
   { category: 'Live Consultation', reports: [{ key: 'live', label: 'Live Consultation Report' }] },
   { category: 'Log', reports: [{ key: 'audit', label: 'Audit Trail Report' }] },
   { category: 'Patient', reports: [{ key: 'patient', label: 'Patient Visit Report' }] },
+  { category: 'TPA', reports: [{ key: 'tpa', label: 'TPA Report', href: '/reports/tpa' }] },
 ];
+
+/** Reports the generic engine must have a builder for. */
+export const BUILDER_REPORT_KEYS = REPORT_CATEGORIES.flatMap((c) =>
+  c.reports.filter((r) => !r.href).map((r) => r.key),
+);
 
 export const ALL_REPORT_KEYS = REPORT_CATEGORIES.flatMap((c) => c.reports.map((r) => r.key));
 
