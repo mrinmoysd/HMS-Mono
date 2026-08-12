@@ -1852,6 +1852,12 @@ model Notification {
   noticeDate  DateTime?
   publishOn   DateTime?
   date        DateTime  @default(now())
+  /// Delivery outcome for `sms` / `email` / `credential` rows. Nullable
+  /// because notices are never delivered anywhere, and because rows written
+  /// before this existed have no outcome to report — the Email/SMS Log shows
+  /// those as unknown rather than inventing a zero.
+  delivered   Int?
+  failed      Int?
   createdById String?   @db.Uuid
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @default(now()) @updatedAt

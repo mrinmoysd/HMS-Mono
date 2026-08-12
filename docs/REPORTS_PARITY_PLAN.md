@@ -50,7 +50,7 @@ already fills.
 | Stock Report | `Medicine` stock levels |
 | Medicine Purchase Report | `MedicinePurchase` + `MedicinePurchaseItem` |
 | Payroll Month Report | `Payroll` grouped by month |
-| Payroll Report (2) | duplicate row in the reference; same builder as Payroll |
+| ~~Payroll Report (2)~~ | **declined** — the spec lists Payroll Report twice under two feature keys with identical labels. One report, one menu entry; a second identical row would be a bug that happened to match the reference. Recorded in `UNMAPPED_REPORT_FEATURES` |
 | Staff Day Wise Attendance Report | `Attendance` pivoted by day |
 | Patient Login Credential | `User` where `type = patient` |
 
@@ -65,12 +65,19 @@ of these need the write side before the read side is worth shipping.
 
 | Report | Missing | Cost |
 | --- | --- | --- |
-| User Log | logins are not audited — `AuditLog` exists and its own comment lists `login`, but `auth.service` never records one | one `audit.record` call + builder |
-| Email / SMS Log | channel sends are not persisted anywhere | new `MessageLog` model + write in the send path + builder |
+| User Log | logins are not recorded — `AuditLog` exists and its own comment lists `login`, but `auth.service` never writes one | one insert on login + builder |
+| Email / SMS Log | the message is stored, the delivery outcome is not | two nullable columns + builder |
 
-Historical rows cannot be backfilled for either. Both start empty and fill from
-the deploy forward; the builder should say so rather than render a bare "No
-data" that reads as a bug.
+**Correction to an earlier draft of this plan:** it claimed channel sends were
+not persisted at all and needed a new `MessageLog` model. That was wrong —
+`sendSms` and `sendEmail` have always written a `Notification` row with the
+subject, body, audience and sender. Only `delivered` / `failed` were missing,
+so this is two nullable columns rather than a new table.
+
+User Log has no history before the release that starts writing it, and none
+can be reconstructed; the builder says so rather than rendering a bare "No
+data" that reads as a bug. Messages sent before the outcome columns existed
+show "—" rather than a zero that would read as "nothing arrived".
 
 ### Tier C — needs a new entity, deferred pending a decision (2)
 

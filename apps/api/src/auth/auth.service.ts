@@ -36,6 +36,21 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
+    // `lastLoginAt` is one timestamp — it answers "when did they last sign in",
+    // never "who signed in this week". The User Log report needs the history,
+    // and AuditLog has always documented `login` as one of its actions without
+    // anything writing one. No password, no token: the fact of the sign-in.
+    await this.prisma.auditLog.create({
+      data: {
+        branchId: user.branchId,
+        userId: user.id,
+        action: 'login',
+        entity: 'user',
+        entityId: user.id,
+        after: { username: user.username, role: user.role.slug },
+      },
+    });
+
     const [permissions, features] = await Promise.all([
       this.permissions.permissionKeysForRole(user.roleId),
       this.permissions.featureKeysForRole(user.roleId),

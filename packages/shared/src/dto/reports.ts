@@ -28,8 +28,11 @@ export const REPORT_CATEGORIES: { category: string; reports: ReportEntry[] }[] =
       { key: 'finance-income', label: 'Income' },
       { key: 'finance-expense', label: 'Expense' },
       { key: 'finance-patient-bill', label: 'Patient Bill' },
+      { key: 'income-group', label: 'Income Group' },
+      { key: 'expense-group', label: 'Expense Group' },
     ],
   },
+  { category: 'Referral', reports: [{ key: 'referral', label: 'Referral Report' }] },
   {
     category: 'Balance',
     reports: [
@@ -56,6 +59,8 @@ export const REPORT_CATEGORIES: { category: string; reports: ReportEntry[] }[] =
     reports: [
       { key: 'pharmacy', label: 'Pharmacy Bill Report' },
       { key: 'medicine-expiry', label: 'Medicine Expiry Report' },
+      { key: 'stock', label: 'Stock Report' },
+      { key: 'medicine-purchase', label: 'Medicine Purchase Report' },
     ],
   },
   { category: 'Pathology', reports: [{ key: 'pathology', label: 'Pathology Report' }] },
@@ -80,13 +85,35 @@ export const REPORT_CATEGORIES: { category: string; reports: ReportEntry[] }[] =
     category: 'Human Resource',
     reports: [
       { key: 'payroll', label: 'Payroll Report' },
+      { key: 'payroll-month', label: 'Payroll Month Report' },
       { key: 'attendance', label: 'Staff Attendance Report' },
+      { key: 'staff-day-wise-attendance', label: 'Staff Day Wise Attendance Report' },
     ],
   },
-  { category: 'Inventory', reports: [{ key: 'inventory-stock', label: 'Inventory Stock Report' }] },
+  {
+    category: 'Inventory',
+    reports: [
+      { key: 'inventory-stock', label: 'Inventory Stock Report' },
+      { key: 'inventory-item', label: 'Inventory Item Report' },
+      { key: 'inventory-issue', label: 'Inventory Issue Report' },
+    ],
+  },
   { category: 'Live Consultation', reports: [{ key: 'live', label: 'Live Consultation Report' }] },
-  { category: 'Log', reports: [{ key: 'audit', label: 'Audit Trail Report' }] },
-  { category: 'Patient', reports: [{ key: 'patient', label: 'Patient Visit Report' }] },
+  {
+    category: 'Log',
+    reports: [
+      { key: 'audit', label: 'Audit Trail Report' },
+      { key: 'user-log', label: 'User Log' },
+      { key: 'email-sms-log', label: 'Email / SMS Log' },
+    ],
+  },
+  {
+    category: 'Patient',
+    reports: [
+      { key: 'patient', label: 'Patient Visit Report' },
+      { key: 'patient-credential', label: 'Patient Login Credential' },
+    ],
+  },
   { category: 'TPA', reports: [{ key: 'tpa', label: 'TPA Report', href: '/reports/tpa' }] },
 ];
 

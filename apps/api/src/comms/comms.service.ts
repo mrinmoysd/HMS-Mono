@@ -165,7 +165,10 @@ export class CommsService {
     const { addresses, skipped } = await this.recipients(branchId, input, 'phone');
     const result = await this.broadcast(branchId, 'sms', addresses, { subject: input.subject, body: input.message });
     const n = await this.prisma.notification.create({
-      data: { branchId, type: 'sms', subject: input.subject, body: input.message, roles: input.roles, audience, createdById: user.id },
+      // The delivery outcome is stored with the message: a log that says what
+      // was sent but not whether it arrived cannot answer the only question
+      // anyone opens it to ask.
+      data: { branchId, type: 'sms', subject: input.subject, body: input.message, roles: input.roles, audience, createdById: user.id, delivered: result.delivered, failed: result.failed },
     });
     await this.audit.record({ branchId, userId: user.id, action: 'send_sms', entity: 'notification', entityId: n.id });
     return { ok: true as const, ...result, skipped };
@@ -176,7 +179,7 @@ export class CommsService {
     const { addresses, skipped } = await this.recipients(branchId, input, 'email');
     const result = await this.broadcast(branchId, 'email', addresses, { subject: input.subject, body: input.message });
     const n = await this.prisma.notification.create({
-      data: { branchId, type: 'email', subject: input.subject, body: input.message, roles: input.roles, audience, createdById: user.id },
+      data: { branchId, type: 'email', subject: input.subject, body: input.message, roles: input.roles, audience, createdById: user.id, delivered: result.delivered, failed: result.failed },
     });
     await this.audit.record({ branchId, userId: user.id, action: 'send_email', entity: 'notification', entityId: n.id });
     return { ok: true as const, ...result, skipped };

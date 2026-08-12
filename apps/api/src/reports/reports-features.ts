@@ -27,6 +27,18 @@ const REPORT_FEATURES: Record<string, string> = {
   'radiology-balance': 'reports.radiology_balance_report',
   'processing-transaction': 'reports.processing_transaction_report',
   'discharge-patient': 'reports.discharge_patient_report',
+  'income-group': 'reports.income_group_report',
+  'expense-group': 'reports.expense_group_report',
+  referral: 'reports.referral_report',
+  'inventory-item': 'reports.inventory_item_report',
+  'inventory-issue': 'reports.inventory_issue_report',
+  stock: 'reports.stock_report',
+  'medicine-purchase': 'reports.medicine_purchase_report',
+  'payroll-month': 'reports.payroll_month_report',
+  'staff-day-wise-attendance': 'reports.staff_day_wise_attendance_report',
+  'patient-credential': 'reports.patient_login_credential',
+  'user-log': 'reports.user_log',
+  'email-sms-log': 'reports.email_sms_log',
   ot: 'reports.ot_report',
   pharmacy: 'reports.pharmacy_bill_report',
   'medicine-expiry': 'reports.expiry_medicine_report',
@@ -51,6 +63,29 @@ const REPORT_FEATURES: Record<string, string> = {
 };
 
 export const MAPPED_REPORTS = REPORT_FEATURES;
+
+/**
+ * Reference reports we deliberately do not offer, and why.
+ *
+ * Listed rather than left missing so the count reconciles: every report
+ * feature in the spec is either served by a catalogue entry or named here.
+ * `reports.spec.ts` fails if a feature falls through both, which is what stops
+ * this drifting into "we think we built most of them".
+ */
+export const UNMAPPED_REPORT_FEATURES: Record<string, string> = {
+  // The spec lists Payroll Report twice, as separate feature rows with
+  // identical labels. One report, one menu entry — a second identical row
+  // would be a bug that happened to match the reference.
+  'reports.payroll_report_2': 'Duplicate of reports.payroll_report in the spec.',
+
+  // Both of these need an entity that does not exist, and a way to create the
+  // data. A report over a table nothing writes is an empty screen that reads
+  // as broken — the same reason this codebase refuses inert settings.
+  'reports.medicine_purchase_return_report':
+    'No purchase-return concept in the schema. Needs a MedicinePurchaseReturn model and a UI to record returns before a report means anything.',
+  'reports.live_meeting_report':
+    'The spec separates Live Consultation (with a patient) from Live Meeting (staff to staff). We model only LiveConsultation, so this is a feature rather than a report.',
+};
 
 /** Which feature guards `GET /reports/:key`. Unknown key denies. */
 export function reportFeature(key: string | undefined): RequiredFeature | null {

@@ -1,6 +1,6 @@
-import { BUILDER_REPORT_KEYS, REPORT_CATEGORIES } from '@smart-hospital/shared';
+import { BUILDER_REPORT_KEYS, FEATURE_GROUPS, REPORT_CATEGORIES } from '@smart-hospital/shared';
 import { ReportsService } from './reports.service';
-import { MAPPED_REPORTS } from './reports-features';
+import { MAPPED_REPORTS, UNMAPPED_REPORT_FEATURES } from './reports-features';
 
 /**
  * The catalogue is what the Reports menu renders, and it is filtered only by
@@ -43,5 +43,38 @@ describe('report catalogue coverage', () => {
   it('uses each report key exactly once across categories', () => {
     const keys = REPORT_CATEGORIES.flatMap((c) => c.reports.map((r) => r.key));
     expect(keys.length).toBe(new Set(keys).size);
+  });
+});
+
+/**
+ * The reconciliation. Every report in the reference spec is either served or
+ * consciously declined — nothing is allowed to be quietly absent, which is how
+ * "we built most of the reports" turns into a number nobody can defend.
+ */
+describe('reference report coverage', () => {
+  const referenceFeatures = FEATURE_GROUPS.find((g) => g.key === 'reports')!.features.map((f) => f.key);
+  const served = new Set(Object.values(MAPPED_REPORTS));
+
+  it('accounts for every report in the spec, as served or declined', () => {
+    const unaccounted = referenceFeatures.filter(
+      (k) => !served.has(k) && !UNMAPPED_REPORT_FEATURES[k],
+    );
+    expect(unaccounted).toEqual([]);
+  });
+
+  it('gives a reason for each declined report', () => {
+    const reasonless = Object.entries(UNMAPPED_REPORT_FEATURES)
+      .filter(([, why]) => why.trim().length < 20)
+      .map(([k]) => k);
+    expect(reasonless).toEqual([]);
+  });
+
+  it('does not decline a report it actually serves', () => {
+    expect(Object.keys(UNMAPPED_REPORT_FEATURES).filter((k) => served.has(k))).toEqual([]);
+  });
+
+  it('only declines reports that exist in the spec', () => {
+    const known = new Set(referenceFeatures);
+    expect(Object.keys(UNMAPPED_REPORT_FEATURES).filter((k) => !known.has(k))).toEqual([]);
   });
 });
