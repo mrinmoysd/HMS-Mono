@@ -3,13 +3,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   BranchDto, BranchInput, BranchOverviewDto, BranchUpdateInput, CmsBannerDto, CmsBannerInput, CmsMenuDto, CmsMenuInput,
-  CmsPageDto, CmsPageInput, ListQuery, Paginated, ReportResult,
+  CmsPageDto, CmsPageInput, ListQuery, Paginated, ReportEntry, ReportResult,
 } from '@smart-hospital/shared';
 import { api } from '@/lib/api';
 
 // ── Reports ──────────────────────────────────────────────────
 export function useReportCategories() {
-  return useQuery({ queryKey: ['report-categories'], queryFn: () => api.get<{ category: string; reports: { key: string; label: string }[] }[]>('/reports/categories') });
+  // `ReportEntry` rather than an inline shape: the catalogue grew an optional
+  // `href` for reports with their own page, and a hand-written duplicate here
+  // silently drops fields the server is already sending.
+  return useQuery({ queryKey: ['report-categories'], queryFn: () => api.get<{ category: string; reports: ReportEntry[] }[]>('/reports/categories') });
 }
 export function useReport(key: string | null, from: string, to: string) {
   return useQuery({
