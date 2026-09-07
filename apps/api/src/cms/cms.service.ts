@@ -1,11 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type {
-  CmsBannerDto, CmsBannerInput, CmsMenuDto, CmsMenuInput, CmsPageDto, CmsPageInput,
-  ListQuery, Paginated,
+import {
+  frontCmsSettingSchema, publicSiteIdentity,
+  type CmsBannerDto, type CmsBannerInput, type CmsMenuDto, type CmsMenuInput,
+  type CmsPageDto, type CmsPageInput, type ListQuery, type Paginated,
+  type PublicSiteDto,
 } from '@smart-hospital/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit/audit.service';
+import { SettingsService } from '../settings/settings.service';
+import { GeneralSettingsCache } from '../settings/general-settings.cache';
+import { FRONT_CMS_SETTING_KEY } from '../settings/setting-keys';
 import { paginate, toPrismaPage } from '../common/pagination';
 import type { RequestUser } from '../common/types/request-user';
 
@@ -14,6 +19,8 @@ export class CmsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly settings: SettingsService,
+    private readonly generalSettings: GeneralSettingsCache,
   ) {}
 
   // ── Pages ────────────────────────────────────────────────────
@@ -56,16 +63,43 @@ export class CmsService {
   }
 
   // ── Public (no auth) — powers the marketing site ─────────────
-  async publicSite(): Promise<{ menus: CmsMenuDto[]; banners: CmsBannerDto[]; pages: CmsPageDto[] }> {
+
+  /**
+   * The home branch, plus its Front CMS setting.
+   *
+   * The public endpoints have no caller and therefore no branch, so the home
+   * branch is the one whose settings decide what the internet sees.
+   */
+  private async publicContext() {
     const home = await this.prisma.branch.findFirst({ where: { isHome: true } });
-    const branchId = home?.id;
-    if (!branchId) return { menus: [], banners: [], pages: [] };
+    if (!home) return null;
+    const [setting, general] = await Promise.all([
+      this.settings.get(home.id, FRONT_CMS_SETTING_KEY, frontCmsSettingSchema),
+      this.generalSettings.get(home.id),
+    ]);
+    return { branchId: home.id, setting, hospitalName: general.hospitalName };
+  }
+
+  /**
+   * The public site payload, or a 404 when the site is switched off.
+   *
+   * Off is a real 404 rather than an empty payload: a disabled site should be
+   * indistinguishable from one that was never set up, and handing back
+   * `{menus:[],pages:[]}` tells a crawler there is something here to come back
+   * for.
+   */
+  async publicSite(): Promise<PublicSiteDto> {
+    const ctx = await this.publicContext();
+    if (!ctx || !ctx.setting.enabled) throw new NotFoundException('Not found');
+    const { branchId } = ctx;
     const [menus, banners, pages] = await Promise.all([
       this.listMenus(branchId),
       this.prisma.cmsBanner.findMany({ where: { branchId, deletedAt: null, active: true }, orderBy: { sortOrder: 'asc' } }),
       this.prisma.cmsPage.findMany({ where: { branchId, deletedAt: null, published: true }, orderBy: { createdAt: 'asc' } }),
     ]);
     return {
+      enabled: true,
+      site: publicSiteIdentity(ctx.setting, ctx.hospitalName),
       menus,
       banners: banners.map((b) => ({ id: b.id, title: b.title, imageUrl: b.imageUrl, link: b.link, sortOrder: b.sortOrder, active: b.active })),
       pages: pages.map(toPage),
@@ -73,8 +107,11 @@ export class CmsService {
   }
 
   async publicPage(slug: string): Promise<CmsPageDto> {
-    const home = await this.prisma.branch.findFirst({ where: { isHome: true } });
-    const page = home ? await this.prisma.cmsPage.findFirst({ where: { branchId: home.id, slug, published: true, deletedAt: null } }) : null;
+    const ctx = await this.publicContext();
+    if (!ctx || !ctx.setting.enabled) throw new NotFoundException('Page not found');
+    const page = await this.prisma.cmsPage.findFirst({
+      where: { branchId: ctx.branchId, slug, published: true, deletedAt: null },
+    });
     if (!page) throw new NotFoundException('Page not found');
     return toPage(page);
   }

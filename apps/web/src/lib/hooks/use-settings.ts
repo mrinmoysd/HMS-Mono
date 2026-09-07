@@ -18,6 +18,7 @@ import type {
   BackupListDto,
   BackupFileDto,
   BackupSettingInput,
+  FrontCmsSettingInput,
   GeneralSettingInput,
   NotificationEventDef,
   NotificationEventConfig,
@@ -228,6 +229,22 @@ export function useSaveBackupRetention() {
   return useMutation({
     mutationFn: (body: BackupSettingInput) => api.put<BackupSettingInput>('/settings/backups/retention', body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings-backups'] }),
+  });
+}
+
+export function useFrontCmsSetting() {
+  return useQuery({
+    queryKey: ['settings-front-cms'],
+    queryFn: () => api.get<FrontCmsSettingInput>('/settings/front-cms'),
+  });
+}
+
+export function useSaveFrontCmsSetting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: FrontCmsSettingInput) =>
+      api.put<FrontCmsSettingInput>('/settings/front-cms', body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settings-front-cms'] }),
   });
 }
 

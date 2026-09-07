@@ -83,6 +83,8 @@ const ROLE_GATED_ROUTES = [
   'GET /rbac/roles/:slug/permissions',
   'PUT /rbac/roles/:slug/permissions',
   'GET /settings',
+  'GET /settings/front-cms',
+  'PUT /settings/front-cms',
   'GET /settings/general',
   'PUT /settings/general',
   'GET /settings/modules',

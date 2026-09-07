@@ -14,6 +14,7 @@ import {
   attendanceSettingSchema,
   attendanceSettingProblems,
   backupSettingSchema,
+  frontCmsSettingSchema,
   userListQuerySchema,
   userStatusSchema,
   userPasswordResetSchema,
@@ -37,6 +38,7 @@ import {
   type PaymentSettingInput,
   type AttendanceSettingInput,
   type BackupSettingInput,
+  type FrontCmsSettingInput,
   type UserListQuery,
   type UserStatusInput,
   type UserPasswordResetInput,
@@ -44,6 +46,7 @@ import {
 import { SettingsService } from './settings.service';
 import { PrefixService } from './prefix.service';
 import { SETTINGS_NAV } from './settings.nav';
+import { FRONT_CMS_SETTING_KEY } from './setting-keys';
 import { ModuleAccessService, MODULE_SETTING_KEY } from './module-access.service';
 import { GeneralSettingsCache } from './general-settings.cache';
 import { AttendanceSettingsCache, ATTENDANCE_SETTING_KEY } from './attendance-settings.cache';
@@ -138,6 +141,29 @@ export class SettingsController {
     // to bite on the next request rather than up to a TTL later.
     this.generalCache.invalidate(branchId);
     return saved;
+  }
+
+  /**
+   * Front CMS Setting — the public website's identity, and whether it exists.
+   *
+   * `enabled` gates the two unauthenticated `/cms/public/*` endpoints. Those
+   * have been serving the home branch's published pages, banners and menus to
+   * anyone on the internet since they were written, with no switch. This is
+   * the switch, and it is off until somebody turns it on.
+   */
+  @Get('front-cms')
+  @RequireRole('super_admin', 'admin')
+  getFrontCms(@BranchId() branchId: string) {
+    return this.settings.get(branchId, FRONT_CMS_SETTING_KEY, frontCmsSettingSchema);
+  }
+
+  @Put('front-cms')
+  @RequireRole('super_admin', 'admin')
+  setFrontCms(
+    @CurrentUser() user: RequestUser,
+    @Body(new ZodValidationPipe(frontCmsSettingSchema)) body: FrontCmsSettingInput,
+  ) {
+    return this.settings.set(user, FRONT_CMS_SETTING_KEY, frontCmsSettingSchema, body);
   }
 
   /** The Modules screen: which modules are switched off for this branch. */

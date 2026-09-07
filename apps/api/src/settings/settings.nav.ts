@@ -22,7 +22,7 @@ export const SETTINGS_NAV: SettingsNavItemDto[] = [
   g('email', 'Email Setting', 'Channels', '/setup/settings/email'),
   g('payment', 'Payment Methods', 'Channels', '/setup/settings/payment-methods'),
 
-  g('front_cms', 'Front CMS Setting', 'Platform', null),
+  g('front_cms', 'Front CMS Setting', 'Platform', '/setup/settings/front-cms'),
   g('prefix', 'Prefix Setting', 'Platform', '/setup/settings/prefix'),
   g('roles', 'Roles Permissions', 'Platform', '/setup/roles'),
   g('backup', 'Backup', 'Platform', '/setup/settings/backup'),

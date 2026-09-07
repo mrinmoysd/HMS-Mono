@@ -15,7 +15,7 @@ cannot be answered without one).
 
 ## Summary
 
-- routes: **403**
+- routes: **405**
 - feature-gated: 307
 - resolver-gated: 34
 - module-gated (documented exceptions): 13
@@ -392,6 +392,8 @@ cannot be answered without one).
 | GET | `/settings/channels/:channel` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | PUT | `/settings/channels/:channel` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | POST | `/settings/channels/:channel/test` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| GET | `/settings/front-cms` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
+| PUT | `/settings/front-cms` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | GET | `/settings/general` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | PUT | `/settings/general` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |
 | GET | `/settings/modules` | *role* | ✓ | ✓ | · | · | · | · | · | · | · |

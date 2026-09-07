@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { isToggleableModule } from '../rbac/module-toggles';
 import { notificationSettingSchema, systemNotificationSettingSchema } from './notifications';
+import { frontCmsSettingSchema } from './cms';
 
 /**
  * The settings registry (parity plan, phase G0).
@@ -103,6 +104,7 @@ export const SETTINGS_SCHEMAS = {
   modules: moduleSettingSchema,
   notifications: notificationSettingSchema,
   system_notifications: systemNotificationSettingSchema,
+  front_cms: frontCmsSettingSchema,
 } as const;
 
 // ── Prefix Setting ─────────────────────────────────────────────────────────

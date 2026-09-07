@@ -212,8 +212,34 @@ anti-parity section; the operator procedure that replaces the button is in
 ## G10 — The remainder
 
 Theme Studio (hospital-level defaults for the three themes we already have),
-Languages, Captcha, Front CMS Setting, Queue Process. Addons and System Update
-are anti-parity — see below.
+Languages, Captcha, Queue Process. Addons and System Update are anti-parity —
+see below.
+
+### G10.1 — Front CMS Setting *(done)*
+
+The public website's identity, and whether it is published at all.
+
+`GET /cms/public/site` and `/cms/public/pages/:slug` are unauthenticated, and
+had been serving the home branch's published pages, banners and menus to
+anyone on the internet since they were written — with no switch to turn that
+off. Verified live on production before the change: HTTP 200, no credentials,
+real content.
+
+`enabled` is that switch, and it **defaults to off**. That is a deliberate
+behaviour change to a live endpoint. It is defensible because nothing consumes
+those endpoints yet — no marketing site exists — and because putting hospital
+content on the open web should be something an administrator turns on, not
+something they discover is already true. Off is a real 404 rather than an empty
+payload, so a disabled site is indistinguishable from one that was never set up.
+
+Every other field is content the public endpoint hands back: identity, meta,
+contact, social links, footer. Nothing on the screen is decoration — a field
+that changed nothing would be a lie told in a form, which is the same standard
+applied to providers in G5/G6.
+
+`analyticsId` is shape-validated (`G-…` / `UA-…`) rather than accepted freely,
+because that value is emitted into a public page and "whatever the admin
+pasted" is a script-injection surface.
 
 ---
 
